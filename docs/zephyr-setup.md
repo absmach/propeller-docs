@@ -244,20 +244,18 @@ Without ESP-IDF:
 
 #### Monitor the Output
 
-1. Monitor the serial output:
+```bash
+west espressif monitor
+```
 
-   ```bash
-   west espressif monitor
-   ```
+Expected Output:
 
-2. Expected Output:
+```plaintext
+***** Booting Zephyr OS build v4.0.0-2253-g62f90c62ab8a *****
+Hello World! esp32s3_devkitc/esp32s3/procpu
+```
 
-   ```plaintext
-   ***** Booting Zephyr OS build v4.0.0-2253-g62f90c62ab8a *****
-   Hello World! esp32s3_devkitc/esp32s3/procpu
-   ```
-
-3. To exit the monitor, press `Ctrl + ]`.
+To exit the monitor, press `Ctrl + ]`.
 
 ---
 
