@@ -169,6 +169,7 @@ propeller-proxy
 ## HTTP Registry Operations
 
 The HTTP configuration supports:
+
 - Registry operations with optional authentication (username/password or token)
 - Automatic retry mechanism for failed requests
 - Chunked data handling with configurable chunk size (512KB default)
