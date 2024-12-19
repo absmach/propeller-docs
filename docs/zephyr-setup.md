@@ -231,6 +231,14 @@ Without ESP-IDF:
    - `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core)
    - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
 
+   Before building, you can list all supported boards to verify the correct target name:
+
+   ```bash
+   west boards
+   ```
+
+   This will list all the boards supported by your current Zephyr installation, including their full identifiers (e.g., esp32s3_devkitc/procpu). Look for your desired board in the output.
+
 4. Flash the firmware:
    ```bash
    west flash
