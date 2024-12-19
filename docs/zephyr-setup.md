@@ -214,30 +214,28 @@ Without ESP-IDF:
 
 2. Activate the virtual environment:
 
+   This ensures that Zephyr tools (e.g., west, CMake) and configurations are properly used during the build process.
+
    ```bash
    source .venv/bin/activate
    ```
 
-   Build and flash the Zephyr Hello World application inside your Zephyr virtual environment. This ensures that Zephyr tools (e.g., west, CMake) and configurations are properly used during the build process.
-
 3. Build the Hello World sample:
 
-   ```bash
-   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
-   ```
-
-   For the ESP32-S3-DevKitC, the build system expects either of these qualified targets:
-
-   - `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core)
-   - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
-
-   Before building, you can list all supported boards to verify the correct target name:
+   Before building, list all supported boards to verify the correct target name. Look for your desired board in the output of:
 
    ```bash
    west boards
    ```
 
-   This will list all the boards supported by your current Zephyr installation, including their full identifiers (e.g., esp32s3_devkitc/procpu). Look for your desired board in the output.
+   For the ESP32-S3-DevKitC, the build system expects either of these qualified targets:
+
+   - `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example)
+   - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
+
+   ```bash
+   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world --pristine
+   ```
 
 4. Flash the firmware:
    ```bash
