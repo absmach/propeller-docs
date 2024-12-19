@@ -123,7 +123,7 @@ go run cmd/proxy/main.go
 
 ### Method 2: Installing and Running the Binary
 
-1. Build and install the binary:
+- Build and install the binary:
 
 ```bash
 make all && make install
@@ -131,7 +131,7 @@ make all && make install
 
 This will install the binary in your GOBIN directory (ensure your GOBIN is configured correctly).
 
-2. Run the proxy service:
+- Run the proxy service:
 
 ```bash
 propeller-proxy
