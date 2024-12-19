@@ -14,18 +14,18 @@ The proxy service performs two main functions:
 The proxy service facilitates the download of WebAssembly (WASM) containers through a multi-step process:
 
 1. **Initial Request**
-   - The proplet sends a download request via the MQTT topic: `channels/%s/messages/registry/proplet`
-   - This request is received by the proxy service's MQTT subscriber
+   The proplet sends a download request via the MQTT topic: `channels/%s/messages/registry/proplet`
+   This request is received by the proxy service's MQTT subscriber
 
 2. **OCI Registry Download**
-   - The HTTP side of the proxy service receives this request
-   - It then sends a download request to the OCI registry to fetch the WASM container
-   - The container is downloaded as an OCI image
+   The HTTP side of the proxy service receives this request
+   It then sends a download request to the OCI registry to fetch the WASM container
+   The container is downloaded as an OCI image
 
 3. **Chunked Data Transfer**
-   - Once downloaded, the WASM image is split into chunks
-   - These chunks are sent back to the proplet via the MQTT topic: `channels/%s/messages/registry/server`
-   - This chunked approach ensures efficient handling of large WASM files
+   Once downloaded, the WASM image is split into chunks
+   These chunks are sent back to the proplet via the MQTT topic: `channels/%s/messages/registry/server`
+    This chunked approach ensures efficient handling of large WASM files
 
 ### Architecture Details
 
@@ -34,16 +34,16 @@ The proxy service facilitates the download of WebAssembly (WASM) containers thro
 The proxy service implements a concurrent streaming architecture with two main components:
 
 1. **HTTP Stream**
-   - Handles container fetching from the OCI registry
-   - Splits containers into configurable chunk sizes
-   - Forwards chunks to the MQTT stream via an internal channel
-   - Implements context-based cancellation for graceful shutdown
+   Handles container fetching from the OCI registry.
+   Splits containers into configurable chunk sizes
+   Forwards chunks to the MQTT stream via an internal channel.
+   Implements context-based cancellation for graceful shutdown.
 
 2. **MQTT Stream**
-   - Receives chunks from the HTTP stream
-   - Publishes chunks to MQTT topics
-   - Tracks chunk delivery progress
-   - Maintains a map of container chunks to ensure complete delivery
+   Receives chunks from the HTTP stream.
+   Publishes chunks to MQTT topics.
+   Tracks chunk delivery progress.
+   Maintains a map of container chunks to ensure complete delivery.
 
 #### Chunk Management
 
@@ -58,15 +58,6 @@ The proxy service implements a concurrent streaming architecture with two main c
 - **Concurrent Processing**: Separate goroutines for HTTP and MQTT operations
 - **Progress Tracking**: Real-time tracking of chunk delivery status
 - **Memory Management**: Automatic cleanup of completed transfers
-
-#### Logging System
-
-The service includes comprehensive logging with:
-
-- Initialization status and connection events
-- Chunk transfer progress and completion
-- Error reporting with detailed context
-- Container-specific tracking information
 
 ## Configuration
 
@@ -140,31 +131,26 @@ propeller-proxy
 ## Service Flow
 
 1. **Initialization**
-   - Loads configuration from environment variables
-   - Sets up logging with structured logging support
-   - Creates a new proxy service instance
-   - Initializes MQTT client and communication channels
+   Loads configuration from environment variables.
+   Sets up logging with structured logging support.
+   Creates a new proxy service instance.
+   Initializes MQTT client and communication channels.
 
 2. **Connection**
-   - Establishes connection to the MQTT broker
-   - Subscribes to configured topics
-   - Sets up HTTP streaming with the registry
-   - Initializes chunk buffering system
+   Establishes connection to the MQTT broker.
+   Subscribes to configured topics.
+   Sets up HTTP streaming with the registry.
+   Initializes chunk buffering system.
 
 3. **Operation**
-   - Runs two concurrent streams:
-     - StreamHTTP: Handles HTTP communication with the OCI registry
-     - StreamMQTT: Handles MQTT communication for proplet requests and responses
-   - Uses error groups for graceful error handling and shutdown
-   - Maintains chunk delivery tracking
-   - Provides real-time progress logging
+   Runs two concurrent streams:
+     - StreamHTTP: Handles HTTP communication with the OCI registry.
+     - StreamMQTT: Handles MQTT communication for proplet requests and responses.
+
+      Uses error groups for graceful error handling and shutdown. Maintains chunk delivery tracking. Provides real-time progress logging.
 
 4. **Error Handling**
-   - Implements comprehensive error logging with context
-   - Graceful shutdown with proper resource cleanup
-   - Automatic disconnection from MQTT broker on service termination
-   - Retry mechanisms for failed operations
-   - Context-based cancellation support
+   Implements comprehensive error logging with context. Graceful shutdown with proper resource cleanup. Automatic disconnection from MQTT broker on service termination. Retry mechanisms for failed operations. Context-based cancellation support.
 
 ## HTTP Registry Operations
 
