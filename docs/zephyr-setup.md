@@ -243,7 +243,7 @@ Without ESP-IDF:
    west flash
    ```
 
-   NOTE: Ensure that west espressif monitor is not running when you attempt to flash the firmware. The monitor keeps the serial port busy, preventing the west flash command from accessing it.
+   NOTE: Ensure that `west espressif monitor` is not running when you attempt to flash the firmware. It keeps the serial port busy, preventing the `west flash` command from accessing it.
 
 #### Monitor the Output
 
