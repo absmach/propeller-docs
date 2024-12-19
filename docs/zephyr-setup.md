@@ -249,7 +249,10 @@ Without ESP-IDF:
    west flash
    ```
 
-   NOTE: Ensure that `west espressif monitor` is not running when you attempt to flash the firmware. It keeps the serial port busy, preventing the `west flash` command from accessing it.
+   NOTE:
+
+   - Use `west flash --erase` if the board has residual firmware causing conflicts.
+   - Ensure that `west espressif monitor` is not running when you attempt to flash the firmware. It keeps the serial port busy, preventing the `west flash` command from accessing it.
 
 #### Monitor the Output
 
