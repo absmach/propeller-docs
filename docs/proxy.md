@@ -5,6 +5,7 @@ The Proxy Service acts as a bridge between MQTT and HTTP protocols in the Propel
 ## Overview
 
 The proxy service performs two main functions:
+
 1. Subscribes to MQTT topics and forwards messages to HTTP endpoints
 2. Streams data between MQTT and HTTP protocols
 
@@ -61,6 +62,7 @@ The proxy service implements a concurrent streaming architecture with two main c
 #### Logging System
 
 The service includes comprehensive logging with:
+
 - Initialization status and connection events
 - Chunk transfer progress and completion
 - Error reporting with detailed context
@@ -122,12 +124,15 @@ go run cmd/proxy/main.go
 ### Method 2: Installing and Running the Binary
 
 1. Build and install the binary:
+
 ```bash
 make all && make install
 ```
+
 This will install the binary in your GOBIN directory (ensure your GOBIN is configured correctly).
 
 2. Run the proxy service:
+
 ```bash
 propeller-proxy
 ```
