@@ -234,20 +234,14 @@ Without ESP-IDF:
    - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
 
    ```bash
-   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world --pristine
+   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
    ```
 
-   > **Note:** If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. To force a rebuild, use the `-c` flag with the build command:
-   >
-   > ```bash
-   > west build -c
-   > ```
-   >
-   > Alternatively, you can use the `--pristine` flag to ensure a completely clean build environment:
-   >
-   > ```bash
-   > west build --pristine
-   > ```
+   If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
+
+   ```bash
+   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world --pristine
+   ```
 
 4. Flash the firmware:
 
