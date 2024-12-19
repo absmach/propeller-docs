@@ -237,7 +237,7 @@ Without ESP-IDF:
    west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
    ```
 
-   If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
+   NOTE: If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
 
    ```bash
    west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world --pristine
