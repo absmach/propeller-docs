@@ -22,4 +22,5 @@ nav:
   - Architecture: architecture.md
   - Manager: manager.md
   - Proplet: proplet.md
+  - Proxy: proxy.md
   - Developer's Guide: developer-guide.md

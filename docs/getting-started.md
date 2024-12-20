@@ -174,6 +174,21 @@ export PROPLET_THING_KEY=""
 propeller-proplet
 ```
 
+## Start the proxy
+
+To start the proxy, run the following command
+
+```bash
+export PROXY_REGISTRY_URL=""
+export PROXY_AUTHENTICATE="TRUE"
+export PROXY_REGISTRY_USERNAME=""
+export PROXY_REGISTRY_PASSWORD=""
+export PROPLET_CHANNEL_ID=""
+export PROPLET_THING_ID=""
+export PROPLET_THING_KEY=""
+propeller-proxy
+```
+
 ## Postman Colletion
 
 This is a [collection](./api/postman_collection.json) of the API calls that can be used to interact with the Propeller system.
@@ -278,3 +293,15 @@ curl -X POST "http://localhost:7070/tasks/e5bcc74e-9af3-4f09-b663-44dc260ab809/s
 ```bash
 curl -X POST "http://localhost:7070/tasks/e5bcc74e-9af3-4f09-b663-44dc260ab809/stop"
 ```
+
+### Creating Tasks from OCI Registry Images
+
+For WebAssembly modules stored in an OCI registry, you can specify the image URL during task creation. The proxy will automatically retrieve the WASM file from the registry when the task starts, eliminating the need for manual file uploads.
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "add", "inputs": [10, 20], "image_url": "docker.io/mrstevenyaga/add.wasm"}'
+```
+
+The proxy will handle pulling the image from the specified OCI registry during task execution, streamlining the deployment process.
