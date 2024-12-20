@@ -271,9 +271,7 @@ To exit the monitor, press `Ctrl + ]`.
 
 ---
 
-### integrate WebAssembly Micro Runtime (WAMR) with Zephyr,
-
-### **1. Clone the WAMR Repository**
+### Integrating WebAssembly Micro Runtime (WAMR) with Zephyr
 
 First, download the WAMR source code from its GitHub repository.
 
@@ -303,96 +301,71 @@ set(WAMR_ROOT /path/to/wasm-micro-runtime)
 include(${WAMR_ROOT}/build-scripts/runtime_lib.cmake)
 ```
 
-### **2. Configure WAMR in Your Zephyr Application**
-
-Create or use an existing Zephyr application directory. Zephyr provides several sample applications. For this example, we'll use the `hello_world` application located at:
+To test your installtion, navigate to the "basic" Sample Directory
 
 ```bash
-cd ~/zephyrproject/zephyr/samples/hello_world
+cd samples/basic
 ```
 
-In this directory, you will find a `CMakeLists.txt` file. Add the WAMR directory and include WAMR's source code at the end of the `CMakeLists.txt` file and save it.
+The `basic` sample includes a `build.sh` script that compiles both the native application and the Wasm application. After a successful build, the output binaries are located in the `out` directory.
+To execute the sample:
 
 ```bash
-set(WAMR_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../wasm-micro-runtime)
-include(${WAMR_ROOT}/build-scripts/runtime_lib.cmake)
-target_sources(app PRIVATE ${WAMR_RUNTIME_SOURCES})
-target_include_directories(app PRIVATE ${WAMR_ROOT}/core/iwasm/include)
+cd out
+./basic -f wasm-apps/testapp.wasm
 ```
 
-- `WAMR_ROOT`: Specifies the relative path to the WAMR repository
-- `include`: Adds WAMR build scripts to include the runtime library
-- `target_sources`: Adds WAMR runtime source files to the build process
-- `target_include_directories`: Ensures the application can find WAMR's header files
-
-Append these lines to `prj.conf`:
+Expected Output:
 
 ```bash
-CONFIG_WASM_RUNTIME=y
-CONFIG_WASM_MEMORY_POOL_SIZE=4096
-CONFIG_WASM_MAIN_STACK_SIZE=2048
+calling into WASM function: generate_float
+Native finished calling wasm function generate_float(), returned a float value: 102009.921875f
+calling into WASM function: float_to_string
+calling into native function: intToStr
+calling into native function: get_pow
+calling into native function: intToStr
+Native finished calling wasm function: float_to_string, returned a formatted string: 102009.921
 ```
 
-- `CONFIG_WASM_RUNTIME`: Enables the WebAssembly runtime.
-- `CONFIG_WASM_MEMORY_POOL_SIZE`: Sets the memory pool size for running WebAssembly modules (adjust as needed for your application).
-- `CONFIG_WASM_MAIN_STACK_SIZE`: Defines the stack size for the WAMR runtime's main execution.
+To clean the build artifacts:
 
----
+```bash
+./build.sh clean
+```
 
-### **3. Build WAMR for the ESP32-S3**
+### Deploy WAMR on Zephyr on ESP32
 
-Before building, ensure both Zephyr and ESP-IDF environments are set up correctly.
+Navigate to the WAMR Zephyr example directory:
 
-#### **Step 1: Source the ESP-IDF Environment**
+```bash
+cd ~/zephyrproject/wasm-micro-runtime/product-mini/platforms/zephyr/simple
+```
 
-1. Ensure you are not inside the Zephyr virtual environment. If active, deactivate it:
-
-   ```bash
-   deactivate
-   ```
-
-2. Source the ESP-IDF environment to set up its required tools:
-
-   ```bash
-   source ~/esp/v5.3.2/esp-idf/export.sh
-   ```
-
-#### **Step 2: Source the Zephyr Virtual Environment**
+Activate the Zephyr environment (if not already done):
 
 ```bash
 source ~/zephyrproject/.venv/bin/activate
 ```
 
-### **Important Notes**
-
-- Zephyr and ESP-IDF environments must not be active simultaneously. Always deactivate one before activating the other.
-- After sourcing each environment, confirm the active Python path to ensure the correct tools are in use.
-- Use separate terminal sessions or deactivate/reactivate environments as needed when switching between Zephyr and ESP-IDF.
-
-#### **Step 3: Build the Application**
-
-1. Navigate to the root of your Zephyr workspace:
-
-   ```bash
-   cd ~/zephyrproject
-   ```
-
-2. Build the application:
-
-   ```bash
-   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
-   ```
-
-Monitor the build output to ensure it completes without errors.
-
----
+Build the WAMR example for your ESP32 board:
 
 ```bash
-cd ~/zephyrproject
-west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
+west build -b <your_board>
 ```
 
----
+Replace `<your_board>` with your board's name, e.g., `esp32s3_devkitc`.
+
+Flash the firmware to the ESP32:
+
+```bash
+west flash
+```
+
+Monitor the application on the ESP32:
+
+```bash
+west espressif monitor
+```
 
 ### **4. Test with a WebAssembly Module**
 
