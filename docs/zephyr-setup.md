@@ -1,108 +1,110 @@
 # Setting Up Zephyr with ESP-IDF for ESP32
 
-### **1. Set Up Zephyr Development Environment**
+## **1. Set Up Zephyr Development Environment**
 
-#### Install Dependencies on your development machine
+### Install Dependencies on your development machine
 
-1. Update your system:
+Update your system:
 
-   ```bash
-   sudo apt update
-   sudo apt upgrade
-   ```
+```bash
+sudo apt update
+sudo apt upgrade
+```
 
-2. Install the required tools:
+Install the required tools:
 
-   ```bash
-   sudo apt install --no-install-recommends git cmake ninja-build gperf \
-     ccache dfu-util device-tree-compiler wget \
-     python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
-     make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
-   ```
+```bash
+sudo apt install --no-install-recommends git cmake ninja-build gperf \
+  ccache dfu-util device-tree-compiler wget \
+  python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
+  make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
+```
 
-3. Verify tool versions:
-   ```bash
-   cmake --version
-   python3 --version
-   dtc --version
-   ```
-   Ensure versions meet the minimum requirements: CMake 3.20.5, Python 3.10, and Devicetree Compiler 1.4.6.
+Verify tool versions:
 
-#### Get Zephyr and Python Dependencies on your development machine
+```bash
+cmake --version
+python3 --version
+dtc --version
+```
 
-1. Create a Zephyr workspace and clone the repository:
+Ensure versions meet the minimum requirements: CMake 3.20.5, Python 3.10, and Devicetree Compiler 1.4.6.
 
-   ```bash
-   west init ~/zephyrproject
-   cd ~/zephyrproject
-   west update
-   ```
+### Get Zephyr and Python Dependencies on your development machine
 
-2. Set up a Python virtual environment:
+Create a Zephyr workspace and clone the repository:
 
-   ```bash
-   sudo apt install python3-venv
-   python3 -m venv ~/zephyrproject/.venv
-   source ~/zephyrproject/.venv/bin/activate
-   pip install west
-   ```
+```bash
+west init ~/zephyrproject
+cd ~/zephyrproject
+west update
+```
 
-3. Export Zephyr CMake package:
+Set up a Python virtual environment:
 
-   ```bash
-   west zephyr-export
-   ```
+```bash
+sudo apt install python3-venv
+python3 -m venv ~/zephyrproject/.venv
+source ~/zephyrproject/.venv/bin/activate
+pip install west
+```
 
-4. Install Python dependencies:
+Export Zephyr CMake package:
 
-   ```bash
-   west packages pip --install
-   ```
+```bash
+west zephyr-export
+```
 
-5. Install the Zephyr SDK:
+Install Python dependencies:
 
-   ```bash
-   cd ~/zephyrproject/zephyr
-   west sdk install
-   ```
+```bash
+west packages pip --install
+```
 
-6. Fetch Espressif binary blobs:
+Install the Zephyr SDK:
 
-   ```bash
-   west blobs fetch hal_espressif
-   ```
+```bash
+cd ~/zephyrproject/zephyr
+west sdk install
+```
 
-   The `ZEPHYR_BASE` variable is required to locate Zephyr's core build system, CMake scripts, and modules. Without it, the Zephyr tools (west) will fail to build applications. Confirm the `ZEPHYR_BASE` Environment Variable
+Fetch Espressif binary blobs:
 
-   ```bash
-   echo $ZEPHYR_BASE
-   ```
+```bash
+west blobs fetch hal_espressif
+```
 
-   If It’s Not Set:
+The `ZEPHYR_BASE` variable is required to locate Zephyr's core build system, CMake scripts, and modules. Without it, the Zephyr tools (west) will fail to build applications. Confirm the `ZEPHYR_BASE` Environment Variable
 
-- Activate your Zephyr virtual environment:
+```bash
+echo $ZEPHYR_BASE
+```
 
-  ```bash
-  source ~/zephyrproject/.venv/bin/activate
-  ```
+If It’s Not Set:
 
-- Set the ZEPHYR_BASE variable:
+Activate your Zephyr virtual environment:
 
-  ```bash
-  export ZEPHYR_BASE=~/zephyrproject/zephyr
-  ```
+```bash
+source ~/zephyrproject/.venv/bin/activate
+```
 
-  To make it peremanent, add the following line to your shell configuration file (`.bashrc` or `.zshrc`):
+Set the ZEPHYR_BASE variable:
 
-  ```bash
-  export ZEPHYR_BASE=/home/jeff/zephyrproject/zephyr
-  ```
+```bash
+export ZEPHYR_BASE=~/zephyrproject/zephyr
+```
 
-  For more detailed information, refer to the official [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html).
+To make it peremanent, add the following line to your shell configuration file (`.bashrc` or `.zshrc`):
+
+```bash
+export ZEPHYR_BASE=/home/jeff/zephyrproject/zephyr
+```
+
+For more detailed information, refer to the official [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html).
 
 ---
 
-### **2. Install ESP-IDF on your development machine**
+## **2. Install ESP-IDF on your development machine**
 
 Do not install ESP-IDF inside the Zephyr virtual environment. ESP-IDF is a separate development framework with its own setup and toolchain requirements, which should be installed and managed globally or in its own isolated environment. Global Installation (Preferred). This way, its tools and environment are available for any project on the ESP32, including Zephyr.
 
@@ -111,100 +113,107 @@ Without ESP-IDF:
 - You cannot compile or flash code for the ESP32.
 - Zephyr won’t be able to recognize or support the ESP32-S3 during build or runtime.
 
-#### Option 1: Using VS Code Extension (Recommended)
+### Option 1: Using VS Code Extension (Recommended)
 
-1. Install the ESP-IDF extension:
+Install the ESP-IDF extension:
 
-   - Navigate to **View > Extensions** in VS Code.
-   - Search for "ESP-IDF Extension" and install it.
+- Navigate to **View > Extensions** in VS Code.
+- Search for "ESP-IDF Extension" and install it.
 
-2. Configure the ESP-IDF extension:
+Configure the ESP-IDF extension:
 
-   - Open **Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P`).
-   - Run `ESP-IDF: Configure ESP-IDF Extension`.
-   - Follow the setup wizard to download and install ESP-IDF.
+- Open **Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P`).
+- Run `ESP-IDF: Configure ESP-IDF Extension`.
+- Follow the setup wizard to download and install ESP-IDF.
 
-3. Ensure correct paths for IDF:
+Ensure correct paths for IDF:
 
-   - Set `IDF_PATH` and `IDF_TOOLS_PATH` appropriately (default: `$HOME/.espressif`).
+- Set `IDF_PATH` and `IDF_TOOLS_PATH` appropriately (default: `$HOME/.espressif`).
 
-4. Add OpenOCD rules for Linux. The command typically looks like:
+Add OpenOCD rules for Linux. The command typically looks like:
 
-   ```bash
-   sudo cp --update=none /home/<username>/.espressif/tools/openocd-esp32/<version>/share/openocd/contrib/60-openocd.rules /etc/udev/rules.d/
-   ```
+```bash
+sudo cp --update=none /home/<username>/.espressif/tools/openocd-esp32/<version>/share/openocd/contrib/60-openocd.rules /etc/udev/rules.d/
+```
 
-   then reload udev rules to apply the changes:
+then reload udev rules to apply the changes:
 
-   ```bash
-   sudo udevadm control --reload-rules
-   sudo udevadm trigger
-   ```
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
 
-   For more detailed information, refer to the official [ESP-IDF Extension Guide](https://docs.espressif.com/projects/vscode-esp-idf-extension/en/latest/installation.html).
+For more detailed information, refer to the official [ESP-IDF Extension Guide](https://docs.espressif.com/projects/vscode-esp-idf-extension/en/latest/installation.html).
 
-#### Option 2: Manual Installation
+### Option 2: Manual Installation
 
-1. Download ESP-IDF:
+Download ESP-IDF:
 
-   ```bash
-   mkdir -p ~/esp
-   cd ~/esp
-   wget https://github.com/espressif/esp-idf/releases/download/v5.3.2/esp-idf-v5.3.2.zip
-   unzip esp-idf-v5.3.2.zip -d v5.3.2
-   ```
+```bash
+mkdir -p ~/esp
+cd ~/esp
+wget https://github.com/espressif/esp-idf/releases/download/v5.3.2/esp-idf-v5.3.2.zip
+unzip esp-idf-v5.3.2.zip -d v5.3.2
+```
 
-   Ensure the directory structure is correct after unzipping. The export script requires paths to be consistent.
+Ensure the directory structure is correct after unzipping. The export script requires paths to be consistent.
 
-2. Export the ESP-IDF environment:
+Export the ESP-IDF environment:
 
-   ```bash
-   source ~/esp/v5.3.2/esp-idf/export.sh
-   ```
+```bash
+source ~/esp/v5.3.2/esp-idf/export.sh
+```
 
-   Run this command in every new terminal session, or automate it by adding the export command to your shell's startup script (~/.bashrc, ~/.zshrc, etc.).
+Run this command in every new terminal session, or automate it by adding the export command to your shell's startup script (~/.bashrc, ~/.zshrc, etc.).
 
-3. Verify the installation:
+Verify the installation:
 
-   Check the installed ESP-IDF version:
+Check the installed ESP-IDF version:
 
-   ```bash
-   idf.py --version
+```bash
+idf.py --version
 
-   ```
+```
 
-   If the `idf.py` command fails with `command not found`, source the ESP-IDF Environment in VS Code. To avoid manually sourcing the `export.sh` script every time you open a terminal:
+If the `idf.py` command fails with `command not found`, source the ESP-IDF Environment in VS Code. To avoid manually sourcing the `export.sh` script every time you open a terminal:
 
-   - Open your shell configuration file (`~/.zshrc` or `~/.bashrc`):
-     ```bash
-     nano ~/.zshrc
-     ```
-   - Add this line at the bottom:
-     ```bash
-     source ~/esp/v5.3.2/esp-idf/export.sh
-     ```
-   - Save and reload the shell configuration:
+- Open your shell configuration file (`~/.zshrc` or `~/.bashrc`):
 
-     ```bash
-     source ~/.zshrc
-     ```
+  ```bash
+  nano ~/.zshrc
+  ```
 
-   - Once the environment is sourced:
+- Add this line at the bottom:
 
-     - Check the Xtensa toolchain:
-       ```bash
-       xtensa-esp32s3-elf-gcc --version
-       ```
-     - Verify `idf.py` again:
-       ```bash
-       idf.py --version
-       ```
+  ```bash
+  source ~/esp/v5.3.2/esp-idf/export.sh
+  ```
+
+- Save and reload the shell configuration:
+
+  ```bash
+  source ~/.zshrc
+  ```
+
+- Once the environment is sourced:
+
+  - Check the Xtensa toolchain:
+
+    ```bash
+    xtensa-esp32s3-elf-gcc --version
+    ```
+
+  - Verify `idf.py` again:
+
+    ```bash
+    idf.py --version
+    ```
 
 ---
 
-### **3. Test the Setup Using the Hello World Program**
+## **3. Test the Setup Using the Hello World Program**
 
-#### Build and Flash Hello World
+### Build and Flash Hello World
 
 1. Navigate to your Zephyr workspace:
 
@@ -254,7 +263,7 @@ Without ESP-IDF:
    - Use `west flash --erase` if the board has residual firmware causing conflicts.
    - Ensure that `west espressif monitor` is not running when you attempt to flash the firmware. It keeps the serial port busy, preventing the `west flash` command from accessing it.
 
-#### Monitor the Output
+### Monitor the Output
 
 ```bash
 west espressif monitor
@@ -271,7 +280,7 @@ To exit the monitor, press `Ctrl + ]`.
 
 ---
 
-### Integrating WebAssembly Micro Runtime (WAMR) with Zephyr
+## Integrating WebAssembly Micro Runtime (WAMR) with Zephyr
 
 First, download the WAMR source code from its GitHub repository.
 
@@ -333,7 +342,7 @@ To clean the build artifacts:
 ./build.sh clean
 ```
 
-### Deploy WAMR on Zephyr on ESP32
+## Deploy WAMR on Zephyr on ESP32
 
 Navigate to the WAMR Zephyr example directory:
 
@@ -367,7 +376,7 @@ Monitor the application on the ESP32:
 west espressif monitor
 ```
 
-### **4. Test with a WebAssembly Module**
+## **4. Test with a WebAssembly Module**
 
 1. **Create a WebAssembly Application:**
    Use a tool like the `wasi-sdk` or any other WebAssembly compiler to create a `.wasm` file.
@@ -414,6 +423,7 @@ west espressif monitor
    ```
 
 3. **Rebuild and Flash:**
+
    ```bash
    west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
    west flash
@@ -421,7 +431,7 @@ west espressif monitor
 
 ---
 
-### **5. Monitor Output**
+## **5. Monitor Output**
 
 1. Open the serial monitor to observe the application logs:
 
@@ -430,52 +440,65 @@ west espressif monitor
    ```
 
 2. Look for output from the `.wasm` module. Expected output:
+
    ```plaintext
    Hello, WebAssembly!
    ```
 
 ---
 
-### **Potential Pitfalls and Solutions**
+## **Potential Pitfalls and Solutions**
 
-#### **1. Permission Denied for `/dev/ttyUSB0`**
+### **1. Permission Denied for `/dev/ttyUSB0`**
 
 - **Cause**: User does not have access to the serial port.
 - **Solution**:
+
   1. Add your user to the `dialout` group:
+
      ```bash
      sudo usermod -aG dialout $USER
      ```
+
   2. Log out and log back in or restart the system.
 
-#### **2. `west` Not Found**
+### **2. `west` Not Found**
 
 - **Cause**: Zephyr virtual environment is not activated.
 - **Solution**:
+
   - Activate the virtual environment:
+
     ```bash
     source ~/zephyrproject/.venv/bin/activate
     ```
 
-#### **3. Build Fails with Missing Board Qualifiers**
+### **3. Build Fails with Missing Board Qualifiers**
 
 - **Cause**: Incorrect board target specified.
 - **Solution**:
+
   - Use the correct board target, for example:
+
     ```bash
     west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
     ```
 
-#### **4. Serial Port Already in Use**
+### **4. Serial Port Already in Use**
 
 - **Cause**: Another process is using `/dev/ttyUSB0`.
 - **Solution**:
+
   1. Identify the process using the port:
+
      ```bash
      lsof /dev/ttyUSB0
      ```
+
   2. Kill the process:
+
      ```bash
      kill <PID>
      ```
+
   3. Retry flashing.
