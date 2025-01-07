@@ -4,7 +4,7 @@
 
 ### Install Dependencies on your development machine
 
-Update your system:
+Update your system. For debian based systems you can use the following command:
 
 ```bash
 sudo apt update
@@ -32,21 +32,36 @@ Ensure versions meet the minimum requirements: CMake 3.20.5, Python 3.10, and De
 
 ### Get Zephyr and Python Dependencies on your development machine
 
+Install Python venv package::
+
+```bash
+sudo apt install python3-venv
+```
+
+Create a new virtual environment:
+
+```bash
+python3 -m venv ~/zephyrproject/.venv
+```
+
+Activate the virtual environment:
+
+```bash
+source ~/zephyrproject/.venv/bin/activate
+```
+
+Install west:
+
+```bash
+pip install west
+```
+
 Create a Zephyr workspace and clone the repository:
 
 ```bash
 west init ~/zephyrproject
 cd ~/zephyrproject
 west update
-```
-
-Set up a Python virtual environment:
-
-```bash
-sudo apt install python3-venv
-python3 -m venv ~/zephyrproject/.venv
-source ~/zephyrproject/.venv/bin/activate
-pip install west
 ```
 
 Export Zephyr CMake package:
