@@ -68,6 +68,8 @@ cd ~/zephyrproject/zephyr
 west sdk install
 ```
 
+You can also install Zephyr SDK without using the west sdk command, as described in this [Zephyr SDK installation guide] (https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html#toolchain-zephyr-sdk-install).
+
 Fetch Espressif binary blobs:
 
 ```bash
