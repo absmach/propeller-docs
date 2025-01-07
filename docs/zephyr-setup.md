@@ -1,4 +1,4 @@
-# Setting Up Zephyr with ESP-IDF for ESP32
+# Deploying WAMR on Zephyr for ESP32
 
 ## **1. Set Up Zephyr Development Environment**
 
