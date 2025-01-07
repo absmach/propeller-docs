@@ -68,7 +68,7 @@ cd ~/zephyrproject/zephyr
 west sdk install
 ```
 
-You can also install Zephyr SDK without using the west sdk command, as described in this [Zephyr SDK installation guide] (https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html#toolchain-zephyr-sdk-install).
+You can also install Zephyr SDK without using the west sdk command, as described in this [Zephyr SDK installation guide](https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html#toolchain-zephyr-sdk-install).
 
 Fetch Espressif binary blobs:
 
@@ -273,10 +273,7 @@ NOTE:
 
   A board may contain one or multiple SoCs. Also, each SoC may contain one or more CPU clusters as described in [The board qualifiers](https://docs.zephyrproject.org/latest/hardware/porting/board_porting.html#board-terminology)
 
-  For the ESP32-S3-DevKitC, the build system expects either of these qualified targets:
-
-      - `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example)
-      - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
+  For the ESP32-S3-DevKitC, the build system expects either of these qualified targets: `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example) or the `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
 
 - If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
 
@@ -440,25 +437,25 @@ west espressif monitor
 
 Add your user to the `dialout` group then log out and log back in or restart the system.:
 
-     ```bash
-     sudo usermod -aG dialout $USER
-     ```
+```bash
+sudo usermod -aG dialout $USER
+```
 
 ### **2. `west` Not Found**
 
 Activate the virtual environment:
 
-    ```bash
-    source ~/zephyrproject/.venv/bin/activate
-    ```
+```bash
+source ~/zephyrproject/.venv/bin/activate
+```
 
 ### **3. Build Fails with Missing Board Qualifiers**
 
 Use the correct board target as described in [The board qualifiers](https://docs.zephyrproject.org/latest/hardware/porting/board_porting.html#board-terminology). For ESP32s3, for example:
 
-    ```bash
-    west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
-    ```
+```bash
+west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
+```
 
 ### **4. Serial Port Already in Use**
 
