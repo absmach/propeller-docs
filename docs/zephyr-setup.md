@@ -404,74 +404,33 @@ After testing WAMR locally, deploy it to the **ESP32** board using Zephyr.
    west espressif monitor
    ```
 
-## **4. Test with a WebAssembly Module**
+### **Using a WebAssembly Module with Zephyr**
 
-1. **Create a WebAssembly Application:**
-   Use a tool like the `wasi-sdk` or any other WebAssembly compiler to create a `.wasm` file.
+The sample C code is in `src/wasm-app-riscv64/main.c`. To generate a `.wasm` file, run the build script located in `src/wasm-app-riscv64/build.sh`.
 
-   Example C program (`hello_world.c`):
+```bash
+./build.sh
+```
 
-   ```c
-   #include <stdio.h>
-   int main() {
-       printf("Hello, WebAssembly!\n");
-       return 0;
-   }
-   ```
+This creates `test.wasm`, `test_wasm.h`, and `test_wasm_riscv64.h`. Replace `src/test_wasm.h` and `src/test_wasm_riscv64.h` with the newly generated files from `src/wasm-app-riscv64`.
 
-   Compile to `.wasm`:
+Build the firmware (replace `<your_board>` with the board name):
 
-   ```bash
-   wasi-sdk -o hello_world.wasm hello_world.c
-   ```
+```bash
+west build -b <your_board>
+```
 
-2. **Embed the `.wasm` Module in Your Application:**
-   Copy the `hello_world.wasm` file into your Zephyr application directory.
+Flash the firmware:
 
-   Update your application code to load and execute the WebAssembly module. Example in `main.c`:
+```bash
+west flash
+```
 
-   ```c
-   #include "iwasm.h"
+Use the serial monitor to see output:
 
-   extern const uint8_t wasm_module[];
-   extern const uint32_t wasm_module_size;
-
-   void main(void) {
-       RuntimeInitArgs init_args;
-       wasm_runtime_init(&init_args);
-
-       wasm_module_t module = wasm_runtime_load(wasm_module, wasm_module_size, NULL);
-       wasm_exec_env_t exec_env = wasm_runtime_create_exec_env(module, 1024);
-
-       wasm_runtime_call_wasm(exec_env, NULL, "main", 0, NULL);
-
-       wasm_runtime_destroy_exec_env(exec_env);
-       wasm_runtime_unload(module);
-   }
-   ```
-
-3. **Rebuild and Flash:**
-
-   ```bash
-   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
-   west flash
-   ```
-
----
-
-## **5. Monitor Output**
-
-1. Open the serial monitor to observe the application logs:
-
-   ```bash
-   west espressif monitor
-   ```
-
-2. Look for output from the `.wasm` module. Expected output:
-
-   ```plaintext
-   Hello, WebAssembly!
-   ```
+```bash
+west espressif monitor
+```
 
 ---
 
