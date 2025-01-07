@@ -76,35 +76,51 @@ Fetch Espressif binary blobs:
 west blobs fetch hal_espressif
 ```
 
-The `ZEPHYR_BASE` variable is required to locate Zephyr's core build system, CMake scripts, and modules. Without it, the Zephyr tools (west) will fail to build applications. Confirm the `ZEPHYR_BASE` Environment Variable
+The `ZEPHYR_BASE` environment variable is essential for locating Zephyr's core build system, CMake scripts, and modules. Without this variable set, Zephyr tools like `west` will fail to build applications.
+
+To confirm whether the `ZEPHYR_BASE` environment variable is configured correctly, use the following command:
 
 ```bash
 echo $ZEPHYR_BASE
 ```
 
-If It’s Not Set:
+If the output is empty or incorrect, follow the steps below to set it.
 
-Activate your Zephyr virtual environment:
+1. **Activate your Zephyr Virtual Environment**:
 
-```bash
-source ~/zephyrproject/.venv/bin/activate
-```
+   If you're using a virtual environment for Zephyr, activate it first:
 
-Set the ZEPHYR_BASE variable:
+   ```bash
+   source ~/zephyrproject/.venv/bin/activate
+   ```
 
-```bash
-export ZEPHYR_BASE=~/zephyrproject/zephyr
-```
+2. **Set the `ZEPHYR_BASE` Variable**:
 
-To make it peremanent, add the following line to your shell configuration file (`.bashrc` or `.zshrc`):
+   Once activated, set the `ZEPHYR_BASE` variable to point to the Zephyr directory:
 
-```bash
-export ZEPHYR_BASE=/home/jeff/zephyrproject/zephyr
-```
+   ```bash
+   export ZEPHYR_BASE=~/zephyrproject/zephyr
+   ```
 
-For more detailed information, refer to the official [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html).
+3. **Make the Change Permanent**:
 
----
+   To ensure the `ZEPHYR_BASE` variable is set automatically in future sessions, add the following line to your shell's configuration file (`.bashrc` for Bash or `.zshrc` for Zsh):
+
+   ```bash
+   export ZEPHYR_BASE=~/zephyrproject/zephyr
+   ```
+
+   After adding the line, apply the changes by running:
+
+   ```bash
+   source ~/.bashrc   # For Bash users
+   source ~/.zshrc    # For Zsh users
+   ```
+
+- For more information on Zephyr environment variables, visit the [Zephyr Environment Variables Documentation](https://docs.zephyrproject.org/latest/develop/env_vars.html#env-vars-important).
+- For a comprehensive guide on setting up Zephyr, refer to the official [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html).
+- For board-specific information, such as the [Espressif ESP32-S3 DevKitC](https://docs.zephyrproject.org/latest/boards/espressif/esp32s3_devkitc/doc/index.html), refer to the official documentation for setup and configuration details.
+- To see the full list of supported boards, refer to the [Zephyr Board Documentation](https://docs.zephyrproject.org/latest/boards/index.html#boards=).
 
 ## **2. Install ESP-IDF on your development machine**
 
@@ -213,85 +229,76 @@ If the `idf.py` command fails with `command not found`, source the ESP-IDF Envir
 
 ---
 
-## **3. Test the Setup Using the Hello World Program**
+### **3. Test Zephyr's Integration with ESP-IDF**
 
-### Build and Flash Hello World
+Navigate to your Zephyr workspace:
 
-1. Navigate to your Zephyr workspace:
+```bash
+cd ~/zephyrproject
+```
 
-   ```bash
-   cd ~/zephyrproject
-   ```
+Activate the virtual environment. This ensures that Zephyr tools (e.g., west, CMake) and configurations are properly used during the build process.
 
-2. Activate the virtual environment:
+```bash
+source .venv/bin/activate
+```
 
-   This ensures that Zephyr tools (e.g., west, CMake) and configurations are properly used during the build process.
+Build the Hello World sample:
 
-   ```bash
-   source .venv/bin/activate
-   ```
+```bash
+west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
+```
 
-3. Build the Hello World sample:
+Flash the firmware:
 
-   Before building, list all supported boards to verify the correct target name. Look for your desired board in the output of:
+```bash
+west flash
+```
 
-   ```bash
-   west boards
-   ```
-
-   For the ESP32-S3-DevKitC, the build system expects either of these qualified targets:
-
-   - `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example)
-   - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
-
-   ```bash
-   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
-   ```
-
-   NOTE: If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
-
-   ```bash
-   west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world --pristine
-   ```
-
-4. Flash the firmware:
-
-   ```bash
-   west flash
-   ```
-
-   NOTE:
-
-   - Use `west flash --erase` if the board has residual firmware causing conflicts.
-   - Ensure that `west espressif monitor` is not running when you attempt to flash the firmware. It keeps the serial port busy, preventing the `west flash` command from accessing it.
-
-### Monitor the Output
+Monitor the output:
 
 ```bash
 west espressif monitor
 ```
 
-Expected Output:
+A successful run shows that the entire build-flash-boot-debug toolchains are functional for your development board.
 
-```plaintext
-***** Booting Zephyr OS build v4.0.0-2253-g62f90c62ab8a *****
-Hello World! esp32s3_devkitc/esp32s3/procpu
-```
+NOTE:
 
-To exit the monitor, press `Ctrl + ]`.
+- Before building, list all supported boards to verify the correct target name. Look for your desired board in the output of:
+
+  ```bash
+  west boards
+  ```
+
+  A board may contain one or multiple SoCs. Also, each SoC may contain one or more CPU clusters as described in [The board qualifiers](https://docs.zephyrproject.org/latest/hardware/porting/board_porting.html#board-terminology)
+
+  For the ESP32-S3-DevKitC, the build system expects either of these qualified targets:
+
+      - `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example)
+      - `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
+
+- If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
+
+  ```bash
+  west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world --pristine
+  ```
+
+- Use `west flash --erase` if the board has residual firmware causing conflicts.
+- Ensure that `west espressif monitor` is not running when you attempt to flash the firmware. It keeps the serial port busy, preventing the `west flash` command from accessing it.
 
 ---
 
-## Integrating WebAssembly Micro Runtime (WAMR) with Zephyr
+## Using WebAssembly Micro Runtime (WAMR) with Zephyr
 
-First, download the WAMR source code from its GitHub repository.
+### Step 1: Clone WAMR repository
 
 ```bash
 cd ~/zephyrproject
 git clone https://github.com/bytecodealliance/wasm-micro-runtime.git
 ```
 
-After cloning, your directory structure should look something like this:
+After running the above commands, your folder structure will look like this:
 
 ```plaintext
 ~/zephyrproject/
@@ -300,33 +307,50 @@ After cloning, your directory structure should look something like this:
 ├── wasm-micro-runtime/
 ```
 
-Cloning the WAMR repository inside the `zephyrproject` folder is not strictly necessary, but it is a convenient practice because it keeps all related components in one place. If you prefer to clone WAMR elsewhere, you can still integrate it, but you must:
+> **Note:** It's not necessary to clone WAMR inside the `zephyrproject` folder, but it’s easier to keep everything organized in one place. If you choose to place it elsewhere, you will need to update some configuration files to point to the correct location of the WAMR repository.
 
-- Use the absolute path to the WAMR source in your `CMakeLists.txt` file.
-- Ensure your build scripts and environment variables correctly point to the WAMR repository.
+### Step 2: Update CMakeLists.txt (Optional)
 
-For example:
+If you decided to place the WAMR repository outside of the `zephyrproject` folder, you will need to tell Zephyr where to find it. You can do this by updating your `CMakeLists.txt` file.
+
+Add these lines:
 
 ```bash
 set(WAMR_ROOT /path/to/wasm-micro-runtime)
 include(${WAMR_ROOT}/build-scripts/runtime_lib.cmake)
 ```
 
-To test your installtion, navigate to the "basic" Sample Directory
+Make sure to replace `/path/to/wasm-micro-runtime` with the actual path where you placed the WAMR source.
 
-```bash
-cd samples/basic
-```
+### Step 3: Test Your Installation
 
-The `basic` sample includes a `build.sh` script that compiles both the native application and the Wasm application. After a successful build, the output binaries are located in the `out` directory.
-To execute the sample:
+To make sure everything is set up correctly, build and run a test application.
 
-```bash
-cd out
-./basic -f wasm-apps/testapp.wasm
-```
+1. Go to the `basic` sample directory:
 
-Expected Output:
+   ```bash
+   cd samples/basic
+   ```
+
+2. Inside the `basic` sample folder, you’ll find a script called `build.sh`. This script compiles both the native application and the WebAssembly (WASM) application. To build the project, run:
+
+   ```bash
+   ./build.sh
+   ```
+
+3. After the build finishes, you will find the output files in the `out` directory. To run the test application, go to the `out` folder:
+
+   ```bash
+   cd out
+   ```
+
+4. Run the application with the following command:
+
+   ```bash
+   ./basic -f wasm-apps/testapp.wasm
+   ```
+
+You should see output like this:
 
 ```bash
 calling into WASM function: generate_float
@@ -338,45 +362,47 @@ calling into native function: intToStr
 Native finished calling wasm function: float_to_string, returned a formatted string: 102009.921
 ```
 
-To clean the build artifacts:
+### Step 4: Clean Build Artifacts
+
+If you want to clean up the build files, simply run:
 
 ```bash
 ./build.sh clean
 ```
 
-## Deploy WAMR on Zephyr on ESP32
+### Step 5: Deploy WAMR on Zephyr for ESP32
 
-Navigate to the WAMR Zephyr example directory:
+After testing WAMR locally, deploy it to the **ESP32** board using Zephyr.
 
-```bash
-cd ~/zephyrproject/wasm-micro-runtime/product-mini/platforms/zephyr/simple
-```
+1. Go to the WAMR example directory for Zephyr:
 
-Activate the Zephyr environment (if not already done):
+   ```bash
+   cd ~/zephyrproject/wasm-micro-runtime/product-mini/platforms/zephyr/simple
+   ```
 
-```bash
-source ~/zephyrproject/.venv/bin/activate
-```
+2. If you haven’t already, activate your Zephyr virtual environment:
 
-Build the WAMR example for your ESP32 board:
+   ```bash
+   source ~/zephyrproject/.venv/bin/activate
+   ```
 
-```bash
-west build -b <your_board>
-```
+3. Build the WAMR example for your **ESP32** board. Replace `<your_board>` with your specific board name, like `esp32s3_devkitc`:
 
-Replace `<your_board>` with your board's name, e.g., `esp32s3_devkitc`.
+   ```bash
+   west build -b <your_board>
+   ```
 
-Flash the firmware to the ESP32:
+4. Flash the firmware to your ESP32 board:
 
-```bash
-west flash
-```
+   ```bash
+   west flash
+   ```
 
-Monitor the application on the ESP32:
+5. To see what's happening on the board, open the serial monitor:
 
-```bash
-west espressif monitor
-```
+   ```bash
+   west espressif monitor
+   ```
 
 ## **4. Test with a WebAssembly Module**
 
@@ -453,23 +479,15 @@ west espressif monitor
 
 ### **1. Permission Denied for `/dev/ttyUSB0`**
 
-- **Cause**: User does not have access to the serial port.
-- **Solution**:
-
-  1. Add your user to the `dialout` group:
+Add your user to the `dialout` group then log out and log back in or restart the system.:
 
      ```bash
      sudo usermod -aG dialout $USER
      ```
 
-  2. Log out and log back in or restart the system.
-
 ### **2. `west` Not Found**
 
-- **Cause**: Zephyr virtual environment is not activated.
-- **Solution**:
-
-  - Activate the virtual environment:
+Activate the virtual environment:
 
     ```bash
     source ~/zephyrproject/.venv/bin/activate
@@ -477,10 +495,7 @@ west espressif monitor
 
 ### **3. Build Fails with Missing Board Qualifiers**
 
-- **Cause**: Incorrect board target specified.
-- **Solution**:
-
-  - Use the correct board target, for example:
+Use the correct board target as described in [The board qualifiers](https://docs.zephyrproject.org/latest/hardware/porting/board_porting.html#board-terminology). For ESP32s3, for example:
 
     ```bash
     west build -b esp32s3_devkitc/esp32s3/procpu zephyr/samples/hello_world
@@ -488,19 +503,17 @@ west espressif monitor
 
 ### **4. Serial Port Already in Use**
 
-- **Cause**: Another process is using `/dev/ttyUSB0`.
-- **Solution**:
+1. Identify the process using the port and kill it:
 
-  1. Identify the process using the port:
+   ```bash
+   lsof /dev/ttyUSB0
+   kill <PID>
+   ```
 
-     ```bash
-     lsof /dev/ttyUSB0
-     ```
+### 5. CMake source directory mismatch
 
-  2. Kill the process:
+Clear the existing CMake cache to resolve the mismatch by deleting the `build` directory and then re-run the `west build` command.
 
-     ```bash
-     kill <PID>
-     ```
-
-  3. Retry flashing.
+```bash
+rm -rf ~/zephyrproject/zephyr/build
+```
