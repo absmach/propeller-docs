@@ -47,3 +47,51 @@ then clean and rebuild:
 rm -rf build
 west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
 ```
+
+# Dynamic Linking
+
+Zephyr does not support dynamic linking on most embedded targets (including ESP32-S3). When WAMR’s CMakeLists tries:
+
+```cmake
+add_library(iwasm_shared SHARED ...)
+```
+
+you see the warning:
+
+```
+ADD_LIBRARY called with SHARED option but the target platform does not support
+dynamic linking. Building a STATIC library instead. This may lead to problems.
+```
+
+This is harmless on Zephyr—it just forces the shared library to become a static library—but it can be confusing. To fix it, you should skip building a shared library entirely when you are on Zephyr.
+
+In your `modules/wamr/wasm-micro-runtime/CMakeLists.txt`, right after you set `WAMR_BUILD_PLATFORM="zephyr"`, force shared libs off:
+
+```cmake
+if (WAMR_BUILD_PLATFORM STREQUAL "zephyr")
+  set(WAMR_BUILD_SHARED 0 CACHE BOOL "Disable shared library on Zephyr" FORCE)
+endif ()
+```
+
+If that’s in place, the `if (WAMR_BUILD_SHARED)` block that calls:
+
+```cmake
+add_library (iwasm_shared SHARED ${WAMR_RUNTIME_LIB_SOURCE})
+...
+```
+
+will not run. Hence, no “shared library” warning on Zephyr.
+
+Alternatively, you can guard the `iwasm_shared` block with:
+
+```cmake
+# SHARED LIBRARY
+if (WAMR_BUILD_SHARED AND NOT WAMR_BUILD_PLATFORM STREQUAL "zephyr")
+    add_library (iwasm_shared SHARED ${WAMR_RUNTIME_LIB_SOURCE})
+    ...
+endif ()
+```
+
+That way, the shared library part is skipped on Zephyr.
+
+Either approach ensures the warning disappears, and you end up only with a static WAMR build (`iwasm_static`) on Zephyr, which is what you actually need.
