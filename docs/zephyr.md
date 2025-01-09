@@ -286,9 +286,13 @@ NOTE:
   west boards
   ```
 
-  A board may contain one or multiple SoCs. Also, each SoC may contain one or more CPU clusters as described in [The board qualifiers](https://docs.zephyrproject.org/latest/hardware/porting/board_porting.html#board-terminology)
+  In Zephyr’s newer versions, boards like esp32s3_devkitc are split into multiple “sub-boards” for each core. So instead of building with:
 
-  For the ESP32-S3-DevKitC, the build system expects either of these qualified targets: `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example) or the `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
+  ```bash
+  west build -b esp32s3_devkitc zephyr/samples/hello_world
+  ```
+
+  you need to specify which core to target, e.g. `esp32s3_devkitc/esp32s3/procpu` (for the primary processor core, which we will use in this example) or the `esp32s3_devkitc/esp32s3/appcpu` (for the application processor core)
 
 - If you see the message `ninja: no work to do`, it means the build system has detected no changes since the last build, and no new compilation is needed. Use the `--pristine` flag to ensure a completely clean build environment:
 
