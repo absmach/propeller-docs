@@ -95,3 +95,32 @@ endif ()
 That way, the shared library part is skipped on Zephyr.
 
 Either approach ensures the warning disappears, and you end up only with a static WAMR build (`iwasm_static`) on Zephyr, which is what you actually need.
+
+# Configuration Files
+
+Configuration options are split between `prj.conf` and `esp32s3-devkitc.conf`, which Zephyr's build system merges based on the board and build target. Follow best practices to avoid conflicting settings.
+
+## **Purpose of Each File**
+
+1. **`prj.conf`:**
+
+   - Application-specific settings.
+   - Defines project-specific features, libraries, and behaviors.
+
+2. **`esp32s3-devkitc.conf`:**
+
+   - Board-specific settings.
+   - Configures hardware-specific options for the ESP32-S3.
+
+3. **`esp32s3-devkitc.overlay`:**
+   - Extends or modifies the board's Devicetree source.
+
+### **Configuration Hierarchy**
+
+Zephyr processes files in this order:
+
+1. **Default Kconfig files**: Zephyr subsystems and modules.
+2. **Board files**: `esp32s3-devkitc.conf` overrides defaults.
+3. **Application files**: `prj.conf` overrides earlier settings.
+
+If a setting appears in both `prj.conf` and `esp32s3-devkitc.conf`, the value in `prj.conf` takes precedence. Avoid duplicate definitions to prevent conflicts.
