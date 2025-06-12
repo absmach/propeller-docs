@@ -16,7 +16,7 @@ The proxy service facilitates the download of WebAssembly (WASM) containers thro
 ![Proxy Service Architecture](diagrams/Proxy.png)
 
 1. **Initial Request**
-   The proplet sends a download request via the MQTT topic: `channels/%s/messages/registry/proplet`
+   The proplet sends a download request via the MQTT topic: `m/:domain_id/c/:channel_id/messages/registry/proplet`
    This request is received by the proxy service's MQTT subscriber
 
 2. **OCI Registry Download**
@@ -26,7 +26,7 @@ The proxy service facilitates the download of WebAssembly (WASM) containers thro
 
 3. **Chunked Data Transfer**
    Once downloaded, the WASM image is split into chunks
-   These chunks are sent back to the proplet via the MQTT topic: `channels/%s/messages/registry/server`
+   These chunks are sent back to the proplet via the MQTT topic: `m/:domain_id/c/:channel_id/messages/registry/server`
     This chunked approach ensures efficient handling of large WASM files
 
 ### Architecture Details

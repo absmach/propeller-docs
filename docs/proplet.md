@@ -4,7 +4,7 @@
 
 ### **Start Command Flow**
 
-The start command is sent by the Manager to the Proplet on the topic `channels/$CHANNEL_ID/messages/control/manager/start`
+The start command is sent by the Manager to the Proplet on the topic `m/:domain_id/c/:channel_id/control/manager/start`
 
 #### 1. **Parse the Start Command**
 
@@ -12,11 +12,11 @@ The MQTT message payload is unmarshaled into a `StartRequest` structure containi
 
 #### 2. **Publish a Fetch Request**
 
-A fetch request is sent to the Registry Proxy to retrieve the WebAssembly (Wasm) binary chunks for the specified application. This request is published to the topic `channels/$CHANNEL_ID/messages/registry/proplet`.
+A fetch request is sent to the Registry Proxy to retrieve the WebAssembly (Wasm) binary chunks for the specified application. This request is published to the topic `m/:domain_id/c/:channel_id/registry/proplet`.
 
 #### 3. **Wait for Wasm Binary Chunks**
 
-The system monitors the reception of Wasm chunks from the Registry Proxy, which are published to the topic `channels/$CHANNEL_ID/messages/registry/server` and processed by the `handleChunk` function.
+The system monitors the reception of Wasm chunks from the Registry Proxy, which are published to the topic `m/:domain_id/c/:channel_id/registry/server` and processed by the `handleChunk` function.
 
 #### 4. **Assemble and Validate Chunks**
 
@@ -47,7 +47,7 @@ A success message is logged if the application starts successfully, while detail
 
 ### **Stop Command Flow**
 
-The stop command is sent by the Manager to the Proplet on the topic `channels/$CHANNEL_ID/messages/control/manager/stop`
+The stop command is sent by the Manager to the Proplet on the topic `m/:domain_id/c/:channel_id/control/manager/stop`
 
 #### 1. **Parse the Stop Command**
 
@@ -81,7 +81,7 @@ The Manager knows which Proplet is on which channel through the following mechan
    When a Proplet starts, it publishes a message on the topic:
 
    ```bash
-   channels/$MANAGER_CHANNEL_ID/messages/control/proplet/create
+   m/:domain_id/c/:manager_channel_id/messages/control/proplet/create
    ```
 
    The payload of this message includes the `PropletID` and `ChannelID`, notifying the Manager about the mapping of Proplet IDs to their respective channels:
@@ -98,7 +98,7 @@ The Manager knows which Proplet is on which channel through the following mechan
    To ensure that the Proplet is still active, it periodically publishes messages on the topic:
 
    ```bash
-   channels/$MANAGER_CHANNEL_ID/messages/control/proplet/alive
+   m/:domain_id/c/:manager_channel_id/messages/control/proplet/alive
    ```
 
    The payload contains the same `PropletID` and `ChannelID` information. This helps the Manager maintain an updated map of active Proplets and their channels:
@@ -146,7 +146,7 @@ The Proplet uses this topic to request Wasm binary chunks for a specific applica
 - **Topic**:
 
   ```bash
-  channels/$CHANNEL_ID/messages/registry/proplet
+  m/:domain_id/c/:channel_id/registry/proplet
   ```
 
 - Payload is a JSON object containing the name of the application (`app_name`) for which the WebAssembly (Wasm) binary chunks are requested:
@@ -164,7 +164,7 @@ The Registry Proxy publishes Wasm binary chunks to this topic for the Proplet to
 - **Topic**:
 
   ```bash
-  channels/$CHANNEL_ID/messages/registry/server
+  m/:domain_id/c/:channel_id/registry/server
   ```
 
 - Payload is a JSON object representing a single chunk of the requested Wasm binary:
@@ -183,7 +183,7 @@ The Registry Proxy publishes Wasm binary chunks to this topic for the Proplet to
 - Allows the Manager to update the Proplet's registry configuration dynamically.
 
   ```bash
-  channels/$CHANNEL_ID/messages/control/manager/updateRegistry
+  m/:domain_id/c/:channel_id/control/manager/updateRegistry
   ```
 
 - Payload is a JSON object containing the new registry URL and token for updating the Proplet's registry configuration:
@@ -200,7 +200,7 @@ The Registry Proxy publishes Wasm binary chunks to this topic for the Proplet to
 - The Proplet uses this topic to acknowledge whether the registry configuration update was successful or failed.
 
   ```bash
-  channels/$CHANNEL_ID/messages/control/manager/registry
+  m/:domain_id/c/:channel_id/control/manager/registry
   ```
 
 - Payload is a JSON object indicating the success or failure of a registry update:
