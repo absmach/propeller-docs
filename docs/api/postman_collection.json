@@ -19,13 +19,13 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{MANAGER_BASE_URL}}/proplets/{{WORKER_ID}}",
+									"raw": "{{MANAGER_BASE_URL}}/proplets/{{PROPELLER_ID}}",
 									"host": [
 										"{{MANAGER_BASE_URL}}"
 									],
 									"path": [
 										"proplets",
-										"{{WORKER_ID}}"
+										"{{PROPELLER_ID}}"
 									]
 								}
 							},
@@ -61,30 +61,123 @@
 					"name": "Task",
 					"item": [
 						{
-							"name": "Create Task With Image",
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ],\n    \"image_url\": \"docker.io/mrstevenyaga/add.wasm\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
+							"name": "Embedded",
+							"item": [
+								{
+									"name": "Create Task",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"function constructVisualizerPayload() {",
+													"    var res = pm.response.json();",
+													"    var id = res.id;",
+													"    return id;",
+													"}",
+													"",
+													"pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
 										}
-									}
-								},
-								"url": {
-									"raw": "{{MANAGER_BASE_URL}}/tasks",
-									"host": [
-										"{{MANAGER_BASE_URL}}"
 									],
-									"path": [
-										"tasks"
-									]
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"main\",\n    \"image_url\": \"docker.io/mrstevenyaga/add.wasm\",\n    \"file\": \"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Task",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks",
+												"{{TASK_ID}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start Task",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/start",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks",
+												"{{TASK_ID}}",
+												"start"
+											]
+										}
+									},
+									"response": []
 								}
-							},
-							"response": []
+							]
 						},
 						{
 							"name": "Create Task",
@@ -123,6 +216,61 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{MANAGER_BASE_URL}}/tasks",
+									"host": [
+										"{{MANAGER_BASE_URL}}"
+									],
+									"path": [
+										"tasks"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Task With OCI Image",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"function constructVisualizerPayload() {",
+											"    var res = pm.response.json();",
+											"    var id = res.id;",
+											"    return id;",
+											"}",
+											"",
+											"pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"add\",\n    \"image_url\": \"docker.io/mrstevenyaga/add.wasm\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -188,7 +336,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+									"raw": "{\n    \"name\": \"main\",\n    \"file\": \"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -444,11 +592,11 @@
 	"variable": [
 		{
 			"key": "MANAGER_BASE_URL",
-			"value": "http://localhost:8080",
+			"value": "http://localhost:7070",
 			"type": "string"
 		},
 		{
-			"key": "WORKER_ID",
+			"key": "PROPELLER_ID",
 			"value": ""
 		},
 		{
