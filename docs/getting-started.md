@@ -57,7 +57,7 @@ cd propeller
 make start-supermq
 ```
 
-To install the SuperMQ CLI, follow the instructions [here](https://docs.supermq.abstractmachines.fr/getting-started#step-2---install-the-cli).
+To install the SuperMQ CLI, follow the [instructions](https://docs.supermq.abstractmachines.fr/getting-started#step-2---install-the-cli).
 
 ## Provision SuperMQ
 
