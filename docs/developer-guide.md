@@ -104,24 +104,24 @@ Propeller uses [golangci-lint](https://golangci-lint.run/) to lint the code. You
 make lint
 ```
 
-## Magistrala
+## SuperMQ
 
-### Starting Magistrala
+### Starting SuperMQ
 
-To start Magistrala, use the following:
+To start SuperMQ, use the following:
 
 ```bash
-make start-magistrala
+make start-supermq
 ```
 
-This will in the background run `docker compose -f docker/compose.yaml up -d` which will start the Magistrala services.
+This will in the background run `docker compose -f docker/compose.yaml up -d` which will start the SuperMQ services.
 
 You can override the configuration or add some extra parameters to the docker compose configuration.
 
-### Stopping Magistrala
+### Stopping SuperMQ
 
-Magistrala can be stopped using the following:
+SuperMQ can be stopped using the following:
 
 ```bash
-make stop-magistrala
+make stop-supermq
 ```
