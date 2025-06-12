@@ -13,7 +13,7 @@ The proxy service performs two main functions:
 
 The proxy service facilitates the download of WebAssembly (WASM) containers through a multi-step process:
 
-![Proxy Service Architecture](diagrams/Proxy.png)
+![Proxy Service Architecture](images/proxy.png)
 
 1. **Initial Request**
    The proplet sends a download request via the MQTT topic: `m/:domain_id/c/:channel_id/messages/registry/proplet`
