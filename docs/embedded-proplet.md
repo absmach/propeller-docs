@@ -71,3 +71,132 @@ For debugging and diagnostics, the configuration enables logging with a default 
 - WASM Handler : Interfaces with WAMR to load, execute, and manage WASM modules on the embedded device, enforcing isolation and resource constraints.
 - Configuration and Build System: Defines system parameters, dependencies, and build instructions to streamline deployment on Zephyr OS.
 - Data Serialization: Handles encoding and decoding of structured data in JSON format for efficient message parsing within the Propeller network.
+
+## Setup
+
+When running:
+
+```bash
+west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
+```
+
+CMake might stop with:
+
+```bash
+Could NOT find Threads (missing: Threads_FOUND)
+...
+FATAL ERROR: command exited with status 1: ...
+```
+
+This is triggered by WAMR’s top-level `CMakeLists.txt` in `wasm-micro-runtime/`, specifically the lines:
+
+```cmake
+set (THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+```
+
+because `WAMR` tries to detect and link `pthread` on the `host` system (Linux, Windows, macOS).
+
+- However, on `Zephyr`, especially for an `ESP32-S3` target, we do not use the host’s pthread library at all. There’s no concept of a local Linux “Threads” library in a cross-compile for an Xtensa SoC.
+- So CMake’s `find_package(Threads REQUIRED)` fails with “Could NOT find Threads” because there’s no suitable host pthread dev package to fulfill that requirement in the cross-compilation environment.
+
+Installing host pthread dev files sometimes helps in a purely local scenario, but it can still fail or is semantically incorrect for embedded cross-builds.
+
+The Solution is to bypass `find_package(Threads REQUIRED)` on Zephyr. So, in your WAMR repo file `wasm-micro-runtime/CMakeLists.txt`, locate where it calls:
+
+```cmake
+find_package(Threads REQUIRED)
+```
+
+and wrap that call in a conditional so it does not run on Zephyr:
+
+```cmake
+if (NOT WAMR_BUILD_PLATFORM STREQUAL "zephyr")
+  set (THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+endif()
+```
+
+then clean and rebuild:
+
+```bash
+rm -rf build
+west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
+```
+
+### Dynamic Linking
+
+Zephyr does not support dynamic linking on most embedded targets (including ESP32-S3). When WAMR’s CMakeLists tries:
+
+```cmake
+add_library(iwasm_shared SHARED ...)
+```
+
+you see the warning:
+
+```cmake
+ADD_LIBRARY called with SHARED option but the target platform does not support
+dynamic linking. Building a STATIC library instead. This may lead to problems.
+```
+
+This is harmless on Zephyr—it just forces the shared library to become a static library—but it can be confusing. To fix it, you should skip building a shared library entirely when you are on Zephyr.
+
+In your `modules/wamr/wasm-micro-runtime/CMakeLists.txt`, right after you set `WAMR_BUILD_PLATFORM="zephyr"`, force shared libs off:
+
+```cmake
+if (WAMR_BUILD_PLATFORM STREQUAL "zephyr")
+  set(WAMR_BUILD_SHARED 0 CACHE BOOL "Disable shared library on Zephyr" FORCE)
+endif ()
+```
+
+If that’s in place, the `if (WAMR_BUILD_SHARED)` block that calls:
+
+```cmake
+add_library (iwasm_shared SHARED ${WAMR_RUNTIME_LIB_SOURCE})
+...
+```
+
+will not run. Hence, no “shared library” warning on Zephyr.
+
+Alternatively, you can guard the `iwasm_shared` block with:
+
+```cmake
+# SHARED LIBRARY
+if (WAMR_BUILD_SHARED AND NOT WAMR_BUILD_PLATFORM STREQUAL "zephyr")
+    add_library (iwasm_shared SHARED ${WAMR_RUNTIME_LIB_SOURCE})
+    ...
+endif ()
+```
+
+That way, the shared library part is skipped on Zephyr.
+
+Either approach ensures the warning disappears, and you end up only with a static WAMR build (`iwasm_static`) on Zephyr, which is what you actually need.
+
+### Configuration Files
+
+Configuration options are split between `prj.conf` and `esp32s3-devkitc.conf`, which Zephyr's build system merges based on the board and build target. Follow best practices to avoid conflicting settings.
+
+### **Purpose of Each File**
+
+1. **`prj.conf`:**
+
+   - Application-specific settings.
+   - Defines project-specific features, libraries, and behaviors.
+
+2. **`esp32s3-devkitc.conf`:**
+
+   - Board-specific settings.
+   - Configures hardware-specific options for the ESP32-S3.
+
+3. **`esp32s3-devkitc.overlay`:**
+   - Extends or modifies the board's Devicetree source.
+
+### **Configuration Hierarchy**
+
+Zephyr processes files in this order:
+
+1. **Default Kconfig files**: Zephyr subsystems and modules.
+2. **Board files**: `esp32s3-devkitc.conf` overrides defaults.
+3. **Application files**: `prj.conf` overrides earlier settings.
+
+If a setting appears in both `prj.conf` and `esp32s3-devkitc.conf`, the value in `prj.conf` takes precedence. Avoid duplicate definitions to prevent conflicts.
