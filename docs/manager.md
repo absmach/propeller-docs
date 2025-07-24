@@ -64,6 +64,7 @@ The Manager service includes endpoints for health checks and metrics collection:
 
 - A client sends a `POST` request to the `/tasks/{taskID}/start` endpoint to start a task.
 - The service retrieves the task from the tasks storage and selects an appropriate proplet using the scheduler.
+- The task can also specify which proplet to use.
 - The service publishes a start message to the MQTT topic for the selected proplet.
 - The proplet executes the task and publishes the results to the MQTT topic.
 - The service processes the results and updates the task state in the tasks storage.
