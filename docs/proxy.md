@@ -25,15 +25,11 @@ This will change the task definition. Since we are using hosted wasm modules, we
 
 ```json
 {
-    "name": "add",
-    "inputs": [
-        10,
-        20
-    ],
-    "image_url": "docker.io/mrstevenyaga/add.wasm"
+  "name": "add",
+  "inputs": [10, 20],
+  "image_url": "docker.io/mrstevenyaga/add.wasm"
 }
 ```
-
 
 ### How It Works
 
@@ -53,7 +49,7 @@ The proxy service facilitates the download of WebAssembly (WASM) containers thro
 3. **Chunked Data Transfer**
    Once downloaded, the WASM image is split into chunks
    These chunks are sent back to the proplet via the MQTT topic: `m/:domain_id/c/:channel_id/messages/registry/server`
-    This chunked approach ensures efficient handling of large WASM files
+   This chunked approach ensures efficient handling of large WASM files
 
 ### Architecture Details
 
@@ -226,10 +222,11 @@ Now, when you run the proxy, it will pull the `addition.wasm` module from your l
 
 3. **Operation**
    Runs two concurrent streams:
-     - StreamHTTP: Handles HTTP communication with the OCI registry.
-     - StreamMQTT: Handles MQTT communication for proplet requests and responses.
 
-      Uses error groups for graceful error handling and shutdown. Maintains chunk delivery tracking. Provides real-time progress logging.
+   - StreamHTTP: Handles HTTP communication with the OCI registry.
+   - StreamMQTT: Handles MQTT communication for proplet requests and responses.
+
+   Uses error groups for graceful error handling and shutdown. Maintains chunk delivery tracking. Provides real-time progress logging.
 
 4. **Error Handling**
    Implements comprehensive error logging with context. Graceful shutdown with proper resource cleanup. Automatic disconnection from MQTT broker on service termination. Retry mechanisms for failed operations. Context-based cancellation support.

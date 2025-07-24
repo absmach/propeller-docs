@@ -59,15 +59,9 @@ Hence the cli aguments are `--invoke` and `add` and the path to the wasm file. T
 
 ```json
 {
-    "name": "add",
-    "cli_args": [
-        "--invoke",
-        "add"
-    ],
-    "inputs": [
-        10,
-        20
-    ]
+  "name": "add",
+  "cli_args": ["--invoke", "add"],
+  "inputs": [10, 20]
 }
 ```
 
@@ -114,7 +108,6 @@ The `StartApp` function in `runtime.go` handles the instantiation and execution 
 
 A success message is logged if the application starts successfully, while detailed errors are logged if any step in the process (e.g., chunk assembly, instantiation, or execution) fails.
 
-
 ### **Stop Command Flow**
 
 The stop command is sent by the Manager to the Proplet on the topic `m/:domain_id/c/:channel_id/control/manager/stop`
@@ -141,7 +134,6 @@ The `StopApp` function in `runtime.go` stops and cleans up a running Wasm module
 #### 3. **Log Success or Errors**
 
 A success message is logged with the text `"App '<AppName>' stopped successfully."` if the application stops successfully. If the application is not running or an error occurs during the stop operation, detailed error information is logged.
-
 
 The Manager knows which Proplet is on which channel through the following mechanisms:
 
@@ -193,7 +185,6 @@ The Manager knows which Proplet is on which channel through the following mechan
    ```
 
 These mechanisms ensure that the Manager is always aware of the active Proplets and their corresponding channels. The Manager can utilize this data to send specific control commands or monitor the Proplets effectively.
-
 
 ### **Registry Workflow**
 
