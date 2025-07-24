@@ -1,6 +1,6 @@
 # Proxy Service
 
-The Proxy Service acts as a bridge between MQTT and HTTP protocols in the Propeller system. It enables bidirectional communication between MQTT clients and HTTP endpoints, allowing for seamless integration of different protocols.
+The Proxy Service acts as a bridge between MQTT and HTTP protocols in the Propeller system. It enables bidirectional communication between MQTT clients and HTTP endpoints, allowing for seamless integration of different protocols. The proxy service is responsible for fetching WebAssembly modules from an OCI-compliant registry, chunking them, and publishing them over MQTT for `proplet` instances to consume.
 
 ## Overview
 
@@ -8,6 +8,32 @@ The proxy service performs two main functions:
 
 1. Subscribes to MQTT topics and forwards messages to HTTP endpoints
 2. Streams data between MQTT and HTTP protocols
+
+## Usage
+
+To use the proxy service, you need to set the required environment variables and run the `main.go` file in the `cmd/proxy` directory.
+
+```bash
+PROXY_REGISTRY_URL="docker.io"
+PROXY_AUTHENTICATE="TRUE"
+PROXY_REGISTRY_USERNAME="docker_username"
+PROXY_REGISTRY_PASSWORD="docker_password"
+propeller-proxy
+```
+
+This will change the task definition. Since we are using hosted wasm modules, we need to specify the image URL. Hence the task definition will look like this:
+
+```json
+{
+    "name": "add",
+    "inputs": [
+        10,
+        20
+    ],
+    "image_url": "docker.io/mrstevenyaga/add.wasm"
+}
+```
+
 
 ### How It Works
 
@@ -63,29 +89,37 @@ The proxy service implements a concurrent streaming architecture with two main c
 
 ## Configuration
 
-The service is configured using environment variables.
+The proxy service is configured using environment variables.
 
 ### Environment Variables
 
+| Environment Variable | Description                                         |
+| -------------------- | --------------------------------------------------- |
+| `PROXY_LOG_LEVEL`    | Log level (e.g., `debug`, `info`, `warn`, `error`). |
+| `PROXY_INSTANCE_ID`  | A unique ID for this proxy instance.                |
+
 #### MQTT Configuration
 
-| Variable                 | Description                           | Default                | Required                           |
-|-------------------------|---------------------------------------|------------------------|-----------------------------------|
-| `PROPLET_MQTT_ADDRESS`  | URL of the MQTT broker               | `tcp://localhost:1883` | Yes                               |
-| `PROPLET_THING_ID`      | Unique identifier for the proplet    | `""`                  | Yes                               |
-| `PROPLET_CHANNEL_ID`    | Channel identifier for MQTT          | `""`                  | Yes                               |
-| `PROPLET_THING_KEY`     | Password for MQTT authentication     | `""`                  | Yes                               |
+| Variable             | Description                                     | Default                | Required |
+| -------------------- | ----------------------------------------------- | ---------------------- | -------- |
+| `PROXY_MQTT_ADDRESS` | URL of the MQTT broker                          | `tcp://localhost:1883` | Yes      |
+| `PROXY_MQTT_TIMEOUT` | The timeout for MQTT operations.                | `30s`                  | No       |
+| `PROXY_MQTT_QOS`     | The Quality of Service level for MQTT messages. | `2`                    | No       |
+| `PROXY_DOMAIN_ID`    | The domain ID for this proxy.                   | `""`                   | Yes      |
+| `PROXY_CLIENT_ID`    | Unique identifier for the proplet               | `""`                   | Yes      |
+| `PROXY_CHANNEL_ID`   | Channel identifier for MQTT                     | `""`                   | Yes      |
+| `PROXY_CLIENT_KEY`   | Password for MQTT authentication                | `""`                   | Yes      |
 
 #### Registry Configuration
 
-| Variable                 | Description                           | Default                | Required                           |
-|-------------------------|---------------------------------------|------------------------|-----------------------------------|
-| `PROXY_REGISTRY_URL`    | URL of the HTTP registry             | `""`                  | Yes                               |
-| `PROXY_AUTHENTICATE`    | Enable/disable registry auth          | `false`               | No                                |
-| `PROXY_REGISTRY_USERNAME`| Username for registry auth           | `""`                  | Only if `PROXY_AUTHENTICATE=true` |
-| `PROXY_REGISTRY_PASSWORD`| Password for registry auth           | `""`                  | Only if `PROXY_AUTHENTICATE=true` |
-| `PROXY_REGISTRY_TOKEN`  | Access token for registry auth        | `""`                  | Alternative to username/password  |
-| `PROXY_CHUNK_SIZE`      | Size of data chunks in bytes         | `512000`              | No                                |
+| Variable                  | Description                                          | Default  | Required                          |
+| ------------------------- | ---------------------------------------------------- | -------- | --------------------------------- |
+| `PROXY_REGISTRY_URL`      | URL of the OCI registry                              | `""`     | Yes                               |
+| `PROXY_AUTHENTICATE`      | Enable/disable registry authentication               | `false`  | No                                |
+| `PROXY_REGISTRY_USERNAME` | Username for registry authentication                 | `""`     | Only if `PROXY_AUTHENTICATE=true` |
+| `PROXY_REGISTRY_PASSWORD` | Password for registry authentication                 | `""`     | Only if `PROXY_AUTHENTICATE=true` |
+| `PROXY_REGISTRY_TOKEN`    | Access token for registry authentication             | `""`     | Alternative to username/password  |
+| `PROXY_CHUNK_SIZE`        | The size of the chunks to split the Wasm module into | `512000` | No                                |
 
 ### Example Configuration
 
@@ -102,6 +136,25 @@ export PROXY_REGISTRY_PASSWORD="<your_docker_password>"
 export PROPLET_THING_KEY="<secret>"
 export PROPLET_THING_ID="<proplet_id>"
 export PROPLET_CHANNEL_ID="<channel_id>"
+```
+
+### Authentication
+
+If your registry requires authentication, you can set the `PROXY_AUTHENTICATE` environment variable to `true` and provide either a token or a username and password.
+
+#### Token Authentication
+
+```bash
+export PROXY_AUTHENTICATE="true"
+export PROXY_REGISTRY_TOKEN="your_token"
+```
+
+#### Username/Password Authentication
+
+```bash
+export PROXY_AUTHENTICATE="true"
+export PROXY_REGISTRY_USERNAME="your_username"
+export PROXY_REGISTRY_PASSWORD="your_password"
 ```
 
 ## Running the Service
