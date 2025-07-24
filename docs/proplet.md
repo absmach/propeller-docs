@@ -1,70 +1,5 @@
 # Proplet
 
-The `proplet` is a worker that executes WebAssembly functions. It can be configured to use either the embedded `wazero` runtime or an external WebAssembly runtime on the host system.
-
-## Configuration
-
-The `proplet` is configured using environment variables.
-
-| Environment Variable            | Description                                                                                          | Default                |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------- |
-| `PROPLET_LOG_LEVEL`             | Log level (e.g., `debug`, `info`, `warn`, `error`)                                                   | `info`                 |
-| `PROPLET_INSTANCE_ID`           | A unique ID for this proplet instance.                                                               | A new UUID             |
-| `PROPLET_MQTT_ADDRESS`          | The address of the MQTT broker.                                                                      | `tcp://localhost:1883` |
-| `PROPLET_MQTT_TIMEOUT`          | The timeout for MQTT operations.                                                                     | `30s`                  |
-| `PROPLET_MQTT_QOS`              | The Quality of Service level for MQTT messages.                                                      | `2`                    |
-| `PROPLET_LIVELINESS_INTERVAL`   | The interval at which the proplet sends liveliness messages.                                         | `10s`                  |
-| `PROPLET_DOMAIN_ID`             | The domain ID for this proplet.                                                                      |                        |
-| `PROPLET_CHANNEL_ID`            | The channel ID for this proplet.                                                                     |                        |
-| `PROPLET_CLIENT_ID`             | The client ID for MQTT authentication.                                                               |                        |
-| `PROPLET_CLIENT_KEY`            | The client key for MQTT authentication.                                                              |                        |
-| `PROPLET_EXTERNAL_WASM_RUNTIME` | The path to an external WebAssembly runtime. If not set, the embedded `wazero` runtime will be used. | `""` (empty string)    |
-
-## Usage
-
-### Using the Embedded `wazero` Runtime
-
-By default, `proplet` uses the embedded `wazero` runtime. To run it, simply set the required environment variables and start the application:
-
-```bash
-export PROPLET_DOMAIN_ID="your_domain_id"
-export PROPLET_CHANNEL_ID="your_channel_id"
-export PROPLET_CLIENT_ID="your_client_id"
-export PROPLET_CLIENT_KEY="your_client_key"
-propeller-proplet
-```
-
-### Using a Host WebAssembly Runtime
-
-To use an external WebAssembly runtime (e.g., `wasmtime`, `wasmer`), set the `PROPLET_EXTERNAL_WASM_RUNTIME` environment variable to the path of the runtime executable.
-
-For example, to use `wasmtime`:
-
-```bash
-export PROPLET_DOMAIN_ID="your_domain_id"
-export PROPLET_CHANNEL_ID="your_channel_id"
-export PROPLET_CLIENT_ID="your_client_id"
-export PROPLET_CLIENT_KEY="your_client_key"
-export PROPLET_EXTERNAL_WASM_RUNTIME="/usr/bin/wasmtime"
-PROPLET_EXTERNAL_WASM_RUNTIME=wasmtime propeller-proplet
-```
-
-You will also need to provide cli arguments to the task so that the runtime can be started. For example, to run the `addition` example with `wasmtime`:
-
-```bash
-wasmtime --invoke add /home/rodneyosodo/code/absmach/propeller/db3d44e8-6e27-464a-aaeb-e643ec298dff.wasm 10 20
-```
-
-Hence the cli aguments are `--invoke` and `add` and the path to the wasm file. The task will then be created as follows:
-
-```json
-{
-  "name": "add",
-  "cli_args": ["--invoke", "add"],
-  "inputs": [10, 20]
-}
-```
-
 ## **Proplet Command Handling**
 
 ### **Start Command Flow**
@@ -108,6 +43,8 @@ The `StartApp` function in `runtime.go` handles the instantiation and execution 
 
 A success message is logged if the application starts successfully, while detailed errors are logged if any step in the process (e.g., chunk assembly, instantiation, or execution) fails.
 
+---
+
 ### **Stop Command Flow**
 
 The stop command is sent by the Manager to the Proplet on the topic `m/:domain_id/c/:channel_id/control/manager/stop`
@@ -134,6 +71,8 @@ The `StopApp` function in `runtime.go` stops and cleans up a running Wasm module
 #### 3. **Log Success or Errors**
 
 A success message is logged with the text `"App '<AppName>' stopped successfully."` if the application stops successfully. If the application is not running or an error occurs during the stop operation, detailed error information is logged.
+
+---
 
 The Manager knows which Proplet is on which channel through the following mechanisms:
 
@@ -185,6 +124,8 @@ The Manager knows which Proplet is on which channel through the following mechan
    ```
 
 These mechanisms ensure that the Manager is always aware of the active Proplets and their corresponding channels. The Manager can utilize this data to send specific control commands or monitor the Proplets effectively.
+
+---
 
 ### **Registry Workflow**
 
