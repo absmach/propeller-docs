@@ -168,6 +168,48 @@ propeller-proxy
 
 This will install the binary in your GOBIN directory (ensure your GOBIN is configured correctly).
 
+## Deploying a Local OCI Registry
+
+Propeller supports pulling Wasm modules from any OCI-compliant registry. You can use a public registry like Docker Hub or set up your own private registry. You can deploy your own OCI registry using Docker and configure the proxy to pull WASM modules from it. This is useful for development and testing purposes.
+
+### 1. Run a Local Registry
+
+First, run a local OCI registry using the official Docker image:
+
+```bash
+docker run -d -p 5000:5000 --name registry registry:3.0.0
+```
+
+This command will start a local registry in detached mode and map port 5000 on your host to port 5000 on the container.
+
+### 2. Push a WASM Module to the Local Registry
+
+Next, you need to push a WASM module to your local registry. You can use a tool like `oras` or `wasm-to-oci` to do this. First, create WASM module. We can use the `addition.wasm` module from the [propeller](https://github.com/absmach/propeller/tree/main/examples/addition) example after building the wasm module.
+
+```bash
+git clone https://github.com/absmach/propeller.git
+cd propeller
+make all
+```
+
+Now, push the `addition.wasm` file to your local registry using `wasm-to-oci`:
+
+```bash
+wasm-to-oci push ./build/addition.wasm localhost:5000/rodneydav/addition.wasm
+wasm-to-oci push ./build/addition.wasm docker.io/rodneydav/addition.wasm
+```
+
+### 3. Configure the Proxy
+
+Finally, configure the proxy to use your local registry by setting the following environment variables:
+
+```bash
+export PROXY_REGISTRY_URL="localhost:5000"
+export PROXY_AUTHENTICATE="false"  # No authentication for local registry
+```
+
+Now, when you run the proxy, it will pull the `addition.wasm` module from your local registry when a request for `localhost:5000/addition` is made.
+
 ## Service Flow
 
 1. **Initialization**
