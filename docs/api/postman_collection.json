@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "3ce70d97-6e67-4bc9-810f-1ea801bc55f9",
+		"_postman_id": "ff50e552-db77-444a-8119-176646f48f22",
 		"name": "Propeller",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "5838754",
-		"_collection_link": "https://ox6flab.postman.co/workspace/Magistrala~acba89f8-0255-435e-9547-59e542474e21/collection/5838754-3ce70d97-6e67-4bc9-810f-1ea801bc55f9?action=share&source=collection_link&creator=5838754"
+		"_collection_link": "https://ox6flab.postman.co/workspace/Magistrala~acba89f8-0255-435e-9547-59e542474e21/collection/5838754-ff50e552-db77-444a-8119-176646f48f22?action=share&source=collection_link&creator=5838754"
 	},
 	"item": [
 		{
@@ -19,13 +19,13 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{MANAGER_BASE_URL}}/proplets/{{PROPELLER_ID}}",
+									"raw": "{{MANAGER_BASE_URL}}/proplets/{{WORKER_ID}}",
 									"host": [
 										"{{MANAGER_BASE_URL}}"
 									],
 									"path": [
 										"proplets",
-										"{{PROPELLER_ID}}"
+										"{{WORKER_ID}}"
 									]
 								}
 							},
@@ -99,7 +99,7 @@
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n    \"name\": \"main\",\n    \"image_url\": \"docker.io/mrstevenyaga/add.wasm\",\n    \"file\": \"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+											"raw": "{\n    \"name\": \"main\",\n    // \"image_url\": \"docker.io/mrstevenyaga/add.wasm\",\n    \"file\": \"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -180,6 +180,221 @@
 							]
 						},
 						{
+							"name": "Host Runtime",
+							"item": [
+								{
+									"name": "Create Task",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"function constructVisualizerPayload() {",
+													"    var res = pm.response.json();",
+													"    var id = res.id;",
+													"    return id;",
+													"}",
+													"",
+													"pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"add\",\n    \"cli_args\": [\n        \"--invoke\",\n        \"add\"\n    ],\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Task",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks",
+												"{{TASK_ID}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Upload Wasm File",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": "/home/rodneyosodo/code/absmach/propeller/build/addition.wasm"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/upload",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks",
+												"{{TASK_ID}}",
+												"upload"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start Task",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/start",
+											"host": [
+												"{{MANAGER_BASE_URL}}"
+											],
+											"path": [
+												"tasks",
+												"{{TASK_ID}}",
+												"start"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Create Task With Image",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"function constructVisualizerPayload() {",
+											"    var res = pm.response.json();",
+											"    var id = res.id;",
+											"    return id;",
+											"}",
+											"",
+											"pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ],\n    \"image_url\": \"localhost:5000/addition.wasm\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{MANAGER_BASE_URL}}/tasks",
+									"host": [
+										"{{MANAGER_BASE_URL}}"
+									],
+									"path": [
+										"tasks"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Create Task",
 							"event": [
 								{
@@ -216,61 +431,6 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{MANAGER_BASE_URL}}/tasks",
-									"host": [
-										"{{MANAGER_BASE_URL}}"
-									],
-									"path": [
-										"tasks"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create Task With OCI Image",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"function constructVisualizerPayload() {",
-											"    var res = pm.response.json();",
-											"    var id = res.id;",
-											"    return id;",
-											"}",
-											"",
-											"pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
-											""
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"add\",\n    \"image_url\": \"docker.io/mrstevenyaga/add.wasm\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -336,7 +496,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"main\",\n    \"file\": \"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+									"raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -596,7 +756,7 @@
 			"type": "string"
 		},
 		{
-			"key": "PROPELLER_ID",
+			"key": "WORKER_ID",
 			"value": ""
 		},
 		{
