@@ -1,0 +1,870 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Propeller Documentation">
+      
+      
+      
+      
+        <link rel="prev" href="../proplet/">
+      
+      
+        <link rel="next" href="../proxy/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.17">
+    
+    
+      
+        <title>Embedded Proplet - Propeller</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.bcfcd587.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#embedded-proplet" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Propeller" class="md-header__button md-logo" aria-label="Propeller" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Propeller
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Embedded Proplet
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/absmach/propeller-docs.git" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Propeller" class="md-nav__button md-logo" aria-label="Propeller" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Propeller
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/absmach/propeller-docs.git" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manager/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Manager
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../proplet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proplet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Embedded Proplet
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Embedded Proplet
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#wamr-integration-in-the-embedded-proplet" class="md-nav__link">
+    <span class="md-ellipsis">
+      WAMR Integration in the Embedded Proplet
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extending-the-zephyr-build-system-for-wamr-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extending the Zephyr Build System for WAMR Integration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wasm-handler" class="md-nav__link">
+    <span class="md-ellipsis">
+      WASM Handler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ensuring-memory-isolation-and-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ensuring Memory Isolation and Stability
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-scheduling-and-resource-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Task Scheduling and Resource Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-linking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Linking
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#purpose-of-each-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Purpose of Each File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developer's Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zephyr/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Zephyr
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#wamr-integration-in-the-embedded-proplet" class="md-nav__link">
+    <span class="md-ellipsis">
+      WAMR Integration in the Embedded Proplet
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extending-the-zephyr-build-system-for-wamr-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extending the Zephyr Build System for WAMR Integration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wasm-handler" class="md-nav__link">
+    <span class="md-ellipsis">
+      WASM Handler
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ensuring-memory-isolation-and-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ensuring Memory Isolation and Stability
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-scheduling-and-resource-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Task Scheduling and Resource Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-linking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Linking
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#purpose-of-each-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Purpose of Each File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="embedded-proplet">Embedded Proplet<a class="headerlink" href="#embedded-proplet" title="Permanent link">#</a></h1>
+<h2 id="wamr-integration-in-the-embedded-proplet">WAMR Integration in the Embedded Proplet<a class="headerlink" href="#wamr-integration-in-the-embedded-proplet" title="Permanent link">#</a></h2>
+<p>Propeller integrates <a href="https://github.com/bytecodealliance/wasm-micro-runtime">WAMR</a> within its decentralized worker-node framework, enabling distributed execution of WASM workloads on <a href="https://www.zephyrproject.org/">Zephyr</a>-based embedded devices through the embedded proplet. The WAMR runtime is integrated into the Propeller project as a Git submodule, ensuring modular dependency management and streamlined updates. The integration is defined within the CMakeLists.txt configuration, where WAMR is compiled as part of the Zephyr build system. The embedded proplet explicitly configures WAMR for the ESP32-S3 (XTENSA) architecture by setting <code>WAMR_BUILD_PLATFORM="zephyr"</code> and <code>WAMR_BUILD_TARGET="XTENSA"</code>. Other target options include <code>"ARM"</code>, <code>"RISCV"</code>, <code>"X86_64"</code>, and <code>"MIPS"</code>, making the embedded proplet adaptable to a wide range of embedded architectures beyond XTENSA.</p>
+<p>To ensure an optimal balance between performance and flexibility in embedded environments, the embedded proplet is configured to support both interpreter mode (<code>WAMR_BUILD_INTERP=1</code>) and ahead-of-time (AOT) compilation (<code>WAMR_BUILD_AOT=1</code>). The above configuration allows for efficient execution of pre-compiled WASM modules while retaining the ability to interpret dynamically loaded binaries. Disabling the interpreter (<code>WAMR_BUILD_INTERP=0</code>) mandates the use of AOT-compiled modules, potentially improving runtime efficiency but limiting flexibility. Conversely, disabling AOT (<code>WAMR_BUILD_AOT=0</code>) forces reliance on interpretation, which may introduce performance overhead but ensures broader compatibility for modules that have not been precompiled. The built-in WAMR libc (<code>WAMR_BUILD_LIBC_BUILTIN=1</code>) is utilized instead of <a href="https://github.com/WebAssembly/WASI">WASI</a>, as full WASI support in Zephyr is still evolving. Furthermore, a global heap pool (<code>WAMR_BUILD_GLOBAL_HEAP_POOL=1</code>) is allocated with a size of 40 KB (<code>WAMR_BUILD_GLOBAL_HEAP_SIZE=40960</code>), ensuring efficient memory management for WASM execution.</p>
+<h2 id="extending-the-zephyr-build-system-for-wamr-integration">Extending the Zephyr Build System for WAMR Integration<a class="headerlink" href="#extending-the-zephyr-build-system-for-wamr-integration" title="Permanent link">#</a></h2>
+<p>To integrate WAMR seamlessly within the Zephyr build system, the following configurations and module definitions are applied. First, the build system includes <code>runtime_lib.cmake</code> from the WAMR repository, ensuring that all necessary runtime components are compiled as part of the Zephyr application. The approach enables the embedded proplet to efficiently execute WASM workloads while using Zephyr’s build and dependency management capabilities. Additionally, the Zephyr build system is extended to recognize WAMR as an integral part of the embedded proplet by modifying the <code>ZEPHYR_EXTRA_MODULES</code> variable. The modification ensures that the WAMR repository path is explicitly included, allowing Zephyr to treat WAMR as a native library. Consequently, WAMR’s runtime components are automatically included during the firmware compilation process, avoiding manual dependency management.</p>
+<p>To establish a direct connection between the application and WAMR’s execution environment, the build system explicitly includes WAMR’s core runtime headers and source files. This guarantees that the WebAssembly engine is properly compiled and linked within the firmware, ensuring smooth execution of WASM workloads.</p>
+<p>Finally, WAMR is embedded into the Zephyr application as a dedicated library using <code>zephyr_library_named(wamr_lib)</code>. The application then links WAMR with the Zephyr build system through <code>target_link_libraries(app PRIVATE wamr_lib)</code>, allowing the WASM execution environment to be tightly integrated with the Zephyr firmware.</p>
+<h2 id="wasm-handler">WASM Handler<a class="headerlink" href="#wasm-handler" title="Permanent link">#</a></h2>
+<p>The WASM handler, implemented in <code>wasm_handler.c</code> and <code>wasm_handler.h</code>, serves as the primary interface between the embedded proplet and the embedded device. It is responsible for reading binary WebAssembly modules, validating their integrity, and loading the wasm modules into WAMR’s runtime. The validation step ensures that corrupted or malformed modules do not compromise system stability. Once a WASM module is loaded, the handler initializes the runtime environment to ensure proper execution. The initialization includes allocating a dedicated stack (16 KB) and heap (16 KB) using <code>wasm_runtime_instantiate()</code>. To support concurrent execution of multiple WASM workloads, the handler maintains an array where each running module is tracked with a unique task ID. The implementation of the embedded proplet also ensures that WASM modules can be explicitly terminated, freeing memory and execution slots when no longer needed.</p>
+<p>For WASM modules to interact with external hardware and networking components, the embedded proplet exposes controlled system interfacing methods. The methods provide secure access to essential embedded system capabilities, including:</p>
+<ul>
+<li>Publishing results over MQTT: The handler enables the embedded proplet to send execution results to the Manager using <code>publish_results()</code>, facilitating seamless communication with the Manager.</li>
+<li>Interacting with external inputs: Embedded Proplets receive dynamic inputs through a defined input structure (<code>inputs[MAX_INPUTS]</code>), allowing parameterized execution of WebAssembly code</li>
+<li>Performing logging and debugging: The embedded proplet integrates with Zephyr’s logging framework, ensuring that execution logs and error messages are captured for real-time monitoring and debugging.</li>
+</ul>
+<p>Since embedded devices have limited resources, the WASM handler enforces strict memory isolation and execution constraints to maintain system reliability. This is achieved through:</p>
+<ul>
+<li>Creating execution environments: Each WASM module operates within a sandboxed memory region, using <code>wasm_runtime_create_exec_env()</code>, preventing unintended access to system memory.</li>
+<li>Limiting execution time and memory usage: The WASM handler enforces a predefined memory allocation (e.g., a global heap size of 40 KB) to prevent system-wide memory exhaustion.</li>
+<li>Handling runtime exceptions: The system continuously monitors for execution errors using <code>wasm_runtime_get_exception()</code>. If an error occurs, it is logged, and the execution is halted to prevent cascading failures.</li>
+</ul>
+<p>For WebAssembly modules to interact with hardware and networking components, the WASM handler facilitates controlled access to system interfaces. The controlled access is achieved by exposing custom host functions, which allow WebAssembly code to:</p>
+<ul>
+<li>Publish results over MQTT: Using <code>publish_results()</code>, execution results from a WASM module can be sent over an MQTT channel.</li>
+<li>Interact with external inputs: WASM functions can receive input values (<code>inputs[MAX_INPUTS]</code>) that modify their behavior dynamically.</li>
+<li>Perform logging and debugging: The handler integrates with Zephyr’s logging system, providing real-time execution feedback.</li>
+</ul>
+<h2 id="ensuring-memory-isolation-and-stability">Ensuring Memory Isolation and Stability<a class="headerlink" href="#ensuring-memory-isolation-and-stability" title="Permanent link">#</a></h2>
+<p>Since embedded devices have limited resources, the WASM handler enforces strict memory constraints and execution limits. This is done by:</p>
+<ul>
+<li>Creating execution environments using <code>wasm_runtime_create_exec_env()</code>, which ensures each WASM module operates in a sandboxed memory region.</li>
+<li>Limiting execution time by enforcing predefined memory allocations (e.g., 40 KB global heap) to prevent system-wide memory exhaustion.</li>
+<li>Handling runtime exceptions by checking for error messages from <code>wasm_runtime_get_exception()</code>, preventing runtime crashes caused by invalid operations.</li>
+</ul>
+<p>A key aspect of WAMR integration is ensuring sandboxed execution. Each WASM module operates in an isolated environment, with controlled access to system resources. The WASM handler enforces strict memory and execution limits, preventing any single module from consuming excessive resources or interfering with other processes. Additionally, the system enables secure inter-process communication between WASM modules and native Zephyr components, allowing WebAssembly workloads to interact with hardware peripherals and networking functions through a well-defined API.</p>
+<p>Propeller also leverages WAMR’s extensibility by incorporating custom host functions. These functions allow WASM modules to perform operations such as network communication, sensor data acquisition, and logging. By defining specific host functions, Propeller enables WASM workloads to execute efficiently while maintaining security and stability within the embedded environment.</p>
+<p>Another critical component of the WAMR integration is task scheduling and workload management. The orchestrator assigns WASM tasks to available proplets based on resource availability, with the WASM handler dynamically managing execution priorities. Each proplet periodically reports its workload status to the orchestrator, enabling real-time load balancing and task reassignment if needed.</p>
+<h2 id="task-scheduling-and-resource-management">Task Scheduling and Resource Management<a class="headerlink" href="#task-scheduling-and-resource-management" title="Permanent link">#</a></h2>
+<p>The Propeller Orchestrator dynamically assigns workloads to proplets based on resource availability, power constraints, and scheduling priorities. Each proplet operates independently while receiving tasks from the orchestrator, executing them in an isolated runtime environment. This design guarantees security and stability while preventing resource contention among different workloads.</p>
+<p>The embedded proplet system is structured into the following components:</p>
+<p>The networking and connectivity components of the embedded proplet are built upon the networking stack of Zephyr, providing robust support for WiFi and IP-based communication. The configuration file enables WiFi networking and network management, allowing devices to establish and maintain wireless connections effectively. The system also supports general networking capabilities through the network management layer of Zephyr, which enables runtime control and configuration of networking interfaces.</p>
+<p>The system relies on DHCPv4 for dynamic IP address allocation, ensuring that each embedded proplet can automatically obtain an IP address when connecting to the network. The above eliminates the need for static IP configurations and allows seamless integration into existing network infrastructures. Additionally, the networking stack supports both TCP and UDP, ensuring compatibility with various communication protocols used in distributed systems. To manage multiple network interfaces, the configuration allows up to two IPv4 addresses, configured through <code>CONFIG_NET_IF_MAX_IPV4_COUNT=2</code>, per network interface. Though IPv6 support is available, it is disabled in the configuration file, as the embedded proplet currently prioritizes IPv4 networking. At the link-layer level, the system enables Ethernet and WiFi management, ensuring that edge devices connect using standard networking interfaces. The configuration file also specifies a maximum of two managed WiFi interfaces, allowing the system to handle multiple WiFi connections efficiently.</p>
+<p>Packet and buffer management is fine-tuned to optimize networking performance for embedded devices, where memory and processing power are constrained and can lead to dropped packets, increased retransmissions, and degraded communication efficiency. The configuration sets <code>CONFIG_NET_BUF_RX_COUNT=64</code> and <code>CONFIG_NET_BUF_TX_COUNT=64</code>, ensuring that sufficient buffers are allocated for incoming and outgoing network packets to reduce packet loss and improve transmission reliability. Similarly, <code>CONFIG_NET_PKT_RX_COUNT=32</code> and <code>CONFIG_NET_PKT_TX_COUNT=32</code> define the number of packet descriptors available for processing network traffic, balancing memory usage and network performance. The dedicated memory allocations for networking tasks <code>CONFIG_NET_RX_STACK_SIZE=2048</code> and <code>CONFIG_NET_TX_STACK_SIZE=2048</code>, further improve the responsiveness and stability of the system in handling concurrent network operations. Additionally, <code>CONFIG_NET_MAX_CONTEXTS=10</code> ensures that multiple networking contexts can be managed concurrently, allowing seamless handling of multiple network sockets, connections, or protocols.</p>
+<p>A key aspect of connectivity in the embedded proplet is the integration of MQTT for message-based communication. The configuration enables the MQTT library and socket support for seamless data exchange between Propeller nodes and the orchestrator. The MQTT client is configured to maintain session state and use a keep-alive mechanism to ensure continuous connectivity.</p>
+<p>To enhance reliability, the embedded proplet supports the Last Will and Testament (LWT) feature of MQTT. The feature ensures that in the event of an unexpected disconnection of the embedded proplet, a predefined message is sent to the broker, notifying the Manager of the disconnection event. Additionally, the embedded proplet leverages Quality of Service (QoS) levels to provide varying degrees of message reliability, ensuring that critical messages are received without duplication or loss. The configuration also allows for adaptive reconnection strategies, ensuring that embedded proplets can re-establish connections in case of temporary network disruptions.</p>
+<p>For debugging and diagnostics, the configuration enables logging with a default logging level of 3. This provides useful insights into networking operations without excessive verbosity. The system also supports early console output (<code>CONFIG_EARLY_CONSOLE=y</code>) and network statistics tracking (<code>CONFIG_NET_STATISTICS=y</code>), allowing developers to monitor network performance and diagnose potential issues efficiently.</p>
+<ul>
+<li>WASM Handler : Interfaces with WAMR to load, execute, and manage WASM modules on the embedded device, enforcing isolation and resource constraints.</li>
+<li>Configuration and Build System: Defines system parameters, dependencies, and build instructions to streamline deployment on Zephyr OS.</li>
+<li>Data Serialization: Handles encoding and decoding of structured data in JSON format for efficient message parsing within the Propeller network.</li>
+</ul>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">#</a></h2>
+<p>When running:</p>
+<pre><code class="language-bash">west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
+</code></pre>
+<p>CMake might stop with:</p>
+<pre><code class="language-bash">Could NOT find Threads (missing: Threads_FOUND)
+...
+FATAL ERROR: command exited with status 1: ...
+</code></pre>
+<p>This is triggered by WAMR’s top-level <code>CMakeLists.txt</code> in <code>wasm-micro-runtime/</code>, specifically the lines:</p>
+<pre><code class="language-cmake">set (THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+</code></pre>
+<p>because <code>WAMR</code> tries to detect and link <code>pthread</code> on the <code>host</code> system (Linux, Windows, macOS).</p>
+<ul>
+<li>However, on <code>Zephyr</code>, especially for an <code>ESP32-S3</code> target, we do not use the host’s pthread library at all. There’s no concept of a local Linux “Threads” library in a cross-compile for an Xtensa SoC.</li>
+<li>So CMake’s <code>find_package(Threads REQUIRED)</code> fails with “Could NOT find Threads” because there’s no suitable host pthread dev package to fulfill that requirement in the cross-compilation environment.</li>
+</ul>
+<p>Installing host pthread dev files sometimes helps in a purely local scenario, but it can still fail or is semantically incorrect for embedded cross-builds.</p>
+<p>The Solution is to bypass <code>find_package(Threads REQUIRED)</code> on Zephyr. So, in your WAMR repo file <code>wasm-micro-runtime/CMakeLists.txt</code>, locate where it calls:</p>
+<pre><code class="language-cmake">find_package(Threads REQUIRED)
+</code></pre>
+<p>and wrap that call in a conditional so it does not run on Zephyr:</p>
+<pre><code class="language-cmake">if (NOT WAMR_BUILD_PLATFORM STREQUAL &quot;zephyr&quot;)
+  set (THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+endif()
+</code></pre>
+<p>then clean and rebuild:</p>
+<pre><code class="language-bash">rm -rf build
+west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
+</code></pre>
+<h3 id="dynamic-linking">Dynamic Linking<a class="headerlink" href="#dynamic-linking" title="Permanent link">#</a></h3>
+<p>Zephyr does not support dynamic linking on most embedded targets (including ESP32-S3). When WAMR’s CMakeLists tries:</p>
+<pre><code class="language-cmake">add_library(iwasm_shared SHARED ...)
+</code></pre>
+<p>you see the warning:</p>
+<pre><code class="language-cmake">ADD_LIBRARY called with SHARED option but the target platform does not support
+dynamic linking. Building a STATIC library instead. This may lead to problems.
+</code></pre>
+<p>This is harmless on Zephyr—it just forces the shared library to become a static library—but it can be confusing. To fix it, you should skip building a shared library entirely when you are on Zephyr.</p>
+<p>In your <code>modules/wamr/wasm-micro-runtime/CMakeLists.txt</code>, right after you set <code>WAMR_BUILD_PLATFORM="zephyr"</code>, force shared libs off:</p>
+<pre><code class="language-cmake">if (WAMR_BUILD_PLATFORM STREQUAL &quot;zephyr&quot;)
+  set(WAMR_BUILD_SHARED 0 CACHE BOOL &quot;Disable shared library on Zephyr&quot; FORCE)
+endif ()
+</code></pre>
+<p>If that’s in place, the <code>if (WAMR_BUILD_SHARED)</code> block that calls:</p>
+<pre><code class="language-cmake">add_library (iwasm_shared SHARED ${WAMR_RUNTIME_LIB_SOURCE})
+...
+</code></pre>
+<p>will not run. Hence, no “shared library” warning on Zephyr.</p>
+<p>Alternatively, you can guard the <code>iwasm_shared</code> block with:</p>
+<pre><code class="language-cmake"># SHARED LIBRARY
+if (WAMR_BUILD_SHARED AND NOT WAMR_BUILD_PLATFORM STREQUAL &quot;zephyr&quot;)
+    add_library (iwasm_shared SHARED ${WAMR_RUNTIME_LIB_SOURCE})
+    ...
+endif ()
+</code></pre>
+<p>That way, the shared library part is skipped on Zephyr.</p>
+<p>Either approach ensures the warning disappears, and you end up only with a static WAMR build (<code>iwasm_static</code>) on Zephyr, which is what you actually need.</p>
+<h3 id="configuration-files">Configuration Files<a class="headerlink" href="#configuration-files" title="Permanent link">#</a></h3>
+<p>Configuration options are split between <code>prj.conf</code> and <code>esp32s3-devkitc.conf</code>, which Zephyr's build system merges based on the board and build target. Follow best practices to avoid conflicting settings.</p>
+<h3 id="purpose-of-each-file"><strong>Purpose of Each File</strong><a class="headerlink" href="#purpose-of-each-file" title="Permanent link">#</a></h3>
+<ol>
+<li>
+<p><strong><code>prj.conf</code>:</strong></p>
+</li>
+<li>
+<p>Application-specific settings.</p>
+</li>
+<li>
+<p>Defines project-specific features, libraries, and behaviors.</p>
+</li>
+<li>
+<p><strong><code>esp32s3-devkitc.conf</code>:</strong></p>
+</li>
+<li>
+<p>Board-specific settings.</p>
+</li>
+<li>
+<p>Configures hardware-specific options for the ESP32-S3.</p>
+</li>
+<li>
+<p><strong><code>esp32s3-devkitc.overlay</code>:</strong></p>
+</li>
+<li>Extends or modifies the board's Devicetree source.</li>
+</ol>
+<h3 id="configuration-hierarchy"><strong>Configuration Hierarchy</strong><a class="headerlink" href="#configuration-hierarchy" title="Permanent link">#</a></h3>
+<p>Zephyr processes files in this order:</p>
+<ol>
+<li><strong>Default Kconfig files</strong>: Zephyr subsystems and modules.</li>
+<li><strong>Board files</strong>: <code>esp32s3-devkitc.conf</code> overrides defaults.</li>
+<li><strong>Application files</strong>: <code>prj.conf</code> overrides earlier settings.</li>
+</ol>
+<p>If a setting appears in both <code>prj.conf</code> and <code>esp32s3-devkitc.conf</code>, the value in <code>prj.conf</code> takes precedence. Avoid duplicate definitions to prevent conflicts.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright (c) Abstract Machines
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.1e8ae164.min.js"></script>
+      
+    
+  </body>
+</html>
