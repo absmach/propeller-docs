@@ -19,13 +19,13 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{MANAGER_BASE_URL}}/proplets/{{WORKER_ID}}",
+									"raw": "{{MANAGER_BASE_URL}}/proplets/{{PROPLET_ID}}",
 									"host": [
 										"{{MANAGER_BASE_URL}}"
 									],
 									"path": [
 										"proplets",
-										"{{WORKER_ID}}"
+										"{{PROPLET_ID}}"
 									]
 								}
 							},
@@ -33,6 +33,25 @@
 						},
 						{
 							"name": "List Proplets",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"function getID() {",
+											"    var res = pm.response.json();",
+											"    var id = res.proplets[0].id;",
+											"    return id;",
+											"}",
+											"",
+											"pm.collectionVariables.set('PROPLET_ID', getID());",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [],
@@ -367,6 +386,13 @@
 										],
 										"type": "text/javascript",
 										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [],
+										"type": "text/javascript"
 									}
 								}
 							],
@@ -761,6 +787,10 @@
 		},
 		{
 			"key": "TASK_ID",
+			"value": ""
+		},
+		{
+			"key": "PROPLET_ID",
 			"value": ""
 		}
 	]
