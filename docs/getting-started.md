@@ -8,6 +8,7 @@ Before proceeding, install the following prerequisites:
 - [Wasmtime](https://wasmtime.dev/)
 - [TinyGo](https://tinygo.org/getting-started/install/)
 - [Mosquitto Tools](https://mosquitto.org/)
+- [rustup](https://rustup.rs/) - This is needed to build the `sample-wasi-http-rust` example.
 
 ## Clone the repository
 
@@ -23,20 +24,27 @@ cd propeller
 Build and install the artifacts
 
 ```bash
-make all
+make all -j $(nproc)
 make install
+```
+
+If you are having issues with the `make install` command, you will need to setup `$GOBIN` and add `$GOBIN` to your `$PATH` environment variable.
+
+```bash
+export GOBIN=$HOME/go/bin
+export PATH=$PATH:$GOBIN
 ```
 
 The output of the build command will be something like:
 
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-06-12T10:57:04Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=26ef8cb167a4f88359e55eb9916cdca232bde39c'" -o build/manager cmd/manager/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-06-12T10:57:07Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=26ef8cb167a4f88359e55eb9916cdca232bde39c'" -o build/proplet cmd/proplet/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-06-12T10:57:07Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=26ef8cb167a4f88359e55eb9916cdca232bde39c'" -o build/cli cmd/cli/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-06-12T10:57:08Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=26ef8cb167a4f88359e55eb9916cdca232bde39c'" -o build/proxy cmd/proxy/main.go
-GOOS=js GOARCH=wasm tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -o build/addition.wasm -target wasi examples/addition/addition.go
-GOOS=js GOARCH=wasm tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -o build/compute.wasm -target wasi examples/compute/compute.go
-GOOS=js GOARCH=wasm tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -o build/hello-world.wasm -target wasi examples/hello-world/hello-world.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/manager cmd/manager/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/proplet cmd/proplet/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/cli cmd/cli/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/proxy cmd/proxy/main.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/addition.wasm -target wasip1 examples/addition/addition.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/compute.wasm -target wasip1 examples/compute/compute.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/hello-world.wasm -target wasip1 examples/hello-world/hello-world.go
 ```
 
 Installing the artifacts will install Propeller to the `GOBIN` directory. That is:
@@ -46,6 +54,14 @@ cp build/cli $GOBIN/propeller-cli\
 cp build/manager $GOBIN/propeller-manager\
 cp build/proplet $GOBIN/propeller-proplet\
 cp build/proxy $GOBIN/propeller-proxy
+```
+
+To build the `sample-wasi-http-rust` example, you will follow the [instructions](https://github.com/bytecodealliance/sample-wasi-http-rust#sample-wasihttp-in-rust).
+
+```bash
+git submodule update --init
+cd examples/sample-wasi-http-rust
+cargo b
 ```
 
 ## Start Docker composition
@@ -87,6 +103,8 @@ This will output a response like the following
 ```bash
 Successfully created config.toml file
 ```
+
+If you are running manager and proplet using docker you will need to copy the `config.toml` file to the `docker/config.toml` file. Then uncomment volume mapping lines in the `docker-compose.yml` file. After that you can run `make start-supermq` to start the SuperMQ docker container.
 
 The `config.toml` file will be created in the current directory. This file contains the credentials for the user, domain, manager client, proplet client, and manager channel. It will look something like this:
 
@@ -232,6 +250,26 @@ This will output a response like the following
 }
 ```
 
+To can use the CLI to create a task as follows:
+
+```bash
+# propeller-cli tasks create <name>
+propeller-cli tasks create demo
+```
+
+This will output a response like the following
+
+```json
+{
+  "created_at": "2025-09-16T10:25:31.491528704Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "id": "2ccb6b7c-3ce8-4c27-be19-01172954d593",
+  "name": "demo",
+  "start_time": "0001-01-01T00:00:00Z",
+  "updated_at": "0001-01-01T00:00:00Z"
+}
+```
+
 ### Get a task
 
 ```bash
@@ -254,6 +292,26 @@ This will output a response like the following
 }
 ```
 
+To can use the CLI to get a task as follows:
+
+```bash
+# propeller-cli tasks view <id>
+propeller-cli tasks view 2ccb6b7c-3ce8-4c27-be19-01172954d593
+```
+
+This will output a response like the following
+
+```json
+{
+  "created_at": "2025-09-16T10:25:31.491528704Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "id": "2ccb6b7c-3ce8-4c27-be19-01172954d593",
+  "name": "demo",
+  "start_time": "0001-01-01T00:00:00Z",
+  "updated_at": "0001-01-01T00:00:00Z"
+}
+```
+
 ### Upload Wasm File
 
 ```bash
@@ -261,10 +319,37 @@ curl -X PUT "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed/up
 -F 'file=@<propeller_path>/build/addition.wasm'
 ```
 
+### Update task with base64 encoded Wasm file
+
+```bash
+curl --location --request PUT 'http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed' \
+--header 'Content-Type: application/json' \
+--data '{
+    "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"
+}'
+```
+
+```bash
+propeller-cli tasks update e9858e56-a1dd-4e5a-9288-130f7be783ed '{"file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"}'
+```
+
 ### Start a task
 
 ```bash
 curl -X POST "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed/start"
+```
+
+You can use the CLI to start a task as follows:
+
+```bash
+# propeller-cli tasks start <id>
+propeller-cli tasks start 2ccb6b7c-3ce8-4c27-be19-01172954d593
+```
+
+This will output a response like the following
+
+```bash
+ok
 ```
 
 ### Stop a task
