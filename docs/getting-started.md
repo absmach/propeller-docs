@@ -318,6 +318,10 @@ This command will:
 * Connect the proplet client to the manager channel
 * Write all of these IDs and keys into a **`config.toml`** file in the current directory
 
+The process will look something like this:
+
+[![asciicast](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH.svg)](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH)
+
 If it succeeds, you’ll see:
 
 ```bash
