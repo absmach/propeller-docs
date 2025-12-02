@@ -244,52 +244,87 @@ This demonstrates handling of HTTP trailers over WASI HTTP.
 
 ---
 
-## Start Docker composition
+## Run SuperMQ and Propeller
 
-Start docker composition:
+Propeller needs to talk to a running SuperMQ instance.
+To get everything working, you’ll always do these three high-level steps:
+
+1. **Start SuperMQ** – so the CLI has something to talk to.
+2. **Provision SuperMQ** with `propeller-cli provision` – this creates the domain, clients, channels, and writes a `config.toml` file with all the IDs and keys.
+3. **Start (or restart) the Propeller services** – so `propeller-manager`, `propeller-proplet`, and `propeller-proxy` can read `config.toml` and connect correctly.
+
+You can run the services in two ways:
+
+* **Option 1 (recommended):** everything via **Docker**
+* **Option 2:** run the **Propeller binaries directly** on your machine
+
+Pick one option and follow it from start to finish.
+
+---
+
+## Option 1: Run everything with Docker (recommended)
+
+In this mode, Docker runs:
+
+* SuperMQ core services (auth, users, clients, domains, channels, adapters, etc.)
+* Propeller services: **manager**, **proplet**, and **proxy**
+
+> When you run `make start-supermq`, you are starting **both** SuperMQ and the Propeller services defined in `docker/compose.yaml`.
+
+### 1. Start the SuperMQ Docker stack (first time)
+
+From the root of the `propeller` repo:
 
 ```bash
 cd propeller
 make start-supermq
 ```
 
-To install the SuperMQ CLI, follow the [instructions](https://docs.supermq.abstractmachines.fr/getting-started#step-2---install-the-cli).
+This runs:
+
+```bash
+docker compose -f docker/compose.yaml --env-file docker/.env up -d
+```
+
+At this point:
+
+* SuperMQ is up and reachable.
+* Propeller containers (manager, proplet, proxy) will **fail to start correctly** on the first run.
+  That’s OK - they don’t have credentials yet because `config.toml` doesn’t exist.
+
+We only need SuperMQ up now so we can **provision** it.
 
 ---
 
-## Provision SuperMQ
+### 2. Provision SuperMQ with `propeller-cli`
 
-In order for Propeller to work, we need to provision SuperMQ. This will:
+Now we create everything Propeller needs **inside** SuperMQ and generate the config file.
 
-* Log in the user with their credentials.
-  If they are not registered, they will need to log in using the [supermq-cli](https://docs.supermq.abstractmachines.fr/cli#create-user) or [curl](https://docs.supermq.abstractmachines.fr/api#create-user) or the web interface. This will require you to have [supermq-cli](https://docs.supermq.abstractmachines.fr/cli) installed.
-* Create a domain
-* Log that user into the domain
-* Create a manager client
-* Create a proplet client
-* Create a manager channel
-* Connect the manager client to the manager channel
-* Connect the proplet client to the manager channel
-
-This can be done using the following command:
+Run:
 
 ```bash
 propeller-cli provision
 ```
 
-The process will look something like this:
+This command will:
 
-[![asciicast](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH.svg)](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH)
+* Log you into SuperMQ (you must have a SuperMQ user already created; if not, create one using the [supermq-cli](https://docs.supermq.abstractmachines.fr/cli#create-user), `curl`, or the web UI).
+* Create a **domain**
+* Log your user into that domain
+* Create a **manager client**
+* Create a **proplet client**
+* Create a **manager channel**
+* Connect the manager client to the manager channel
+* Connect the proplet client to the manager channel
+* Write all of these IDs and keys into a **`config.toml`** file in the current directory
 
-This will output a response like the following:
+If it succeeds, you’ll see:
 
 ```bash
 Successfully created config.toml file
 ```
 
-If you are running manager and proplet using Docker, you will need to copy the `config.toml` file to the `docker/config.toml` file. Then uncomment volume mapping lines in the `docker-compose.yml` file. After that you can run `make start-supermq` to start the SuperMQ Docker container.
-
-The `config.toml` file will be created in the current directory. This file contains the credentials for the user, domain, manager client, proplet client, and manager channel. It will look something like this:
+Your `config.toml` will look like:
 
 ```toml
 # SuperMQ Configuration
@@ -313,17 +348,81 @@ client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 ```
 
+> **Why we did this:**
+> Propeller needs these IDs and keys to authenticate to SuperMQ.
+> They don’t exist until you run `propeller-cli provision`, so we couldn’t start Propeller “fully” before this step.
+
 ---
 
-## Start the manager
+### 3. Mount `config.toml` into the Docker services
 
-To start the manager, run the following command:
+For the Docker containers to see `config.toml`, we need to mount it.
+
+If the compose file uses a path under `docker/`, copy the file:
+
+```bash
+cp config.toml docker/config.toml
+```
+
+Then, in `docker/compose.yaml`, make sure the Propeller services (manager, proplet, proxy) have a volume like this:
+
+```yaml
+volumes:
+  - ./config.toml:/config.toml
+# or, if you copied it into docker/:
+#  - ./config.toml:/config.toml
+```
+
+Uncomment or add these lines as needed.
+
+---
+
+### 4. Restart the Docker stack so Propeller reads `config.toml`
+
+Now that:
+
+* SuperMQ is provisioned, and
+* `config.toml` exists and is mounted into the containers,
+
+we restart the stack:
+
+```bash
+make stop-supermq
+make start-supermq
+```
+
+On this second start:
+
+* `propeller-manager`, `propeller-proplet`, and `propeller-proxy` start up,
+* They see `/config.toml` inside the container,
+* They read the `[manager]`, `[proplet]`, and `[proxy]` sections,
+* They connect to SuperMQ using the correct domain, client IDs, client keys, and channel IDs.
+
+At this point, your system is up and ready to use.
+
+---
+
+## Option 2: Run Propeller binaries directly (without Docker)
+
+In this mode:
+
+* SuperMQ may still run in Docker (via `make start-supermq`), **but**
+* You run the Propeller processes (`propeller-manager`, `propeller-proplet`, `propeller-proxy`) directly on your host.
+
+The provisioning step is **the same** as in Option 1:
+
+1. Start SuperMQ (Docker or however you like)
+2. Run `propeller-cli provision` to generate `config.toml`
+
+Make sure `config.toml` is in the directory where you will start the binaries, or set env vars to point them at the correct file.
+
+### 1. Start the manager
 
 ```bash
 propeller-manager
 ```
 
-The logs from the manager will look something like this:
+If everything is configured correctly, you’ll see logs similar to:
 
 ```json
 {"time":"2025-06-12T14:13:56.74162598+03:00","level":"INFO","msg":"MQTT connection lost"}
@@ -331,40 +430,44 @@ The logs from the manager will look something like this:
 {"time":"2025-06-12T14:13:56.794210043+03:00","level":"INFO","msg":"manager service http server listening at localhost:7070 without TLS"}
 ```
 
+The manager exposes an HTTP API on `localhost:7070`.
+
 ---
 
-## Start the proplet
+### 2. Start the proplet
 
-To start the proplet, run the following command:
+In another terminal:
 
 ```bash
 propeller-proplet
 ```
 
-The logs from the proplet will look something like this:
+Example logs:
 
 ```json
 {"time":"2025-06-12T14:14:44.362072799+03:00","level":"INFO","msg":"MQTT connection lost"}
 {"time":"2025-06-12T14:14:44.398147897+03:00","level":"INFO","msg":"Proplet service is running."}
 ```
 
-This will create a proplet automatically on the manager's side.
+A proplet will automatically register itself with the manager.
 
 ---
 
-## Start the proxy
+### 3. Start the proxy
 
-To start the proxy, run the following command:
+The proxy needs to know which OCI registry to pull WebAssembly images from.
+Set a few environment variables, then start it:
 
 ```bash
 export PROXY_REGISTRY_URL="docker.io"
 export PROXY_AUTHENTICATE="TRUE"
-export PROXY_REGISTRY_USERNAME=""
-export PROXY_REGISTRY_PASSWORD=""
+export PROXY_REGISTRY_USERNAME=""   # set if your registry requires auth
+export PROXY_REGISTRY_PASSWORD=""   # set if your registry requires auth
+
 propeller-proxy
 ```
 
-The logs from the proxy will look something like this:
+Example logs:
 
 ```json
 {"time":"2025-06-12T14:15:18.438848211+03:00","level":"INFO","msg":"MQTT connection lost"}
