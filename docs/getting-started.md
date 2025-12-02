@@ -23,8 +23,6 @@ git clone https://github.com/absmach/propeller.git
 cd propeller
 ```
 
----
-
 ## Build and Install the Artifacts
 
 This step compiles all Propeller components (manager, proplet, CLI, proxy, and example WASM modules).
@@ -69,8 +67,6 @@ This means:
 * All Go binaries were built and placed into `build/`
 * All example WASM modules were built using TinyGo into `build/`
 
----
-
 ### Installing the artifacts
 
 `make install` copies the compiled binaries into your `$GOBIN` directory so you can run them directly from your terminal:
@@ -90,8 +86,6 @@ propeller-proplet
 propeller-cli
 propeller-proxy
 ```
-
----
 
 ## Working with the Rust WASI HTTP Example
 
@@ -242,8 +236,6 @@ This demonstrates handling of HTTP trailers over WASI HTTP.
 > **When you are done:**
 > Go back to the terminal running `cargo component serve` and press `Ctrl+C` to stop the server.
 
----
-
 ## Run SuperMQ and Propeller
 
 Propeller needs to talk to a running SuperMQ instance.
@@ -293,8 +285,6 @@ At this point:
   That’s OK - they don’t have credentials yet because `config.toml` doesn’t exist.
 
 We only need SuperMQ up now so we can **provision** it.
-
----
 
 ### 2. Provision SuperMQ with `propeller-cli`
 
@@ -352,12 +342,6 @@ client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 ```
 
-> **Why we did this:**
-> Propeller needs these IDs and keys to authenticate to SuperMQ.
-> They don’t exist until you run `propeller-cli provision`, so we couldn’t start Propeller “fully” before this step.
-
----
-
 ### 3. Mount `config.toml` into the Docker services
 
 For the Docker containers to see `config.toml`, we need to mount it.
@@ -378,8 +362,6 @@ volumes:
 ```
 
 Uncomment or add these lines as needed.
-
----
 
 ### 4. Restart the Docker stack so Propeller reads `config.toml`
 
@@ -403,8 +385,6 @@ On this second start:
 * They connect to SuperMQ using the correct domain, client IDs, client keys, and channel IDs.
 
 At this point, your system is up and ready to use.
-
----
 
 ## Option 2: Run Propeller binaries directly (without Docker)
 
@@ -436,8 +416,6 @@ If everything is configured correctly, you’ll see logs similar to:
 
 The manager exposes an HTTP API on `localhost:7070`.
 
----
-
 ### 2. Start the proplet
 
 In another terminal:
@@ -454,8 +432,6 @@ Example logs:
 ```
 
 A proplet will automatically register itself with the manager.
-
----
 
 ### 3. Start the proxy
 
@@ -480,13 +456,9 @@ Example logs:
 {"time":"2025-06-12T14:15:18.452592155+03:00","level":"INFO","msg":"successfully subscribed to topic"}
 ```
 
----
-
 ## Postman Collection
 
 This is a [collection](./api/postman_collection.json) of the API calls that can be used to interact with the Propeller system.
-
----
 
 ## API
 
@@ -525,8 +497,6 @@ This will output a response like the following:
   ]
 }
 ```
-
----
 
 ### Create task
 
@@ -572,8 +542,6 @@ This will output a response like the following:
 }
 ```
 
----
-
 ### Get a task
 
 ```bash
@@ -616,16 +584,12 @@ This will output a response like the following:
 }
 ```
 
----
-
 ### Upload Wasm File
 
 ```bash
 curl -X PUT "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed/upload" \
 -F 'file=@<propeller_path>/build/addition.wasm'
 ```
-
----
 
 ### Update task with base64 encoded Wasm file
 
@@ -640,8 +604,6 @@ curl --location --request PUT 'http://localhost:7070/tasks/e9858e56-a1dd-4e5a-92
 ```bash
 propeller-cli tasks update e9858e56-a1dd-4e5a-9288-130f7be783ed '{"file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"}'
 ```
-
----
 
 ### Start a task
 
@@ -662,15 +624,11 @@ This will output a response like the following:
 ok
 ```
 
----
-
 ### Stop a task
 
 ```bash
 curl -X POST "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed/stop"
 ```
-
----
 
 ### Creating Tasks from OCI Registry Images
 
