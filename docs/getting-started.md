@@ -8,7 +8,7 @@ Before proceeding, install the following prerequisites:
 * [Wasmtime](https://wasmtime.dev/)
 * [TinyGo](https://tinygo.org/getting-started/install/)
 * [Mosquitto Tools](https://mosquitto.org/)
-* [rustup](https://rustup.rs/) – This is needed to build and run the `sample-wasi-http-rust` example.
+* [rustup](https://rustup.rs/)
 
 > **Note:** `rustup` will install the Rust toolchain and `cargo`. You will also use it to add WebAssembly targets.
 
