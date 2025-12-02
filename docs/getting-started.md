@@ -2,33 +2,39 @@
 
 Before proceeding, install the following prerequisites:
 
-- [A Go compiler (Go 1.24 or later)](https://go.dev/doc/install)
-- [Make](https://www.gnu.org/software/make/manual/make.html)
-- [Docker](https://docs.docker.com/)
-- [Wasmtime](https://wasmtime.dev/)
-- [TinyGo](https://tinygo.org/getting-started/install/)
-- [Mosquitto Tools](https://mosquitto.org/)
-- [rustup](https://rustup.rs/) - This is needed to build the `sample-wasi-http-rust` example.
+* [A Go compiler (Go 1.24 or later)](https://go.dev/doc/install)
+* [Make](https://www.gnu.org/software/make/manual/make.html)
+* [Docker](https://docs.docker.com/)
+* [Wasmtime](https://wasmtime.dev/)
+* [TinyGo](https://tinygo.org/getting-started/install/)
+* [Mosquitto Tools](https://mosquitto.org/)
+* [rustup](https://rustup.rs/) – This is needed to build and run the `sample-wasi-http-rust` example.
+
+> **Note:** `rustup` will install the Rust toolchain and `cargo`. You will also use it to add WebAssembly targets.
+
+---
 
 ## Clone the repository
 
-Clone the repository
+Clone the repository:
 
 ```bash
 git clone https://github.com/absmach/propeller.git
 cd propeller
 ```
 
+---
+
 ## Build and Install the artifacts
 
-Build and install the artifacts
+Build and install the artifacts:
 
 ```bash
 make all -j $(nproc)
 make install
 ```
 
-If you are having issues with the `make install` command, you will need to setup `$GOBIN` and add `$GOBIN` to your `$PATH` environment variable.
+If you are having issues with the `make install` command, you will need to set up `$GOBIN` and add `$GOBIN` to your `$PATH` environment variable:
 
 ```bash
 export GOBIN=$HOME/go/bin
@@ -50,23 +56,169 @@ GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/hello-world.wasm -
 Installing the artifacts will install Propeller to the `GOBIN` directory. That is:
 
 ```bash
-cp build/cli $GOBIN/propeller-cli\
-cp build/manager $GOBIN/propeller-manager\
-cp build/proplet $GOBIN/propeller-proplet\
+cp build/cli $GOBIN/propeller-cli
+cp build/manager $GOBIN/propeller-manager
+cp build/proplet $GOBIN/propeller-proplet
 cp build/proxy $GOBIN/propeller-proxy
 ```
 
-To build the `sample-wasi-http-rust` example, you will follow the [instructions](https://github.com/bytecodealliance/sample-wasi-http-rust#sample-wasihttp-in-rust).
+---
+
+## Working with the Rust WASI HTTP Example
+
+Propeller includes an example Rust WebAssembly HTTP component: `sample-wasi-http-rust`.
+This section shows you how to fetch it, build it, run it, and test it.
+
+You can also refer to the original project’s instructions here:
+[https://github.com/bytecodealliance/sample-wasi-http-rust#sample-wasihttp-in-rust](https://github.com/bytecodealliance/sample-wasi-http-rust#sample-wasihttp-in-rust)
+
+### 1. Initialize the Git submodules
+
+From the root of the `propeller` repository:
 
 ```bash
 git submodule update --init
 cd examples/sample-wasi-http-rust
-cargo b
 ```
+
+This pulls in the `sample-wasi-http-rust` example code.
+
+### 2. Install the required Rust target
+
+The example builds to a WebAssembly target. If you see errors about missing `wasm32-wasip2` or `wasm32-wasip1`, you need to add the target.
+
+A safe default is to add the Preview 2 target:
+
+```bash
+rustup target add wasm32-wasip2
+```
+
+> If this command fails, update Rust first:
+>
+> ```bash
+> rustup update
+> rustup target add wasm32-wasip2
+> ```
+
+### 3. Build the Rust example
+
+Build the example for the WebAssembly target:
+
+```bash
+cargo build --target wasm32-wasip2
+```
+
+If the build completes successfully, you will see a message similar to:
+
+```bash
+Finished `dev` profile [unoptimized + debuginfo] target(s) in X.XXs
+```
+
+At this point, you have a compiled WASI HTTP component.
+
+### 4. Install `cargo-component` (once)
+
+`cargo-component` makes it easy to work with Wasm components and run them with Wasmtime.
+
+Install it using `cargo`:
+
+```bash
+cargo install cargo-component
+```
+
+You only need to do this once on your machine.
+
+### 5. Serve the Rust component locally
+
+From inside `examples/sample-wasi-http-rust`:
+
+```bash
+cargo component serve
+```
+
+On first run, this may automatically install the `wasm32-wasip1` component standard library and then print something like:
+
+```bash
+Creating component target/wasm32-wasip1/debug/sample_wasi_http_rust.wasm
+Running `target/wasm32-wasip1/debug/sample_wasi_http_rust.wasm`
+Serving HTTP on http://0.0.0.0:8080/
+```
+
+This means your WASI HTTP component is now running as an HTTP server on port `8080`.
+
+Leave this terminal open while the server is running.
+
+### 6. Test the Rust HTTP endpoints
+
+Open a **new terminal** and run the following commands to test the different routes:
+
+#### Hello world route
+
+```bash
+curl -v http://127.0.0.1:8080/
+```
+
+You should see a `200 OK` response with a body similar to:
+
+```text
+Hello, wasi:http/proxy world!
+```
+
+#### Wait route
+
+```bash
+curl -v http://127.0.0.1:8080/wait
+```
+
+This route sleeps briefly before responding, and you should see:
+
+```text
+slept for 1001 millis
+```
+
+#### Echo body route
+
+```bash
+curl -v http://127.0.0.1:8080/echo -d 'hello from John Doe'
+```
+
+The response will echo the request body back:
+
+```text
+hello from John Doe
+```
+
+#### Echo headers route
+
+```bash
+curl -v http://127.0.0.1:8080/echo-headers -H 'X-Test: 123' -H 'X-Foo: bar'
+```
+
+You will see the headers reflected in the response:
+
+```text
+x-foo: bar
+user-agent: curl/...
+accept: */*
+x-test: 123
+```
+
+#### Echo trailers route
+
+```bash
+curl -v http://127.0.0.1:8080/echo-trailers
+```
+
+This demonstrates handling of HTTP trailers over WASI HTTP.
+
+> **When you are done:**
+> Go back to the terminal running `cargo component serve` and press `Ctrl+C` to stop the server.
+
+---
 
 ## Start Docker composition
 
-Start docker composition
+Start docker composition:
 
 ```bash
 cd propeller
@@ -75,18 +227,21 @@ make start-supermq
 
 To install the SuperMQ CLI, follow the [instructions](https://docs.supermq.abstractmachines.fr/getting-started#step-2---install-the-cli).
 
+---
+
 ## Provision SuperMQ
 
-In order for propeller to work, we need to provision SuperMQ. This will:
+In order for Propeller to work, we need to provision SuperMQ. This will:
 
-- Login the user with there credentials. If they are not registered, they will need to login using the [supermq-cli](https://docs.supermq.abstractmachines.fr/cli#create-user) or [curl](https://docs.supermq.abstractmachines.fr/api#create-user) or the web interface. This will require you to have [supermq-cli](https://docs.supermq.abstractmachines.fr/cli) installed.
-- Create a domain
-- Login that user to the domain
-- Create a manager client
-- Create a proplet client
-- Create a manager channel
-- Connect the manager client to the manager channel
-- Connect the proplet client to the manager channel
+* Log in the user with their credentials.
+  If they are not registered, they will need to log in using the [supermq-cli](https://docs.supermq.abstractmachines.fr/cli#create-user) or [curl](https://docs.supermq.abstractmachines.fr/api#create-user) or the web interface. This will require you to have [supermq-cli](https://docs.supermq.abstractmachines.fr/cli) installed.
+* Create a domain
+* Log that user into the domain
+* Create a manager client
+* Create a proplet client
+* Create a manager channel
+* Connect the manager client to the manager channel
+* Connect the proplet client to the manager channel
 
 This can be done using the following command:
 
@@ -98,13 +253,13 @@ The process will look something like this:
 
 [![asciicast](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH.svg)](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH)
 
-This will output a response like the following
+This will output a response like the following:
 
 ```bash
 Successfully created config.toml file
 ```
 
-If you are running manager and proplet using docker you will need to copy the `config.toml` file to the `docker/config.toml` file. Then uncomment volume mapping lines in the `docker-compose.yml` file. After that you can run `make start-supermq` to start the SuperMQ docker container.
+If you are running manager and proplet using Docker, you will need to copy the `config.toml` file to the `docker/config.toml` file. Then uncomment volume mapping lines in the `docker-compose.yml` file. After that you can run `make start-supermq` to start the SuperMQ Docker container.
 
 The `config.toml` file will be created in the current directory. This file contains the credentials for the user, domain, manager client, proplet client, and manager channel. It will look something like this:
 
@@ -130,9 +285,11 @@ client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 ```
 
+---
+
 ## Start the manager
 
-To start the manager, run the following command
+To start the manager, run the following command:
 
 ```bash
 propeller-manager
@@ -146,9 +303,11 @@ The logs from the manager will look something like this:
 {"time":"2025-06-12T14:13:56.794210043+03:00","level":"INFO","msg":"manager service http server listening at localhost:7070 without TLS"}
 ```
 
+---
+
 ## Start the proplet
 
-To start the proplet, run the following command
+To start the proplet, run the following command:
 
 ```bash
 propeller-proplet
@@ -163,9 +322,11 @@ The logs from the proplet will look something like this:
 
 This will create a proplet automatically on the manager's side.
 
+---
+
 ## Start the proxy
 
-To start the proxy, run the following command
+To start the proxy, run the following command:
 
 ```bash
 export PROXY_REGISTRY_URL="docker.io"
@@ -184,9 +345,13 @@ The logs from the proxy will look something like this:
 {"time":"2025-06-12T14:15:18.452592155+03:00","level":"INFO","msg":"successfully subscribed to topic"}
 ```
 
-## Postman Colletion
+---
+
+## Postman Collection
 
 This is a [collection](./api/postman_collection.json) of the API calls that can be used to interact with the Propeller system.
+
+---
 
 ## API
 
@@ -196,7 +361,7 @@ This is a [collection](./api/postman_collection.json) of the API calls that can 
 curl -X GET "http://localhost:7070/proplets"
 ```
 
-This will output a response like the following
+This will output a response like the following:
 
 ```json
 {
@@ -226,6 +391,8 @@ This will output a response like the following
 }
 ```
 
+---
+
 ### Create task
 
 ```bash
@@ -234,7 +401,7 @@ curl -X POST "http://localhost:7070/tasks" \
 -d '{"name": "add", "inputs": [10, 20]}'
 ```
 
-This will output a response like the following
+This will output a response like the following:
 
 ```json
 {
@@ -250,14 +417,14 @@ This will output a response like the following
 }
 ```
 
-To can use the CLI to create a task as follows:
+You can use the CLI to create a task as follows:
 
 ```bash
 # propeller-cli tasks create <name>
 propeller-cli tasks create demo
 ```
 
-This will output a response like the following
+This will output a response like the following:
 
 ```json
 {
@@ -269,6 +436,8 @@ This will output a response like the following
   "updated_at": "0001-01-01T00:00:00Z"
 }
 ```
+
+---
 
 ### Get a task
 
@@ -276,7 +445,7 @@ This will output a response like the following
 curl -X GET "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed"
 ```
 
-This will output a response like the following
+This will output a response like the following:
 
 ```json
 {
@@ -292,14 +461,14 @@ This will output a response like the following
 }
 ```
 
-To can use the CLI to get a task as follows:
+You can use the CLI to get a task as follows:
 
 ```bash
 # propeller-cli tasks view <id>
 propeller-cli tasks view 2ccb6b7c-3ce8-4c27-be19-01172954d593
 ```
 
-This will output a response like the following
+This will output a response like the following:
 
 ```json
 {
@@ -312,12 +481,16 @@ This will output a response like the following
 }
 ```
 
+---
+
 ### Upload Wasm File
 
 ```bash
 curl -X PUT "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed/upload" \
 -F 'file=@<propeller_path>/build/addition.wasm'
 ```
+
+---
 
 ### Update task with base64 encoded Wasm file
 
@@ -333,6 +506,8 @@ curl --location --request PUT 'http://localhost:7070/tasks/e9858e56-a1dd-4e5a-92
 propeller-cli tasks update e9858e56-a1dd-4e5a-9288-130f7be783ed '{"file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"}'
 ```
 
+---
+
 ### Start a task
 
 ```bash
@@ -346,17 +521,21 @@ You can use the CLI to start a task as follows:
 propeller-cli tasks start 2ccb6b7c-3ce8-4c27-be19-01172954d593
 ```
 
-This will output a response like the following
+This will output a response like the following:
 
 ```bash
 ok
 ```
+
+---
 
 ### Stop a task
 
 ```bash
 curl -X POST "http://localhost:7070/tasks/e9858e56-a1dd-4e5a-9288-130f7be783ed/stop"
 ```
+
+---
 
 ### Creating Tasks from OCI Registry Images
 
