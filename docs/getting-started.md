@@ -25,41 +25,70 @@ cd propeller
 
 ---
 
-## Build and Install the artifacts
+## Build and Install the Artifacts
 
-Build and install the artifacts:
+This step compiles all Propeller components (manager, proplet, CLI, proxy, and example WASM modules).
+Run the following:
 
 ```bash
 make all -j $(nproc)
 make install
 ```
 
-If you are having issues with the `make install` command, you will need to set up `$GOBIN` and add `$GOBIN` to your `$PATH` environment variable:
+### If `make install` fails
+
+You likely don’t have your Go binary path (`$GOBIN`) configured.
+Set it up like this:
 
 ```bash
 export GOBIN=$HOME/go/bin
 export PATH=$PATH:$GOBIN
 ```
 
-The output of the build command will be something like:
+Run `make install` again afterward.
+
+---
+
+### What the build process does
+
+During the build, you will see output similar to:
 
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/manager cmd/manager/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/proplet cmd/proplet/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/cli cmd/cli/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/supermq.BuildTime=2025-09-16T08:51:10Z' -X 'github.com/absmach/supermq.Version=v0.3.0' -X 'github.com/absmach/supermq.Commit=1e4e360c2182aa9bd6febb39756e3398fa4139ca'" -o build/proxy cmd/proxy/main.go
-GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/addition.wasm -target wasip1 examples/addition/addition.go
-GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/compute.wasm -target wasip1 examples/compute/compute.go
-GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/hello-world.wasm -target wasip1 examples/hello-world/hello-world.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ... -o build/manager cmd/manager/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ... -o build/proplet cmd/proplet/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ... -o build/cli cmd/cli/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ... -o build/proxy cmd/proxy/main.go
+
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/addition.wasm     -target wasip1 examples/addition/addition.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/compute.wasm      -target wasip1 examples/compute/compute.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/hello-world.wasm  -target wasip1 examples/hello-world/hello-world.go
 ```
 
-Installing the artifacts will install Propeller to the `GOBIN` directory. That is:
+This means:
+
+* All Go binaries were built and placed into `build/`
+* All example WASM modules were built using TinyGo into `build/`
+
+---
+
+### Installing the artifacts
+
+`make install` copies the compiled binaries into your `$GOBIN` directory so you can run them directly from your terminal:
 
 ```bash
-cp build/cli $GOBIN/propeller-cli
-cp build/manager $GOBIN/propeller-manager
-cp build/proplet $GOBIN/propeller-proplet
-cp build/proxy $GOBIN/propeller-proxy
+cp build/cli      $GOBIN/propeller-cli
+cp build/manager  $GOBIN/propeller-manager
+cp build/proplet  $GOBIN/propeller-proplet
+cp build/proxy    $GOBIN/propeller-proxy
+```
+
+Once installed, you can run the commands simply as:
+
+```bash
+propeller-manager
+propeller-proplet
+propeller-cli
+propeller-proxy
 ```
 
 ---
