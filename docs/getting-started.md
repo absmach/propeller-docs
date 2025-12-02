@@ -66,8 +66,7 @@ cp build/proxy $GOBIN/propeller-proxy
 
 ## Working with the Rust WASI HTTP Example
 
-Propeller includes an example Rust WebAssembly HTTP component: `sample-wasi-http-rust`.
-This section shows you how to fetch it, build it, run it, and test it.
+Propeller includes an example Rust WebAssembly HTTP component: `sample-wasi-http-rust`. Running the Rust WASI example validates your Rust/WASM setup and shows how a single WASI HTTP component works before integrating it with Propeller. This section shows you how to fetch it, build it, run it, and test it.
 
 You can also refer to the original project’s instructions here:
 [https://github.com/bytecodealliance/sample-wasi-http-rust#sample-wasihttp-in-rust](https://github.com/bytecodealliance/sample-wasi-http-rust#sample-wasihttp-in-rust)
