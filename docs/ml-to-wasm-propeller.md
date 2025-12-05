@@ -14,6 +14,8 @@ The `model2wasm` pipeline does:
 
 Propeller then only needs to host and call the generated WASM module.
 
+---
+
 ## 2. Prerequisites
 
 You’ll need:
@@ -34,6 +36,8 @@ git clone https://github.com/FriedShrimpBBQ/model2wasm.git
 cd model2wasm
 ```
 
+---
+
 ## 3. Set up the Python environment
 
 Create and activate a virtual environment:
@@ -53,6 +57,8 @@ pip install m2cgen scikit-learn
 
 > Install other ML libraries if your model depends on them.
 
+---
+
 ## 4. Train and Save Your Model
 
 There are **two supported ways** to save your model:
@@ -61,8 +67,6 @@ There are **two supported ways** to save your model:
 
 ```python
 import pickle
-
-# model = ...  # train your model
 
 with open("mymodel.pkl", "wb") as f:
     pickle.dump(model, f)
@@ -103,6 +107,8 @@ You can also generate a demo model:
 python demo/generate_model_example.py --filename mymodel
 ```
 
+---
+
 ## 5. Generate Go Code from the Model
 
 If using pickle:
@@ -119,30 +125,103 @@ m2cgen mymodel_m2cgen.pkl --language go > model2tinygo.go
 
 This file contains the model’s prediction logic translated into Go.
 
-## 6. Produce TinyGo-Compatible Main File
+> **Important:**
+> The generated file begins with a `func` declaration — it does **not** include `package main`.
+> TinyGo requires a valid package header, so you must wrap it.
 
-Generate `main.go`:
+---
+
+## 6. Produce TinyGo-Compatible Go Package
+
+Because `model2tinygo.go` lacks a `package` declaration, TinyGo will error with:
 
 ```bash
-go run model2tinygo.go > main.go
+expected 'package', found 'func'
+```
+
+Fix by wrapping the file:
+
+```bash
+python - << 'EOF'
+with open("model2tinygo.go") as f:
+    src = f.read()
+
+# TinyGo requires a package header.
+header = "package main\n\n"
+with open("model_gen.go", "w") as f:
+    f.write(header + src)
+
+print("Wrote model_gen.go (TinyGo-compatible)")
+EOF
 ```
 
 You now have:
 
-* `model2tinygo.go` — generated model logic
-* `main.go` — Go entrypoint compatible with TinyGo/WASI
+* `model_gen.go` — valid TinyGo Go source containing `func score(...)`
+* `model2tinygo.go` — raw output (can be deleted)
 
-## 7. Build the WASM File with TinyGo
-
-Compile to WASI:
+Delete the raw file:
 
 ```bash
-tinygo build -o mymodel.wasm -target=wasi -wasm-abi=generic main.go
+rm model2tinygo.go
 ```
 
-Now you have a fully portable WASM ML model.
+---
 
-## 8. (Optional) Use `just` to Simplify the Workflow
+## 7. Create a TinyGo-Compatible WASM Entrypoint (`main.go`)
+
+TinyGo requires a zero-argument `main()`, but Propeller/WAMR/Wazero need a callable exported function.
+
+Use the following:
+
+```go
+package main
+
+func predict(x0 int32, x1 int32) int32 {
+    in := []float64{
+        float64(x0) / 100.0,
+        float64(x1) / 100.0,
+    }
+
+    y := score(in)
+
+    return int32(y * 100.0)
+}
+
+func main() {}
+```
+
+The exported function is now:
+
+* Name: **`predict`**
+* Args: **two int32 inputs**
+* Return: **int32**
+
+This matches WAMR, Wazero, and Propeller’s WASM calling conventions.
+
+---
+
+## 8. Build the WASM File with TinyGo
+
+Compile the entire folder as a Go package:
+
+```bash
+tinygo build -o mymodel.wasm -target=wasi .
+```
+
+> **Note:**
+> Do **not** pass multiple `.go` files as arguments.
+> TinyGo requires exactly one package path, so use `.`.
+
+A successful build produces:
+
+```
+mymodel.wasm
+```
+
+---
+
+## 9. (Optional) Use `just` to Simplify the Workflow
 
 List available tasks:
 
@@ -168,44 +247,71 @@ The `just` recipe handles:
 2. Go → TinyGo main
 3. TinyGo → WASM
 
-## 9. Test the WASM Model Locally
+---
 
-Use `wasmer`:
+## 10. Test the WASM Model Locally
+
+Using `wasmer`:
 
 ```bash
-wasmer mymodel.wasm -- 1 2 -2 -1
+wasmer run mymodel.wasm --invoke predict 100 200
 ```
 
-Example output:
+Expected output:
 
-```shell
-199
+```
+800
 ```
 
-This verifies the WASM binary runs under a WASI environment.
+Because:
 
-## 10. Running the WASM Model on Propeller
+* Inputs: `100` → 1.00, `200` → 2.00
+* Model: `y = 2*1 + 3*2 = 8`
+* Output scaled by ×100 → `800`
+
+This confirms the WASM binary runs correctly under WASI.
+
+---
+
+## 11. Running the WASM Model on Propeller
 
 Once you have `mymodel.wasm`, Propeller execution looks like:
 
 1. **Register the WASM file**
-   Place it in your model registry or deploy it as an app.
+   Push it to the Propeller registry as an application.
 
 2. **Create a task**
-   Pass your model inputs as arguments to the WASM function.
+   Use the exported WASM function `predict`:
+
+   ```bash
+   propeller task create \
+     --app mymodel \
+     --func predict \
+     --inputs 100 200 \
+     --runtime host
+   ```
 
 3. **Start the task**
-   Propeller executes the model in one of its runtimes:
 
-   * Host (`wasmer`)
-   * Wazero (pure Go)
-   * Embedded (ESP32 WAMR)
+   ```bash
+   propeller task start <task-id>
+   ```
 
-4. **Read the results**
-   Returned values are provided via stdout (host), results arrays (wazero), or MQTT (embedded).
+4. **Get results**
+
+   ```bash
+   propeller task get <task-id>
+   ```
+
+Propeller supports:
+
+* Host runtime (`wasmer`)
+* Wazero runtime (pure Go)
+* Embedded runtime (ESP32 WAMR)
 
 Propeller runtimes support:
 
 * WASI modules
-* i32/u32 arguments
-* Reading one or more return values
+* `i32` arguments
+* `i32` return values
+* Invocation of custom exported functions (e.g. `predict`)
