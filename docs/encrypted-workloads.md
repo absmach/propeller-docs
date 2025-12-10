@@ -1,30 +1,61 @@
 # Encrypted Workload Workflow
 
-Propeller supports AES-256-GCM encryption for Wasm workloads. This ensures that application code remains opaque and secure while in transit over the MQTT broker. Even if an attacker gains access to the message broker, they will only see encrypted ciphertext, not executable logic.
+Propeller supports **AES-256-GCM** encryption for Wasm workloads. This ensures that application code remains opaque and secure while in transit over the MQTT broker. Even if an attacker gains access to the message broker, they will only see encrypted ciphertext, not executable logic.
 
 ## The Security Model
 
-- **Algorithm:** AES-256-GCM (Galois/Counter Mode)
-- **Key Management:** A pre-shared 32-byte hexadecimal key injected into the Manager, Proxy, and Proplet services
-- **Trust Boundary:** The MQTT broker is considered untrusted storage. The payload is encrypted before it leaves the Manager or Proxy and decrypted only when it reaches the Proplet's memory
+* **Algorithm:** AES-256-GCM (Galois/Counter Mode)
+* **Key Size:** 256-bit symmetric key (32 raw bytes)
+* **Key Encoding:** Keys are handled as 64-character hexadecimal strings in configuration, then decoded into 32 binary bytes in each service
+* **Key Management:** A pre-shared key is injected into the Manager, Proxy, Proplet, and embedded Proplet runtime
+* **Trust Boundary:** The MQTT broker and network are treated as untrusted. Payloads are encrypted **before** they leave the Manager/Proxy and decrypted **only** inside the Proplet’s memory
+
+### How AES-256-GCM is Used
+
+AES-GCM provides both:
+
+* **Confidentiality** – The Wasm bytes are encrypted so that an observer cannot reconstruct the code.
+* **Integrity & Authenticity** – Each message includes an authentication tag. If the ciphertext is modified or the wrong key is used, decryption fails with an authentication error and the workload is never executed.
+
+For every encryption operation:
+
+* A **fresh, random nonce** (initialization vector) is generated.
+* The Wasm payload is encrypted with AES-256-GCM using:
+
+  * The shared symmetric key
+  * The per-message nonce
+* The resulting data sent over MQTT is:
+
+  * `nonce || ciphertext || authentication-tag`
+* On the Proplet side, the same key and nonce are used to reverse the process. If the authentication tag does not match, the payload is discarded.
+
+Nonces are never reused for the same key, which is a critical requirement for GCM security.
+
+---
 
 ## 1. Setup and Configuration
 
-Before deploying tasks, you must generate a key and configure your infrastructure. By default, Propeller is configured using Docker Compose and environment variables. However, you may also use `config.toml` if you are running services outside of Docker or require explicit configuration files.
+Before deploying tasks, you must generate a key and configure your infrastructure. By default, Propeller is configured using Docker Compose and environment variables. You may also use `config.toml` if you are running services outside of Docker or require explicit configuration files.
 
 ### Step 1: Generate a Shared Key
 
-Generate a random 32-byte key using OpenSSL:
+Generate a random 32-byte key encoded as hexadecimal:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Save this key. It must be identical across all services.
+This produces a **64-character hex string** (e.g., `dd72…6553`). That string represents 32 binary bytes and is the *only* value you should use across all components.
+
+Internally:
+
+* The Go services (Manager, Proplet, Proxy) **decode** this hex string into 32 bytes.
+* The embedded Proplet (ESP32/Zephyr) uses a **matching 32-byte constant** in its firmware.
+* All sides converge on the exact same 256-bit key.
 
 ### Step 2: Configure Services
 
-You must provide the generated key to the Manager, Proplet, and Proxy services.
+You must provide the generated key to the Manager, Proplet, and Proxy services. Each service expects the **same 64-character hex string**.
 
 #### Via Docker Environment Variables (.env) (Default)
 
@@ -33,6 +64,15 @@ MANAGER_WORKLOAD_KEY=<YOUR_32_BYTE_HEX_KEY>
 PROPLET_WORKLOAD_KEY=<YOUR_32_BYTE_HEX_KEY>
 PROXY_WORKLOAD_KEY=<YOUR_32_BYTE_HEX_KEY>
 ```
+
+At startup, each service:
+
+1. Reads the hex string from the environment.
+2. Decodes it into 32 raw bytes.
+3. Validates that the decoded key length is exactly 32 bytes.
+4. Fails fast at startup if the key is malformed.
+
+This avoids subtle misconfiguration where the key might be the wrong size or not valid hex.
 
 #### Via config.toml (Alternative)
 
@@ -47,9 +87,11 @@ workload_key = "<YOUR_32_BYTE_HEX_KEY>"
 workload_key = "<YOUR_32_BYTE_HEX_KEY>"
 ```
 
+This is functionally equivalent for non-Docker deployments. The same decoding and length checks apply after loading from `config.toml`.
+
 ### Configuration Precedence
 
-When both Docker environment variables and `config.toml` are provided, **environment variables take precedence** over values defined in `config.toml`. This allows secure overrides without modifying configuration files.
+When both Docker environment variables and `config.toml` are provided, **environment variables take precedence** over values defined in `config.toml`. This allows secure overrides without modifying configuration files or committing secrets.
 
 The resolution order is:
 
@@ -57,122 +99,145 @@ The resolution order is:
 2. `config.toml`
 3. Built-in defaults (if any)
 
-For production deployments, environment variables are strongly recommended to avoid committing secrets to disk.
+For production deployments, environment variables or a dedicated secret manager are strongly recommended to avoid committing secrets to disk or source control.
 
-Perfect, this is the **right structural choice**. Below is a **fully merged, non-repetitive rewrite of Section 2**, where:
+### Optional: Key Derivation Functions (KDFs)
 
-- The **user-facing workflows** from your original Section 2
-- And the **secure execution mechanics** from Section 5
+Propeller currently assumes you supply a **full-entropy hex key** generated by a secure tool (like `openssl rand`). In this model, a KDF (such as PBKDF2, scrypt, or SHA-256 over a human password) is **not required** because:
 
-are combined into **one clean, non-duplicative section**.
+* The key is already 256 bits of random data.
+* It is not derived from a human-memorable password.
 
-You can **replace your entire current Section 2 with this**:
+If you ever want to support **human-entered secrets** (for example, an operator-typed passphrase instead of a pre-generated hex key), you should introduce a KDF layer to:
+
+* Stretch the passphrase into a 256-bit key.
+* Harden against weak or low-entropy inputs.
+
+For now, Propeller takes the simpler and stronger approach of **requiring a proper cryptographic key up front**, rather than trying to repair weak inputs later.
+
+---
 
 ## 2. Operational Workflows and Secure Execution
 
 Propeller supports two encrypted workload delivery methods:
 
-- **Direct Push**
-- **Registry Pull**
+* **Direct Push** (upload a Wasm file directly)
+* **Registry Pull** (fetch a Wasm artifact from an OCI registry)
 
-In both cases, workloads follow the same secure execution pipeline: they are encrypted at the control plane, transmitted over MQTT as ciphertext, decrypted only inside the Proplet’s memory boundary, and executed inside a sandboxed Wasm runtime with zero persistence.
+In both cases, workloads follow the same secure execution pipeline:
+
+1. Encrypt at the control plane (Manager or Proxy).
+2. Transport ciphertext over MQTT.
+3. Decrypt only inside the Proplet’s memory.
+4. Execute in a sandboxed Wasm runtime, with no persistent plaintext artifacts.
 
 ### Scenario A: Direct Push (CLI Upload)
 
-1. **User Action**  
-   The user runs:
+1. **User Action**
+   The user creates a task and uploads a local Wasm file via the CLI.
 
-   ```bash
-   propeller-cli tasks create ...
-   ```
+2. **Manager Ingestion (Plaintext in a Trusted Channel)**
 
-   and uploads a local Wasm file.
-
-2. **Manager Ingestion**
-
-   The Manager receives the plaintext Wasm file over HTTPS (TLS-secured).
+   * The Manager receives the workload over HTTPS.
+   * At this point, the code is in plaintext, but only inside the trusted Manager process.
 
 3. **Control Plane Encryption**
 
-   - The workload bytes are encrypted using AES-256-GCM
-   - A unique nonce is generated per encryption operation
-   - An authentication tag is produced to guarantee integrity
-   - Only encrypted ciphertext is published to MQTT
+   * The Manager encrypts the Wasm bytes using AES-256-GCM with the shared key.
+   * A unique nonce is generated for this task payload.
+   * An authentication tag is generated and attached to the ciphertext.
+   * Only the encrypted blob (nonce + ciphertext + tag) is sent to the Proplet over MQTT.
 
 4. **Encrypted Transport Over MQTT**
 
-   - The MQTT broker only ever sees encrypted data
-   - The broker is treated as an untrusted transport layer
+   * The MQTT broker never sees the Wasm in plaintext.
+   * The broker is treated as untrusted storage and simple routing infrastructure.
 
-5. **Proplet Decryption and Execution**
+5. **Proplet Decryption and Execution (In-Memory Only)**
 
-   - The encrypted payload is decrypted **directly in memory**
-   - The authentication tag is verified before execution
-   - If verification fails, execution is aborted immediately
-   - The plaintext Wasm binary is passed directly to the runtime
-   0 Supported runtimes include:
+   * The Proplet receives the encrypted blob and uses the same shared key.
+   * It verifies the GCM authentication tag; if verification fails, execution is aborted.
+   * Decryption occurs entirely in RAM; the decrypted bytes are handed to the Wasm runtime.
+   * Supported runtimes include:
 
-     - Wazero
-     - WAMR
-   - Execution occurs inside a fully sandboxed Wasm environment
+     * Wazero (Go-based Proplet)
+     * WAMR (embedded Proplet)
 
 6. **Execution Teardown**
 
-   - The runtime instance is terminated after completion
-   - Decrypted workload data is released from memory
-   - No executable artifacts are persisted to disk
-   - Only execution metadata is reported back to the Manager
+   * The Wasm runtime instance is created for the task, runs, and then is torn down.
+   * Decrypted workload bytes are freed from memory.
+   * No plaintext code is written to disk.
+   * Only execution results and metadata are sent back to the Manager.
 
-### Scenario B: OCI Registry Pull (Proxy)
+### Scenario B: OCI Registry Pull (Proxy-Mediated)
 
 1. **User Action**
-   The user runs:
-
-   ```bash
-   propeller-cli tasks create ... --image <oci-url>
-   ```
+   The user creates a task referencing an OCI image URL rather than uploading a local file.
 
 2. **Manager Dispatch**
 
-   The Manager sends a start command to the Proplet containing the OCI image reference.
+   * The Manager sends a start command to the Proplet containing the image reference.
+   * No workload bytes are embedded in this message yet—only metadata.
 
 3. **Proplet Request**
 
-   The Proplet requests the workload from the Proxy service over MQTT.
+   * The Proplet sends a registry fetch request over MQTT to the Proxy.
+   * This names the image/artifact that needs to be fetched and executed.
 
 4. **Proxy Fetch and Encryption**
 
-   - The Proxy pulls the image from the OCI registry over HTTPS
-   - The Wasm binary is extracted and split into chunks
-   - Each chunk is encrypted using AES-256-GCM
-   - Encrypted chunks are published to MQTT
+   * The Proxy pulls the image from the OCI registry over HTTPS.
+   * It extracts the Wasm layer or artifact from the image.
+   * **Important crypto detail:**
+     The Proxy encrypts the **entire Wasm binary once** with AES-256-GCM, producing a single nonce and tag for the full artifact.
+   * The resulting ciphertext is then split into chunks for transmission efficiency.
+   * Each chunk contains a portion of the encrypted blob; no chunk contains plaintext.
 
-5. **Secure Reassembly and Decryption**
+5. **Secure Reassembly and Decryption on the Proplet**
 
-   - The Proplet receives all encrypted chunks
-   - The full binary is reassembled
-   - Decryption occurs entirely in memory
-   - Authentication is verified before execution
+   * The Proplet receives all chunks over MQTT.
+   * It reassembles them into the original encrypted blob in memory.
+   * Once all chunks are assembled, it performs a **single AES-GCM decryption**:
+
+     * Uses the same shared key and nonce.
+     * Verifies the authentication tag.
+   * If decryption or authentication fails, the workload is rejected and not executed.
 
 6. **Sandboxed Wasm Execution and Teardown**
 
-   - The decrypted workload is executed inside the Wasm runtime
-   - The runtime is terminated after completion
-   - Decrypted artifacts are released from memory
-   - Only execution metadata is persisted
+   * If decryption succeeds, the plaintext Wasm is handed to the runtime.
+   * Execution occurs in a sandboxed environment, exactly as in the direct push scenario.
+   * After execution, memory is cleared and only results/metadata are persisted.
 
-This unified workflow enforces a **zero-persistence execution model** in which:
+This design ensures:
 
-- Plaintext workloads never transit MQTT
-- Decrypted workloads never touch disk
-- Only trusted runtime memory contains executable code
-- All inter-service transport remains encrypted end-to-end
+* The Proxy never exposes plaintext workloads to the MQTT broker.
+* The Proplet never executes code that fails integrity/authentication checks.
+* Encrypted workloads can be efficiently streamed in chunks without weakening security.
+
+### Zero-Persistence Execution Model
+
+Across both workflows, Propeller enforces a **zero-persistence execution model**:
+
+* Plaintext workloads never traverse MQTT.
+* Decrypted workloads are kept only in Proplet memory and only for the duration of execution.
+* No plaintext workloads are written to disk by the Manager, Proxy, or Proplets.
+* Only metadata (task IDs, timing, numeric results, status) is stored.
+
+---
 
 ## 3. How to Verify Encryption
 
-To verify that encryption is active and that the broker is not seeing plaintext data, inspect the Docker logs.
+You can verify that encryption is active and that the broker is not seeing plaintext data by:
+
+1. Deploying a task.
+2. Observing the Proplet’s behavior.
+3. Optionally inspecting MQTT messages at the broker.
 
 ### Step 1: Deploy a Task
+
+From the CLI, create and start a task using a Wasm file. For example:
 
 ```bash
 ./propeller-cli tasks create my-secure-task --file ./examples/hello-world/build/hello.wasm
@@ -181,19 +246,44 @@ To verify that encryption is active and that the broker is not seeing plaintext 
 
 ### Step 2: Check Proplet Logs
 
+On the Proplet side, look at the logs:
+
 ```bash
 docker logs propeller-proplet
 ```
 
-#### Successful Output
+#### Successful Decryption and Execution
+
+You should see logs indicating the Proplet received a start command and successfully executed the workload, for example:
 
 ```text
 INFO Received start command app_name=hello.wasm
+INFO Decrypted workload, launching module…
 INFO Finished running app id=<TASK_ID>
 ```
 
-#### Failed Output (Key Mismatch)
+(Exact wording depends on your logging configuration, but you should see a “decryption succeeded” or equivalent info path.)
+
+#### Failed Decryption (Key Mismatch or Tampering)
+
+If the key is incorrect or the ciphertext is corrupted, you should see an authentication failure. For example:
 
 ```text
 ERROR Failed to decrypt workload error="cipher: message authentication failed"
 ```
+
+This confirms that:
+
+* The Proplet is actually attempting to decrypt the payload.
+* AES-GCM’s integrity checks are being enforced.
+* Incorrect keys or tampered payloads are rejected and never executed.
+
+### Step 3 (Optional): Inspect MQTT Traffic
+
+If you subscribe directly to the MQTT topics (using `mosquitto_sub` or similar), you should see:
+
+* Base64-like or binary blobs representing ciphertext.
+* No recognizable Wasm headers or human-readable WebAssembly text.
+* If you capture a message and attempt to interpret its contents, it should appear random and not contain readable code.
+
+This provides a final sanity check that **only encrypted workloads ever leave the control plane**.
