@@ -61,8 +61,8 @@ For production deployments, environment variables are strongly recommended to av
 
 Perfect, this is the **right structural choice**. Below is a **fully merged, non-repetitive rewrite of Section 2**, where:
 
-* The **user-facing workflows** from your original Section 2
-* And the **secure execution mechanics** from Section 5
+- The **user-facing workflows** from your original Section 2
+- And the **secure execution mechanics** from Section 5
 
 are combined into **one clean, non-duplicative section**.
 
