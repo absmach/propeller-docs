@@ -24,5 +24,7 @@ nav:
   - Proplet: proplet.md
   - Embedded Proplet: embedded-proplet.md
   - Proxy: proxy.md
+  - Monitoring: monitoring.md
+  - Reference: reference.md
   - Developer's Guide: developer-guide.md
   - Zephyr: zephyr.md
