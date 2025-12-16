@@ -16,6 +16,12 @@ markdown_extensions:
   - toc:
       permalink: "#"
 
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
 nav:
   - Overview: index.md
   - Getting Started: getting-started.md

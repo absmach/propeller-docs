@@ -8,29 +8,18 @@ Both the Go and Rust implementations of proplet include monitoring capabilities 
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                         Manager                               │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │  Aggregates metrics from all proplets                  │  │
-│  │  Stores historical data                                │  │
-│  │  Provides API for metrics queries                      │  │
-│  └────────────────────────────────────────────────────────┘  │
-└───────────────────────────┬──────────────────────────────────┘
-                            │ MQTT
-                            │ m/{domain}/c/{channel}/metrics/*
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-        ▼                   ▼                   ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Proplet    │    │   Proplet    │    │   Proplet    │
-│   (Go)       │    │   (Rust)     │    │   (Go)       │
-│              │    │              │    │              │
-│ Monitors:    │    │ Monitors:    │    │ Monitors:    │
-│ - Task 1     │    │ - Task 3     │    │ - Task 5     │
-│ - Task 2     │    │ - Task 4     │    │              │
-└──────────────┘    └──────────────┘    └──────────────┘
+```mermaid
+graph TD
+    Manager["<b>Manager</b><br/><br/>• Aggregates metrics from all proplets<br/>• Stores historical data<br/>• Provides API for metrics queries"]
+
+    Manager -->|"MQTT<br/>m/{domain}/c/{channel}/metrics/*"| Proplet1
+    Manager -->|"MQTT<br/>m/{domain}/c/{channel}/metrics/*"| Proplet2
+    Manager -->|"MQTT<br/>m/{domain}/c/{channel}/metrics/*"| Proplet3
+
+    Proplet1["<b>Proplet</b><br/>(Go)<br/><br/>Monitors:<br/>• Task 1<br/>• Task 2"]
+    Proplet2["<b>Proplet</b><br/>(Rust)<br/><br/>Monitors:<br/>• Task 3<br/>• Task 4"]
+    Proplet3["<b>Proplet</b><br/>(Go)<br/><br/>Monitors:<br/>• Task 5"]
+
 ```
 
 ## Features
@@ -405,13 +394,13 @@ Metrics are published to MQTT topics for real-time monitoring and integration wi
 
 **Go Proplet:**
 
-```
+```txt
 m/{domain_id}/c/{channel_id}/control/proplet/task_metrics
 ```
 
 **Rust Proplet:**
 
-```
+```txt
 m/{domain_id}/c/{channel_id}/metrics/proplet
 ```
 
@@ -594,26 +583,26 @@ Memory overhead scales with history size:
 
 1. Check if monitoring is enabled globally:
 
-```bash
-echo $PROPLET_ENABLE_MONITORING
-```
+   ```bash
+   echo $PROPLET_ENABLE_MONITORING
+   ```
 
 2. Verify MQTT connection:
 
-```bash
-mosquitto_sub -h localhost -t "m/+/c/+/metrics/#" -v
-```
+   ```bash
+   mosquitto_sub -h localhost -t "m/+/c/+/metrics/#" -v
+   ```
 
 3. Check task monitoring profile in task request:
 
-```json
-{
-  "monitoringProfile": {
-    "enabled": true,
-    "export_to_mqtt": true
-  }
-}
-```
+   ```json
+   {
+     "monitoringProfile": {
+       "enabled": true,
+       "export_to_mqtt": true
+     }
+   }
+   ```
 
 4. Check proplet logs for monitoring errors
 
@@ -644,9 +633,9 @@ Some metrics have limited support on Windows. Consider:
 
 1. Verify MQTT broker is running:
 
-```bash
-docker ps | grep mosquitto
-```
+   ```bash
+   docker ps | grep mosquitto
+   ```
 
 2. Check proplet MQTT configuration
 3. Ensure `export_to_mqtt: true` in monitoring profile
@@ -733,51 +722,51 @@ CPU usage is measured as a percentage over the collection interval. For accurate
 
 1. Start the Propeller infrastructure:
 
-```bash
-docker compose up -d
-```
+   ```bash
+   docker compose up -d
+   ```
 
 2. Start proplet with monitoring enabled:
 
-**Go Proplet:**
+   **Go Proplet:**
 
-```bash
-export PROPLET_ENABLE_MONITORING=true
-export PROPLET_METRICS_INTERVAL=10
-./build/proplet
-```
+   ```bash
+   export PROPLET_ENABLE_MONITORING=true
+   export PROPLET_METRICS_INTERVAL=10
+   ./build/proplet
+   ```
 
-**Rust Proplet:**
+   **Rust Proplet:**
 
-```bash
-export PROPLET_ENABLE_MONITORING=true
-export PROPLET_METRICS_INTERVAL=5
-export PROPLET_DOMAIN_ID=domain-123
-export PROPLET_CHANNEL_ID=channel-456
-export PROPLET_CLIENT_ID=proplet-rs-001
-export PROPLET_CLIENT_KEY=secret
-cargo run --release
-```
+   ```bash
+   export PROPLET_ENABLE_MONITORING=true
+   export PROPLET_METRICS_INTERVAL=5
+   export PROPLET_DOMAIN_ID=domain-123
+   export PROPLET_CHANNEL_ID=channel-456
+   export PROPLET_CLIENT_ID=proplet-rs-001
+   export PROPLET_CLIENT_KEY=secret
+   cargo run --release
+   ```
 
 3. Subscribe to metrics:
 
-```bash
-mosquitto_sub -h localhost -t "m/+/c/+/metrics/#" -v
-```
+   ```bash
+   mosquitto_sub -h localhost -t "m/+/c/+/metrics/#" -v
+   ```
 
 4. Submit a task with monitoring:
 
-```json
-{
-  "id": "test-task",
-  "functionName": "compute",
-  "imageURL": "registry.example.com/compute:v1",
-  "monitoringProfile": {
-    "enabled": true,
-    "interval": 5,
-    "export_to_mqtt": true
-  }
-}
-```
+   ```json
+   {
+     "id": "test-task",
+     "functionName": "compute",
+     "imageURL": "registry.example.com/compute:v1",
+     "monitoringProfile": {
+       "enabled": true,
+       "interval": 5,
+       "export_to_mqtt": true
+     }
+   }
+   ```
 
 5. Observe metrics in real-time

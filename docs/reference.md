@@ -6,185 +6,23 @@ This document describes the complete process monitoring implementation for both 
 
 Comprehensive OS-level process monitoring has been implemented for:
 
-- **Go Proplet** - Using `gopsutil/v3` for cross-platform metrics
-- **Rust Proplet** - Using `sysinfo` crate for cross-platform metrics
-- **Manager** - Ready for integration (metrics aggregation and visualization)
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                         Manager                               │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │  Aggregates metrics from all proplets                  │  │
-│  │  Stores historical data                                │  │
-│  │  Provides API for metrics queries                      │  │
-│  └────────────────────────────────────────────────────────┘  │
-└───────────────────────────┬──────────────────────────────────┘
-                            │ MQTT
-                            │ m/{domain}/c/{channel}/metrics/*
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-        ▼                   ▼                   ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Proplet    │    │   Proplet    │    │   Proplet    │
-│   (Go)       │    │   (Rust)     │    │   (Go)       │
-│              │    │              │    │              │
-│ Monitors:    │    │ Monitors:    │    │ Monitors:    │
-│ - Task 1     │    │ - Task 3     │    │ - Task 5     │
-│ - Task 2     │    │ - Task 4     │    │              │
-└──────────────┘    └──────────────┘    └──────────────┘
-```
-
-## Implementation Details
-
-### Go Proplet
-
-#### Files Added
-
-- `proplet/monitoring/monitor.go` - Core process monitoring using gopsutil
-- `proplet/monitoring/manager.go` - Monitor lifecycle management
-- `proplet/monitoring/profiles.go` - Pre-configured monitoring profiles
-- `proplet/monitoring/README.md` - Documentation
-
-#### Key Components
-
-**ProcessMonitor**
-
-```go
-type ProcessMonitor struct {
-    pid              int32
-    profile          MonitoringProfile
-    proc             *process.Process
-    metricsHistory   []ProcessMetrics
-    startTime        time.Time
-}
-```
-
-**MonitoringProfile**
-
-```go
-type MonitoringProfile struct {
-    Enabled                bool
-    Interval               time.Duration
-    CollectCPU             bool
-    CollectMemory          bool
-    CollectDiskIO          bool
-    CollectNetworkIO       bool
-    CollectThreads         bool
-    CollectFileDescriptors bool
-    ExportToMQTT           bool
-    RetainHistory          bool
-    HistorySize            int
-}
-```
-
-**MonitorManager**
-
-- Manages multiple task monitors
-- Handles metric collection loops
-- Exports metrics via callback function
-- Thread-safe operations
-
-#### Integration Points
-
-1. **Task Structure** (`task/task.go`)
-   - Added `MonitoringProfile *monitoring.MonitoringProfile`
-
-2. **Runtime Interface** (`proplet/runtime.go`)
-   - Added `GetPID(ctx context.Context, id string) (int32, error)`
-
-3. **Host Runtime** (`proplet/runtimes/host.go`)
-   - Tracks process PIDs
-   - Implements GetPID for external processes
-
-4. **Wazero Runtime** (`proplet/runtimes/wazero.go`)
-   - Returns proplet's own PID (in-process execution)
-
-5. **Proplet Service** (`proplet/service.go`)
-   - Added `monitorManager *monitoring.MonitorManager`
-   - Task-specific metrics topic
-
-#### Dependencies Added
-
-```
-go get github.com/shirou/gopsutil/v3@latest
-```
-
-### Rust Proplet
-
-#### Files Added
-
-- `proplet-rs/src/monitoring/mod.rs` - Module interface
-- `proplet-rs/src/monitoring/metrics.rs` - Metrics data structures
-- `proplet-rs/src/monitoring/profiles.rs` - Pre-configured profiles
-- `proplet-rs/src/monitoring/system.rs` - Cross-platform system monitor
-- `proplet-rs/MONITORING.md` - Documentation
-
-#### Key Components
-
-**ProcessMetrics**
-
-```rust
-pub struct ProcessMetrics {
-    pub cpu_usage_percent: f64,
-    pub memory_usage_bytes: u64,
-    pub memory_usage_percent: f64,
-    pub disk_read_bytes: u64,
-    pub disk_write_bytes: u64,
-    pub network_rx_bytes: u64,
-    pub network_tx_bytes: u64,
-    pub uptime_seconds: u64,
-    pub thread_count: u32,
-    pub file_descriptor_count: u32,
-    pub timestamp: SystemTime,
-}
-```
-
-**SystemMonitor**
-
-- Cross-platform process metrics using `sysinfo` crate
-- Automatic metric collection loops
-- History retention and aggregation
-- MQTT export integration
-
-#### Integration Points
-
-1. **Types** (`proplet-rs/src/types.rs`)
-   - Added `MonitoringProfile` struct
-   - Added `MetricsMessage` for MQTT export
-
-2. **Service** (`proplet-rs/src/service.rs`)
-   - Integrated `ProcessMonitor` in service
-   - Automatic profile selection (standard vs daemon)
-   - Metrics export via MQTT
-
-3. **Runtime Interface** - PIDs tracked internally
-
-4. **Config** (`proplet-rs/src/config.rs`)
-   - `PROPLET_ENABLE_MONITORING`
-   - `PROPLET_METRICS_INTERVAL`
-
-#### Dependencies Added
-
-```toml
-sysinfo = "0.32"
-```
+- Go Proplet - Using `gopsutil/v3` for cross-platform metrics
+- Rust Proplet - Using `sysinfo` crate for cross-platform metrics
+- Manager - Ready for integration (metrics aggregation and visualization)
 
 ## Monitoring Profiles
 
 Both implementations provide identical profiles:
 
-| Profile                 | Interval | Metrics                            | Export | History | Use Case            |
-| ----------------------- | -------- | ---------------------------------- | ------ | ------- | ------------------- |
-| **Standard**            | 10s      | All                                | Yes    | 100     | General purpose     |
-| **Minimal**             | 60s      | CPU, Memory                        | No     | 0       | Lightweight         |
-| **Intensive**           | 1s       | All                                | Yes    | 1000    | Debug/analysis      |
-| **Batch Processing**    | 30s      | CPU, Memory, Disk                  | Yes    | 200     | Data processing     |
-| **Real-time API**       | 5s       | CPU, Memory, Network, Threads, FDs | Yes    | 500     | HTTP/API servers    |
-| **Long-running Daemon** | 120s     | All                                | Yes    | 500     | Background services |
-| **Disabled**            | -        | None                               | No     | 0       | No monitoring       |
+| Profile             | Interval | Metrics                            | Export | History | Use Case            |
+| ------------------- | -------- | ---------------------------------- | ------ | ------- | ------------------- |
+| Standard            | 10s      | All                                | Yes    | 100     | General purpose     |
+| Minimal             | 60s      | CPU, Memory                        | No     | 0       | Lightweight         |
+| Intensive           | 1s       | All                                | Yes    | 1000    | Debug/analysis      |
+| Batch Processing    | 30s      | CPU, Memory, Disk                  | Yes    | 200     | Data processing     |
+| Real-time API       | 5s       | CPU, Memory, Network, Threads, FDs | Yes    | 500     | HTTP/API servers    |
+| Long-running Daemon | 120s     | All                                | Yes    | 500     | Background services |
+| Disabled            | -        | None                               | No     | 0       | No monitoring       |
 
 ## Metrics Collected
 
@@ -208,7 +46,7 @@ Both implementations provide identical profiles:
 
 ### Proplet-Level Metrics (Go)
 
-```
+```txt
 m/{domain_id}/c/{channel_id}/control/proplet/metrics
 ```
 
@@ -216,7 +54,7 @@ Publishes overall proplet health metrics.
 
 ### Task-Level Metrics
 
-```
+```txt
 m/{domain_id}/c/{channel_id}/control/proplet/task_metrics   # Go
 m/{domain_id}/c/{channel_id}/metrics/proplet                 # Rust
 ```
@@ -358,12 +196,6 @@ Create dashboards with:
 - Disk/Network I/O rates
 - Per-task resource usage
 
-### ELK Stack
-
-```
-MQTT → Logstash → Elasticsearch → Kibana
-```
-
 ### Custom Monitoring
 
 Subscribe to MQTT topics:
@@ -400,25 +232,28 @@ mosquitto_sub -h localhost -t "m/+/c/+/*/metrics" -v
 
 ## Future Enhancements
 
-1. **Manager Integration**
+1. Manager Integration
+
    - Aggregate metrics from all proplets
    - Historical metrics storage
    - Metrics API endpoints
    - Alerting on anomalies
 
-2. **Advanced Metrics**
+2. Advanced Metrics
+
    - GPU usage (if available)
    - Container-specific metrics (cgroups)
    - Custom application metrics
    - Distributed tracing correlation
 
-3. **Optimization**
+3. Optimization
+
    - Adaptive sampling rates
    - Metric compression
    - Batched MQTT publishing
    - Metrics rollups/aggregation
 
-4. **Visualization**
+4. Visualization
    - Built-in dashboards
    - Real-time metric streaming
    - Historical trend analysis
@@ -426,8 +261,8 @@ mosquitto_sub -h localhost -t "m/+/c/+/*/metrics" -v
 
 ## References
 
-- **Go Implementation**: `proplet/monitoring/`
-- **Rust Implementation**: `proplet-rs/src/monitoring/`
-- **Examples**: `examples/monitoring-example.md`
-- **Rust Docs**: `proplet-rs/MONITORING.md`
-- **Go Docs**: `proplet/monitoring/README.md`
+- Go Implementation: `proplet/monitoring/`
+- Rust Implementation: `proplet-rs/src/monitoring/`
+- Examples: `examples/monitoring-example.md`
+- Rust Docs: `proplet-rs/MONITORING.md`
+- Go Docs: `proplet/monitoring/README.md`
