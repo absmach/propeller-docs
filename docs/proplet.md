@@ -280,3 +280,26 @@ The Registry Proxy publishes Wasm binary chunks to this topic for the Proplet to
       "error": "{ErrorMessage}"
     }
     ```
+
+## CVM Setup
+
+The CVM setup is located in the `hal/ubuntu/` directory with a QEMU-based build script that follows the same pattern as other confidential computing projects.
+
+### Complete CVM Setup Guide
+
+For complete CVM setup instructions, see **[hal/ubuntu/README.md](https://github.com/absmach/propeller/tree/cloud-init/hal/ubuntu/README.md)**.
+
+### Quick Start
+
+```bash
+# Set configuration
+export PROPLET_DOMAIN_ID="your-domain-id"
+export PROPLET_CLIENT_ID="your-client-id"
+export PROPLET_CLIENT_KEY="your-client-key"
+export PROPLET_CHANNEL_ID="your-channel-id"
+export PROPLET_MQTT_ADDRESS="tcp://mqtt.example.com:1883"
+
+# Build and run CVM
+cd hal/ubuntu
+sudo ./qemu.sh
+```
