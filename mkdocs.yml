@@ -9,10 +9,25 @@ theme:
   name: material
   icon:
     repo: fontawesome/brands/github
+  features:
+    - content.code.copy
+    - content.code.annotate
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
   - attr_list
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       permalink: "#"
 
