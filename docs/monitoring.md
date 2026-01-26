@@ -10,6 +10,8 @@ Both Go and Rust proplets include built-in monitoring using `gopsutil` for Go an
 
 Each proplet monitors its running tasks independently and reports metrics to the manager via MQTT. The manager aggregates metrics from all proplets, stores historical data, and exposes REST API endpoints for querying.
 
+![Architecture](images/monitoring.png)
+
 ### Data Flow
 
 1. Proplet spawns a monitoring thread for each task
