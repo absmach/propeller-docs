@@ -2,46 +2,52 @@
 
 ## Overview
 
-Propeller includes comprehensive OS-level process monitoring for workloads running on proplets. The monitoring system is cross-platform, supporting Linux, macOS, and Windows, and provides real-time visibility into resource utilization for distributed tasks.
+Propeller tracks OS-level metrics for every WebAssembly task running on proplets. The system collects CPU usage, memory consumption, disk I/O, thread counts, and more with minimal performance overhead.
 
-Both the Go and Rust implementations of proplet include monitoring capabilities using battle-tested libraries (`gopsutil` for Go, `sysinfo` for Rust) to collect process-level metrics with minimal overhead.
+Both Go and Rust proplets include built-in monitoring using `gopsutil` for Go and `sysinfo` for Rust. These libraries provide cross-platform compatibility across Linux, macOS, and Windows environments.
 
 ## Architecture
 
-```mermaid
-graph TD
-    Manager["<b>Manager</b><br/><br/>• Aggregates metrics from all proplets<br/>• Stores historical data<br/>• Provides API for metrics queries"]
+Each proplet monitors its running tasks independently and reports metrics to the manager via MQTT. The manager aggregates metrics from all proplets, stores historical data, and exposes REST API endpoints for querying.
 
-    Manager -->|"MQTT<br/>m/{domain}/c/{channel}/metrics/*"| Proplet1
-    Manager -->|"MQTT<br/>m/{domain}/c/{channel}/metrics/*"| Proplet2
-    Manager -->|"MQTT<br/>m/{domain}/c/{channel}/metrics/*"| Proplet3
+### Data Flow
 
-    Proplet1["<b>Proplet</b><br/>(Go)<br/><br/>Monitors:<br/>• Task 1<br/>• Task 2"]
-    Proplet2["<b>Proplet</b><br/>(Rust)<br/><br/>Monitors:<br/>• Task 3<br/>• Task 4"]
-    Proplet3["<b>Proplet</b><br/>(Go)<br/><br/>Monitors:<br/>• Task 5"]
+1. Proplet spawns a monitoring thread for each task
+2. Thread collects process metrics at configured intervals (1-120 seconds)
+3. Metrics are published to MQTT topic `m/{domain}/c/{channel}/metrics/proplet`
+4. Manager receives and stores metrics in memory
+5. API clients query metrics via HTTP endpoints
 
-```
+### Component Responsibilities
 
-## Features
+- **Proplet**: Collects task-level process metrics using system APIs
+- **Manager**: Aggregates, stores, and serves metrics via REST API
+- **MQTT Broker**: Routes metrics between proplets and manager
 
-### Metrics Collection
+## Metrics
 
-The monitoring system collects the following OS-level metrics:
+The system tracks the following process-level metrics:
 
-- **CPU Usage**: Percentage of CPU time consumed by the process
-- **Memory Usage**: Bytes and percentage of memory used
-- **Disk I/O**: Total bytes read from and written to disk
-- **Network I/O**: Total bytes received and transmitted over the network
-- **Thread Count**: Number of OS threads in the process
-- **File Descriptors**: Number of open file descriptors (Linux/macOS only)
-- **Uptime**: Process runtime in seconds
-- **Timestamp**: ISO 8601 timestamp for each metric sample
+| Metric           | Description                                | Unit             |
+| ---------------- | ------------------------------------------ | ---------------- |
+| CPU Usage        | Process CPU time as percentage of one core | Percent (0-100+) |
+| Memory Usage     | Process memory consumption                 | Bytes            |
+| Memory Percent   | Process memory as percentage of total RAM  | Percent (0-100)  |
+| Disk Read        | Cumulative bytes read from disk            | Bytes            |
+| Disk Write       | Cumulative bytes written to disk           | Bytes            |
+| Uptime           | Process runtime since start                | Seconds          |
+| Thread Count     | Number of OS threads                       | Integer          |
+| File Descriptors | Open file handles (Linux/macOS)            | Integer          |
 
-### Monitoring Profiles
+Each metric sample includes an ISO 8601 timestamp for time-series analysis.
 
-Propeller provides pre-configured monitoring profiles optimized for different workload types. These profiles automatically adjust collection intervals, enabled metrics, and history retention to match the expected behavior of your tasks.
+## Monitoring Profiles
 
-#### Standard Profile
+Profiles define which metrics to collect, how often, and how much history to retain.
+
+### Standard
+
+Balanced monitoring for typical tasks.
 
 ```json
 {
@@ -50,7 +56,6 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
   "collect_cpu": true,
   "collect_memory": true,
   "collect_disk_io": true,
-  "collect_network_io": true,
   "collect_threads": true,
   "collect_file_descriptors": true,
   "export_to_mqtt": true,
@@ -59,13 +64,14 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
 }
 ```
 
-- **Use Case**: General-purpose monitoring
 - **Interval**: 10 seconds
-- **Metrics**: All enabled
-- **History**: Last 100 samples (~16 minutes)
-- **Best for**: Short to medium-duration tasks
+- **Metrics**: All available
+- **History**: 100 samples (~16 minutes)
+- **Best for**: Short to medium tasks, general workloads
 
-#### Minimal Profile
+### Minimal
+
+Lightweight monitoring for resource-constrained devices.
 
 ```json
 {
@@ -74,7 +80,6 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
   "collect_cpu": true,
   "collect_memory": true,
   "collect_disk_io": false,
-  "collect_network_io": false,
   "collect_threads": false,
   "collect_file_descriptors": false,
   "export_to_mqtt": false,
@@ -83,13 +88,14 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
 }
 ```
 
-- **Use Case**: Minimal overhead monitoring
 - **Interval**: 60 seconds
-- **Metrics**: CPU and Memory only
+- **Metrics**: CPU and memory only
 - **History**: None
-- **Best for**: Resource-constrained environments, lightweight tasks
+- **Best for**: IoT devices, edge nodes, battery-powered systems
 
-#### Intensive Profile
+### Intensive
+
+High-frequency monitoring for debugging and profiling.
 
 ```json
 {
@@ -98,7 +104,6 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
   "collect_cpu": true,
   "collect_memory": true,
   "collect_disk_io": true,
-  "collect_network_io": true,
   "collect_threads": true,
   "collect_file_descriptors": true,
   "export_to_mqtt": true,
@@ -107,13 +112,14 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
 }
 ```
 
-- **Use Case**: Debug and performance analysis
 - **Interval**: 1 second
-- **Metrics**: All enabled
-- **History**: Last 1000 samples (~16 minutes)
-- **Best for**: Development, troubleshooting, profiling
+- **Metrics**: All available
+- **History**: 1000 samples (~16 minutes)
+- **Best for**: Performance troubleshooting, memory leak detection, development
 
-#### Batch Processing Profile
+### Batch processing
+
+Optimized for long-running data processing tasks.
 
 ```json
 {
@@ -122,7 +128,6 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
   "collect_cpu": true,
   "collect_memory": true,
   "collect_disk_io": true,
-  "collect_network_io": false,
   "collect_threads": false,
   "collect_file_descriptors": false,
   "export_to_mqtt": true,
@@ -131,37 +136,14 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
 }
 ```
 
-- **Use Case**: Data processing workloads
 - **Interval**: 30 seconds
-- **Metrics**: CPU, Memory, Disk I/O
-- **History**: Last 200 samples (~100 minutes)
-- **Best for**: ETL jobs, batch processors, data transformation
+- **Metrics**: CPU, memory, disk I/O
+- **History**: 200 samples (~100 minutes)
+- **Best for**: ETL pipelines, batch jobs, data transformations
 
-#### Real-time API Profile
+### Long-running daemon
 
-```json
-{
-  "enabled": true,
-  "interval": 5,
-  "collect_cpu": true,
-  "collect_memory": true,
-  "collect_disk_io": false,
-  "collect_network_io": true,
-  "collect_threads": true,
-  "collect_file_descriptors": true,
-  "export_to_mqtt": true,
-  "retain_history": true,
-  "history_size": 500
-}
-```
-
-- **Use Case**: HTTP/API servers and real-time services
-- **Interval**: 5 seconds
-- **Metrics**: CPU, Memory, Network, Threads, File Descriptors
-- **History**: Last 500 samples (~41 minutes)
-- **Best for**: Web servers, API gateways, real-time services
-
-#### Long-running Daemon Profile
+Low-frequency monitoring for background services.
 
 ```json
 {
@@ -170,7 +152,6 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
   "collect_cpu": true,
   "collect_memory": true,
   "collect_disk_io": true,
-  "collect_network_io": true,
   "collect_threads": true,
   "collect_file_descriptors": true,
   "export_to_mqtt": true,
@@ -179,50 +160,51 @@ Propeller provides pre-configured monitoring profiles optimized for different wo
 }
 ```
 
-- **Use Case**: Background services and daemons
 - **Interval**: 120 seconds
-- **Metrics**: All enabled
-- **History**: Last 500 samples (~16 hours)
-- **Best for**: Long-running background processes, daemon tasks
+- **Metrics**: All available
+- **History**: 500 samples (~16 hours)
+- **Best for**: Background daemons, always-on services, message processors
+
+### Automatic selection
+
+If no profile is specified, Propeller automatically selects an appropriate profile:
+
+- **Non-daemon tasks**: Standard profile (10s intervals)
+- **Daemon tasks**: Long-running daemon profile (120s intervals)
 
 ## Configuration
 
-### Global Configuration
+### Global Settings
 
-Enable or disable monitoring globally using environment variables:
+Control monitoring behavior using environment variables.
 
-**Go Proplet:**
-
-```bash
-export PROPLET_ENABLE_MONITORING=true  # default: true
-export PROPLET_METRICS_INTERVAL=10     # default: 10 seconds
-```
-
-**Rust Proplet:**
+**Proplet environment variables:**
 
 ```bash
-export PROPLET_ENABLE_MONITORING=true  # default: true
-export PROPLET_METRICS_INTERVAL=10     # default: 10 seconds
+export PROPLET_ENABLE_MONITORING=true  # Enable/disable monitoring (default: true)
 ```
+
+This setting applies to all tasks unless overridden by per-task configuration.
 
 ### Per-Task Configuration
 
-Specify a monitoring profile in your task request:
+Specify a monitoring profile in your task payload to override global settings.
+
+**Example task with custom monitoring:**
 
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440001",
-  "functionName": "compute",
-  "imageURL": "registry.example.com/compute:v1",
-  "params": [10, 20],
+  "name": "compute",
+  "image_url": "docker.io/myorg/compute:v1",
+  "inputs": [10, 20],
   "daemon": false,
-  "monitoringProfile": {
+  "monitoring_profile": {
     "enabled": true,
     "interval": 5,
     "collect_cpu": true,
     "collect_memory": true,
     "collect_disk_io": true,
-    "collect_network_io": true,
     "collect_threads": true,
     "collect_file_descriptors": true,
     "export_to_mqtt": true,
@@ -232,177 +214,117 @@ Specify a monitoring profile in your task request:
 }
 ```
 
-### Automatic Profile Selection
+If no profile is specified, Propeller uses automatic selection based on the task type.
 
-If no monitoring profile is specified, Propeller automatically selects an appropriate profile based on the task type:
+## Examples
 
-- **Non-daemon tasks**: Standard Profile (10-second intervals)
-- **Daemon tasks**: Long-running Daemon Profile (120-second intervals)
+### Standard Monitoring
 
-## Usage Examples
-
-### Example 1: Standard Monitoring
-
-Submit a task with standard monitoring (auto-selected for non-daemon tasks):
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440001",
-  "functionName": "compute",
-  "imageURL": "registry.example.com/compute:v1",
-  "params": [10, 20],
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "compute",
+  "image_url": "docker.io/myorg/compute:v1",
+  "inputs": [10, 20],
   "daemon": false
-}
+}'
 ```
 
-The task automatically uses the **Standard Profile** with metrics collected every 10 seconds.
+The task uses the standard profile with 10-second metric intervals.
 
-### Example 2: Long-running Daemon
+### High-Frequency Debugging
 
-Submit a long-running daemon task:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440002",
-  "functionName": "process_stream",
-  "imageURL": "registry.example.com/stream-processor:v1",
-  "daemon": true
-}
-```
-
-The task automatically uses the **Long-running Daemon Profile** with metrics collected every 120 seconds.
-
-### Example 3: High-Frequency Debug Monitoring
-
-For debugging with high-frequency monitoring:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440003",
-  "functionName": "debug_task",
-  "wasmFile": "<base64-encoded-wasm>",
-  "params": [],
-  "monitoringProfile": {
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "debug_task",
+  "image_url": "docker.io/myorg/app:debug",
+  "inputs": [],
+  "monitoring_profile": {
     "enabled": true,
     "interval": 1,
     "collect_cpu": true,
     "collect_memory": true,
     "collect_disk_io": true,
-    "collect_network_io": true,
     "collect_threads": true,
     "collect_file_descriptors": true,
     "export_to_mqtt": true,
     "retain_history": true,
     "history_size": 1000
   }
-}
+}'
 ```
 
-Collects metrics every second with 1000-sample history (~16 minutes of data).
+Metrics are collected every second with 1000-sample history retention.
 
-### Example 4: Minimal Overhead
+### Minimal Overhead
 
-For resource-constrained environments:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440004",
-  "functionName": "lightweight_task",
-  "imageURL": "registry.example.com/light:v1",
-  "monitoringProfile": {
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "lightweight_task",
+  "image_url": "docker.io/myorg/light:v1",
+  "monitoring_profile": {
     "enabled": true,
     "interval": 60,
     "collect_cpu": true,
     "collect_memory": true,
     "collect_disk_io": false,
-    "collect_network_io": false,
     "collect_threads": false,
     "collect_file_descriptors": false,
     "export_to_mqtt": false,
     "retain_history": false,
     "history_size": 0
   }
-}
+}'
 ```
 
-Collects only CPU and memory every 60 seconds with no MQTT export or history retention.
+Only CPU and memory are collected every 60 seconds with no MQTT export.
 
-### Example 5: Batch Processing
+### Batch Processing
 
-For data processing tasks:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440005",
-  "functionName": "process_batch",
-  "imageURL": "registry.example.com/batch-processor:v1",
-  "params": [1000],
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "process_batch",
+  "image_url": "docker.io/myorg/batch:v1",
+  "inputs": [1000],
   "env": {
     "BATCH_SIZE": "1000",
     "WORKERS": "4"
   },
-  "monitoringProfile": {
+  "monitoring_profile": {
     "enabled": true,
     "interval": 30,
     "collect_cpu": true,
     "collect_memory": true,
     "collect_disk_io": true,
-    "collect_network_io": false,
     "collect_threads": false,
     "collect_file_descriptors": false,
     "export_to_mqtt": true,
     "retain_history": true,
     "history_size": 200
   }
-}
+}'
 ```
 
-### Example 6: Real-time API Server
-
-For HTTP/API server workloads:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440006",
-  "functionName": "serve_http",
-  "imageURL": "registry.example.com/api-server:v1",
-  "daemon": true,
-  "env": {
-    "PORT": "8080"
-  },
-  "monitoringProfile": {
-    "enabled": true,
-    "interval": 5,
-    "collect_cpu": true,
-    "collect_memory": true,
-    "collect_disk_io": false,
-    "collect_network_io": true,
-    "collect_threads": true,
-    "collect_file_descriptors": true,
-    "export_to_mqtt": true,
-    "retain_history": true,
-    "history_size": 500
-  }
-}
-```
+Metrics focus on CPU, memory, and disk I/O with 30-second intervals.
 
 ## Metrics Export
 
 ### MQTT Topics
 
-Metrics are published to MQTT topics for real-time monitoring and integration with external systems.
+**Topic pattern:**
 
-**Go Proplet:**
-
-```txt
-m/{domain_id}/c/{channel_id}/control/proplet/task_metrics
-```
-
-**Rust Proplet:**
-
-```txt
+```bash
 m/{domain_id}/c/{channel_id}/metrics/proplet
 ```
+
+All proplets publish to this topic regardless of implementation (Go or Rust).
 
 ### Message Format
 
@@ -411,17 +333,14 @@ m/{domain_id}/c/{channel_id}/metrics/proplet
   "task_id": "550e8400-e29b-41d4-a716-446655440001",
   "proplet_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
   "metrics": {
-    "cpu_usage_percent": 23.5,
-    "memory_usage_bytes": 52428800,
-    "memory_usage_percent": 1.2,
+    "cpu_percent": 23.5,
+    "memory_bytes": 52428800,
+    "memory_percent": 1.2,
     "disk_read_bytes": 1048576,
     "disk_write_bytes": 524288,
-    "network_rx_bytes": 2048,
-    "network_tx_bytes": 4096,
     "uptime_seconds": 45,
     "thread_count": 2,
-    "file_descriptor_count": 8,
-    "timestamp": "2025-01-15T10:35:22.123456Z"
+    "file_descriptor_count": 8
   },
   "aggregated": {
     "avg_cpu_usage": 38.2,
@@ -430,140 +349,127 @@ m/{domain_id}/c/{channel_id}/metrics/proplet
     "max_memory_usage": 71303168,
     "total_disk_read": 2097152,
     "total_disk_write": 1048576,
-    "total_network_rx": 12288,
-    "total_network_tx": 24576,
     "sample_count": 24
-  }
+  },
+  "timestamp": "2025-01-15T10:35:22.123456Z"
 }
 ```
 
+The `aggregated` field is only present when `retain_history: true` in the monitoring profile.
+
 ### Subscribing to Metrics
 
-To receive metrics in real-time, subscribe to the metrics topic:
+**Subscribe to specific domain/channel:**
 
 ```bash
-mosquitto_sub -h localhost -t "m/domain-123/c/channel-456/metrics/proplet" -v
+mosquitto_sub -h localhost -p 1883 \
+  -t "m/domain-123/c/channel-456/metrics/proplet" -v
 ```
 
-Or subscribe to all metrics:
+**Subscribe to all metrics:**
 
 ```bash
-mosquitto_sub -h localhost -t "m/+/c/+/*/metrics" -v
+mosquitto_sub -h localhost -p 1883 \
+  -t "m/+/c/+/metrics/#" -v
 ```
+
+### API Endpoints
+
+**Get task metrics:**
+
+```bash
+curl "http://localhost:7070/tasks/{task_id}/metrics?offset=0&limit=100"
+```
+
+**Get proplet metrics:**
+
+```bash
+curl "http://localhost:7070/proplets/{proplet_id}/metrics?offset=0&limit=100"
+```
+
+Response includes paginated metrics with aggregated statistics.
 
 ## Platform Support
 
 ### Linux
 
-Full support for all metrics:
+| Metric           | Method               |
+| ---------------- | -------------------- |
+| CPU              | `/proc/[pid]/stat`   |
+| Memory           | `/proc/[pid]/status` |
+| Disk I/O         | `/proc/[pid]/io`     |
+| Threads          | `/proc/[pid]/task`   |
+| File descriptors | `/proc/[pid]/fd`     |
 
-- CPU usage via `/proc/[pid]/stat`
-- Memory usage via `/proc/[pid]/status`
-- Disk I/O via `/proc/[pid]/io`
-- Network I/O via `/proc/[pid]/net/dev`
-- Thread count via `/proc/[pid]/task`
-- File descriptors via `/proc/[pid]/fd`
-
-Example output:
-
-```json
-{
-  "cpu_usage_percent": 25.3,
-  "memory_usage_bytes": 67108864,
-  "disk_read_bytes": 4194304,
-  "disk_write_bytes": 2097152,
-  "network_rx_bytes": 8192,
-  "network_tx_bytes": 16384,
-  "thread_count": 4,
-  "file_descriptor_count": 15
-}
-```
+All metrics are available with high accuracy.
 
 ### macOS
 
-Full support for all metrics:
+Full metric support using system APIs.
 
-- CPU usage via system calls
-- Memory usage via system APIs
-- Disk I/O via system counters
-- Network I/O via system APIs
-- Thread count via system APIs
-- File descriptors via `lsof` or system calls
+| Metric           | Method                 |
+| ---------------- | ---------------------- |
+| CPU              | System calls           |
+| Memory           | System APIs            |
+| Disk I/O         | System counters        |
+| Threads          | System APIs            |
+| File descriptors | `lsof` or system calls |
 
-Example output:
-
-```json
-{
-  "cpu_usage_percent": 22.1,
-  "memory_usage_bytes": 62914560,
-  "disk_read_bytes": 3145728,
-  "disk_write_bytes": 1572864,
-  "network_rx_bytes": 6144,
-  "network_tx_bytes": 12288,
-  "thread_count": 3,
-  "file_descriptor_count": 12
-}
-```
+Performance is comparable to Linux with all metrics available.
 
 ### Windows
 
-Limited metrics support:
+Limited metric support due to platform constraints.
 
-- CPU usage: Fully supported
-- Memory usage: Fully supported
-- Disk I/O: Supported
-- Network I/O: Limited (may report 0)
-- Thread count: Limited (often reports 1 due to library limitations)
-- File descriptors: Not supported (always 0)
+| Metric           | Support                  |
+| ---------------- | ------------------------ |
+| CPU              | Full                     |
+| Memory           | Full                     |
+| Disk I/O         | Full                     |
+| Threads          | Limited (may report 1)   |
+| File descriptors | Not supported (always 0) |
 
-Example output:
+Consider running on Linux/macOS for full observability.
 
-```json
-{
-  "cpu_usage_percent": 28.7,
-  "memory_usage_bytes": 71303168,
-  "disk_read_bytes": 5242880,
-  "disk_write_bytes": 2621440,
-  "network_rx_bytes": 0,
-  "network_tx_bytes": 0,
-  "thread_count": 1,
-  "file_descriptor_count": 0
-}
-```
-
-## Integration with Monitoring Systems
+## Integration with External Systems
 
 ### Prometheus
 
-Export metrics to Prometheus using an MQTT-to-Prometheus bridge:
+**Install mqtt2prometheus:**
 
-**prometheus.yml:**
+```bash
+docker run -d \
+  --name mqtt2prometheus \
+  -p 9641:9641 \
+  hikhvar/mqtt2prometheus:latest
+```
+
+**Configure Prometheus scraping:**
 
 ```yaml
 scrape_configs:
   - job_name: "propeller"
     static_configs:
-      - targets: ["mqtt-exporter:9641"]
+      - targets: ["mqtt2prometheus:9641"]
 ```
 
-Use [mqtt2prometheus](https://github.com/hikhvar/mqtt2prometheus) or similar bridges.
+Metrics become queryable in PromQL for alerting and dashboards.
 
 ### Grafana
 
-Create dashboards to visualize:
+Build dashboards using Prometheus or MQTT datasource.
 
-- CPU usage over time (line chart)
-- Memory consumption trends (area chart)
-- Disk I/O rates (stacked area chart)
-- Network throughput (line chart)
-- Thread and file descriptor counts (gauge)
-- Per-task resource comparison (bar chart)
+**Recommended panels:**
 
-Import the metrics from Prometheus or directly from MQTT.
+- CPU usage timeline (line chart)
+- Memory consumption (area chart)
+- Disk I/O throughput (stacked area)
+- Thread count (gauge)
+- Per-task comparison (bar chart)
 
-## Performance Impact
+Import metrics from Prometheus or connect directly to MQTT broker.
 
-The monitoring system is designed for minimal overhead:
+## Performance Overhead
 
 | Profile   | CPU Overhead | Memory Overhead |
 | --------- | ------------ | --------------- |
@@ -571,202 +477,203 @@ The monitoring system is designed for minimal overhead:
 | Standard  | < 0.5%       | ~2 MB           |
 | Intensive | < 2%         | ~5 MB           |
 
-Memory overhead scales with history size:
+Memory usage scales linearly with history retention:
 
 - No history: ~1 MB
 - 100 samples: ~2 MB
 - 1000 samples: ~5 MB
 
+CPU overhead primarily comes from system call frequency.
+
 ## Troubleshooting
 
-### No metrics appearing
+### No Metrics Published
 
-1. Check if monitoring is enabled globally:
+Check global monitoring setting:
 
-   ```bash
-   echo $PROPLET_ENABLE_MONITORING
-   ```
+```bash
+echo $PROPLET_ENABLE_MONITORING
+```
 
-2. Verify MQTT connection:
+Verify MQTT connectivity:
 
-   ```bash
-   mosquitto_sub -h localhost -t "m/+/c/+/metrics/#" -v
-   ```
+```bash
+mosquitto_sub -h localhost -p 1883 -t "m/+/c/+/metrics/#" -v
+```
 
-3. Check task monitoring profile in task request:
-
-   ```json
-   {
-     "monitoringProfile": {
-       "enabled": true,
-       "export_to_mqtt": true
-     }
-   }
-   ```
-
-4. Check proplet logs for monitoring errors
-
-### High overhead
-
-Reduce monitoring frequency and disable unnecessary metrics:
+Ensure task has monitoring enabled:
 
 ```json
 {
-  "monitoringProfile": {
+  "monitoring_profile": {
+    "enabled": true,
+    "export_to_mqtt": true
+  }
+}
+```
+
+Review proplet logs:
+
+```bash
+docker logs propeller-proplet
+```
+
+### High CPU Overhead
+
+Reduce collection frequency and disable unused metrics.
+
+```json
+{
+  "monitoring_profile": {
     "interval": 60,
     "collect_disk_io": false,
-    "collect_network_io": false,
+    "collect_threads": false,
     "retain_history": false
   }
 }
 ```
 
-### Missing metrics on Windows
+### High Memory Usage
 
-Some metrics have limited support on Windows. Consider:
-
-- Using Linux/macOS for full metric support
-- Implementing platform-specific monitoring
-- Accepting reduced metrics on Windows
-
-### Metrics not published to MQTT
-
-1. Verify MQTT broker is running:
-
-   ```bash
-   docker ps | grep mosquitto
-   ```
-
-2. Check proplet MQTT configuration
-3. Ensure `export_to_mqtt: true` in monitoring profile
-4. Check network connectivity between proplet and MQTT broker
-
-### High memory usage
-
-Reduce history size or disable history retention:
+Disable history retention or reduce sample count.
 
 ```json
 {
-  "monitoringProfile": {
+  "monitoring_profile": {
     "retain_history": false,
     "history_size": 0
   }
 }
 ```
 
-### Inaccurate CPU metrics
+### Missing Metrics on Windows
 
-CPU usage is measured as a percentage over the collection interval. For accurate readings:
+Windows has limited support for threads and file descriptors. Use Linux or macOS for full metric availability.
 
-- Use intervals of at least 1 second
-- Ensure the process is CPU-bound (not I/O-bound)
-- Consider platform-specific CPU measurement limitations
+### Inaccurate CPU Measurements
+
+CPU percentage is calculated over the collection interval. Use intervals ≥ 1 second for stable readings. CPU-bound processes show more accurate metrics than I/O-bound processes.
 
 ## API Reference
 
-### MonitoringProfile Structure
+### Monitoring Profile Schema
 
 ```json
 {
-  "enabled": true, // Enable/disable monitoring
-  "interval": 10, // Collection interval in seconds
-  "collect_cpu": true, // Collect CPU usage
-  "collect_memory": true, // Collect memory usage
-  "collect_disk_io": true, // Collect disk I/O
-  "collect_network_io": true, // Collect network I/O
-  "collect_threads": true, // Collect thread count
-  "collect_file_descriptors": true, // Collect file descriptor count
-  "export_to_mqtt": true, // Export to MQTT
-  "retain_history": true, // Retain historical samples
-  "history_size": 100 // Number of samples to retain
+  "enabled": true,
+  "interval": 10,
+  "collect_cpu": true,
+  "collect_memory": true,
+  "collect_disk_io": true,
+  "collect_threads": true,
+  "collect_file_descriptors": true,
+  "export_to_mqtt": true,
+  "retain_history": true,
+  "history_size": 100
 }
 ```
 
-### Metrics Structure
+| Field                      | Type    | Description                   |
+| -------------------------- | ------- | ----------------------------- |
+| `enabled`                  | boolean | Enable/disable monitoring     |
+| `interval`                 | integer | Collection interval (seconds) |
+| `collect_cpu`              | boolean | Track CPU usage               |
+| `collect_memory`           | boolean | Track memory usage            |
+| `collect_disk_io`          | boolean | Track disk I/O                |
+| `collect_threads`          | boolean | Track thread count            |
+| `collect_file_descriptors` | boolean | Track file descriptors        |
+| `export_to_mqtt`           | boolean | Publish to MQTT               |
+| `retain_history`           | boolean | Keep historical samples       |
+| `history_size`             | integer | Number of samples to retain   |
+
+### Metrics Schema
 
 ```json
 {
-  "cpu_usage_percent": 23.5, // CPU usage percentage (0-100+)
-  "memory_usage_bytes": 52428800, // Memory usage in bytes
-  "memory_usage_percent": 1.2, // Memory usage percentage (0-100)
-  "disk_read_bytes": 1048576, // Cumulative disk bytes read
-  "disk_write_bytes": 524288, // Cumulative disk bytes written
-  "network_rx_bytes": 2048, // Cumulative network bytes received
-  "network_tx_bytes": 4096, // Cumulative network bytes transmitted
-  "uptime_seconds": 45, // Process uptime in seconds
-  "thread_count": 2, // Number of threads
-  "file_descriptor_count": 8, // Number of open file descriptors
-  "timestamp": "2025-01-15T10:35:22Z" // ISO 8601 timestamp
+  "cpu_percent": 23.5,
+  "memory_bytes": 52428800,
+  "memory_percent": 1.2,
+  "disk_read_bytes": 1048576,
+  "disk_write_bytes": 524288,
+  "uptime_seconds": 45,
+  "thread_count": 2,
+  "file_descriptor_count": 8
 }
 ```
 
-### Aggregated Metrics Structure
+| Field                   | Type    | Description                 |
+| ----------------------- | ------- | --------------------------- |
+| `cpu_percent`           | float   | CPU usage (0-100+ per core) |
+| `memory_bytes`          | integer | Memory usage in bytes       |
+| `memory_percent`        | float   | Memory as % of total RAM    |
+| `disk_read_bytes`       | integer | Cumulative bytes read       |
+| `disk_write_bytes`      | integer | Cumulative bytes written    |
+| `uptime_seconds`        | integer | Process runtime             |
+| `thread_count`          | integer | OS thread count             |
+| `file_descriptor_count` | integer | Open file handles           |
+
+### Aggregated Metrics Schema
 
 ```json
 {
-  "avg_cpu_usage": 38.2, // Average CPU usage
-  "max_cpu_usage": 65.0, // Maximum CPU usage
-  "avg_memory_usage": 62914560, // Average memory usage
-  "max_memory_usage": 71303168, // Maximum memory usage
-  "total_disk_read": 2097152, // Total disk bytes read
-  "total_disk_write": 1048576, // Total disk bytes written
-  "total_network_rx": 12288, // Total network bytes received
-  "total_network_tx": 24576, // Total network bytes transmitted
-  "sample_count": 24 // Number of samples in aggregation
+  "avg_cpu_usage": 38.2,
+  "max_cpu_usage": 65.0,
+  "avg_memory_usage": 62914560,
+  "max_memory_usage": 71303168,
+  "total_disk_read": 2097152,
+  "total_disk_write": 1048576,
+  "sample_count": 24
 }
 ```
+
+| Field              | Type    | Description              |
+| ------------------ | ------- | ------------------------ |
+| `avg_cpu_usage`    | float   | Average CPU over history |
+| `max_cpu_usage`    | float   | Peak CPU over history    |
+| `avg_memory_usage` | integer | Average memory (bytes)   |
+| `max_memory_usage` | integer | Peak memory (bytes)      |
+| `total_disk_read`  | integer | Total bytes read         |
+| `total_disk_write` | integer | Total bytes written      |
+| `sample_count`     | integer | Number of samples        |
 
 ## Getting Started
 
-### Prerequisites
+### Start Infrastructure
 
-1. Start the Propeller infrastructure:
+```bash
+cd propeller
+make start-supermq
+```
 
-   ```bash
-   docker compose up -d
-   ```
+### Enable Monitoring
 
-2. Start proplet with monitoring enabled:
+```bash
+export PROPLET_ENABLE_MONITORING=true
+docker restart propeller-proplet
+```
 
-   **Go Proplet:**
+### Subscribe to Metrics
 
-   ```bash
-   export PROPLET_ENABLE_MONITORING=true
-   export PROPLET_METRICS_INTERVAL=10
-   ./build/proplet
-   ```
+```bash
+mosquitto_sub -h localhost -p 1883 -t "m/+/c/+/metrics/#" -v
+```
 
-   **Rust Proplet:**
+### Create Task
 
-   ```bash
-   export PROPLET_ENABLE_MONITORING=true
-   export PROPLET_METRICS_INTERVAL=5
-   export PROPLET_DOMAIN_ID=domain-123
-   export PROPLET_CHANNEL_ID=channel-456
-   export PROPLET_CLIENT_ID=proplet-rs-001
-   export PROPLET_CLIENT_KEY=secret
-   cargo run --release
-   ```
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "compute",
+  "image_url": "docker.io/myorg/compute:v1",
+  "inputs": [10, 20]
+}'
+```
 
-3. Subscribe to metrics:
+Start the task:
 
-   ```bash
-   mosquitto_sub -h localhost -t "m/+/c/+/metrics/#" -v
-   ```
+```bash
+curl -X POST "http://localhost:7070/tasks/{task_id}/start"
+```
 
-4. Submit a task with monitoring:
-
-   ```json
-   {
-     "id": "test-task",
-     "functionName": "compute",
-     "imageURL": "registry.example.com/compute:v1",
-     "monitoringProfile": {
-       "enabled": true,
-       "interval": 5,
-       "export_to_mqtt": true
-     }
-   }
-   ```
-
-5. Observe metrics in real-time
+Metrics will appear in the MQTT subscriber terminal every 10 seconds.
