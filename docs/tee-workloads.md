@@ -2,21 +2,17 @@
 
 Run WebAssembly workloads inside hardware-protected environments.
 
----
-
 ## What is a TEE
 
 A Trusted Execution Environment (TEE) is a secure area inside a processor that protects code and data from unauthorized access. TEEs use hardware-based security features to create isolated execution environments.
 
 **Common TEE Technologies:**
 
-- **Intel TDX** - Trust Domain Extensions for virtual machines
-- **AMD SEV-SNP** - Secure Encrypted Virtualization with Secure Nested Paging
-- **Intel SGX** - Software Guard Extensions for application enclaves
+- Intel TDX - Trust Domain Extensions for virtual machines
+- AMD SEV-SNP - Secure Encrypted Virtualization with Secure Nested Paging
+- Intel SGX - Software Guard Extensions for application enclaves
 
 TEEs ensure that even system administrators or cloud providers cannot access your workload's data or code while it runs.
-
----
 
 ## How Propeller uses TEEs
 
@@ -32,17 +28,13 @@ Propeller runs WASM workloads inside TEEs by combining encrypted container image
 
 All execution happens inside the protected environment. The WASM code and data remain encrypted until verified by the TEE hardware.
 
----
-
 ## Prerequisites
 
 Install these components before running encrypted workloads:
 
-- **KBS (Key Broker Service)** - Stores encryption keys and validates attestations
-- **Attestation Agent** - Communicates with TEE hardware and KBS
-- **Proplet with TEE support** - Built with TEE features enabled
-
----
+- KBS (Key Broker Service) - Stores encryption keys and validates attestations
+- Attestation Agent - Communicates with TEE hardware and KBS
+- Proplet with TEE support - Built with TEE features enabled
 
 ## Set up the Key Broker Service
 
@@ -83,8 +75,6 @@ Store the private key in KBS:
 
 The path `default/key/my-app` identifies this key. Use it when creating tasks.
 
----
-
 ## Build Proplet with TEE support
 
 Proplet needs TEE features compiled in.
@@ -114,8 +104,6 @@ cargo build --release --features "tee,snp-attester"
 
 The binary will be in `target/release/proplet`.
 
----
-
 ## Encrypt a WASM image
 
 Container images must be encrypted before deployment.
@@ -143,8 +131,6 @@ skopeo copy \
   docker://docker.io/username/my-app:encrypted
 ```
 
----
-
 ## Configure attestation agent
 
 The attestation agent connects Proplet to the TEE hardware and KBS.
@@ -167,8 +153,6 @@ attestation-agent \
 ```
 
 The agent listens on port 50010 for keyprovider requests.
-
----
 
 ## Run Proplet in TEE mode
 
@@ -203,8 +187,6 @@ Or if no TEE is present:
 INFO No TEE detected, running in standard mode
 ```
 
----
-
 ## Deploy an encrypted workload
 
 Create a task manifest for the encrypted WASM:
@@ -236,8 +218,6 @@ propeller-cli task create \
   --kbs-resource-path default/key/my-app
 ```
 
----
-
 ## Verify execution
 
 Check task results:
@@ -247,8 +227,6 @@ propeller-cli task get <task-id>
 ```
 
 The output shows execution status and results. All decryption and execution happened inside the TEE.
-
----
 
 ## Troubleshoot common issues
 
@@ -295,8 +273,6 @@ cargo build --release --features "tee,all-attesters"
 netstat -tlnp | grep 50010
 ```
 
----
-
 ## Architecture details
 
 ### Component interaction
@@ -326,26 +302,18 @@ netstat -tlnp | grep 50010
 
 ### Execution flow
 
-1. **Detection** - Proplet checks for TEE device files at startup
-2. **Task receipt** - Manager publishes encrypted task request
-3. **Image pull** - Proplet downloads encrypted OCI image
-4. **Attestation** - Hardware generates proof of TEE environment
-5. **Key retrieval** - KBS validates attestation and releases key
-6. **Decryption** - Image layers decrypted inside TEE
-7. **Execution** - WASM runs in protected environment
-8. **Results** - Output published to Manager via MQTT
+1. Detection - Proplet checks for TEE device files at startup
+2. Task receipt - Manager publishes encrypted task request
+3. Image pull - Proplet downloads encrypted OCI image
+4. Attestation - Hardware generates proof of TEE environment
+5. Key retrieval - KBS validates attestation and releases key
+6. Decryption - Image layers decrypted inside TEE
+7. Execution - WASM runs in protected environment
+8. Results - Output published to Manager via MQTT
 
 ### Security guarantees
 
-- **Confidentiality** - Code and data encrypted until inside TEE
-- **Integrity** - Attestation proves correct TEE configuration
-- **Isolation** - Hardware prevents external access to execution
-- **Verifiability** - Attestation reports allow remote verification
-
----
-
-## Next steps
-
-- Learn about [monitoring TEE workloads](#)
-- Configure [custom attestation policies](#)
-- Deploy [multi-node TEE clusters](#)
+- Confidentiality - Code and data encrypted until inside TEE
+- Integrity - Attestation proves correct TEE configuration
+- Isolation - Hardware prevents external access to execution
+- Verifiability - Attestation reports allow remote verification
