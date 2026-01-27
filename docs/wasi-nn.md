@@ -9,7 +9,8 @@ This guide explains how to run WebAssembly Neural Network (`wasi-nn`) examples f
 3. [Prerequisites](#prerequisites)
 4. [Step-by-Step Execution Flow](#step-by-step-execution-flow)
 5. [Concrete Commands](#concrete-commands)
-6. [Troubleshooting](#troubleshooting)
+6. [Platform-Specific Notes](#platform-specific-notes)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -64,7 +65,7 @@ Propeller executes WASM workloads through:
 
 **Why Host Runtime?**
 
-wasi-nn support requires Wasmtime's experimental wasi-nn module, which is only available when using Wasmtime directly (not through Wazero). The host runtime allows Propeller to execute WASM using an external `wasmtime` binary with the `--wasi-modules=experimental-wasi-nn` flag.
+wasi-nn support requires Wasmtime's experimental wasi-nn module, which is only available when using Wasmtime directly (not through Wazero). The host runtime allows Propeller to execute WASM using an external `wasmtime` binary with wasi-nn enabled.
 
 **Execution Model:**
 
@@ -82,7 +83,7 @@ graph TD
 ### Constraints and Assumptions
 
 **Supported Backends:**
-- **OpenVINO**: Currently the primary tested backend (version 2022.1.0.643)
+- **OpenVINO**: Currently the primary tested backend (version 2022.1.0.643 or later)
 - Other backends (ONNX Runtime, TensorFlow) may work but are less tested
 
 **Model Formats:**
@@ -93,7 +94,7 @@ graph TD
 - Model files must be accessible to the Propeller worker
 - Models can be:
   - Pre-staged on worker filesystem
-  - Mounted via volume mounts (if Propeller supports it)
+  - Mounted via volume mounts (Docker/Kubernetes)
   - Referenced via environment variables or absolute paths
 
 **Runtime Requirements:**
@@ -120,7 +121,7 @@ When running wasi-nn workloads on Propeller:
 
 ### Host Runtime Configuration
 
-The host runtime in Propeller (`proplet/runtimes/host.go`) executes WASM by:
+The host runtime in Propeller executes WASM by:
 
 1. Writing the WASM binary to a temporary file: `{task-id}.wasm`
 2. Constructing a command: `wasmtime [CLIArgs] {task-id}.wasm [Args]`
@@ -128,9 +129,17 @@ The host runtime in Propeller (`proplet/runtimes/host.go`) executes WASM by:
 4. Capturing stdout/stderr and publishing results
 
 **For wasi-nn, configure:**
-- `CLIArgs`: `["--wasi-modules=experimental-wasi-nn"]`
-- `Env`: Model directory path (e.g., `MODEL_DIR=/models`)
+- `CLIArgs`: `["-S", "nn", "--dir=fixture"]` (see note below about Wasmtime versions)
+- `Env`: Library path and model directory (platform-specific, see below)
 - `FunctionName`: Not used by host runtime (wasmtime executes the WASM directly)
+
+> **Important - Wasmtime Version Differences:**  
+> The wasi-nn flags have changed in recent Wasmtime versions:
+> - **Wasmtime 0.40-13.x**: `--wasi-modules=experimental-wasi-nn`
+> - **Wasmtime 14.0+**: `-S nn=y`
+> 
+> Check your Wasmtime version: `wasmtime --version`  
+> See available options: `wasmtime run -S help`
 
 ### Task Structure
 
@@ -139,14 +148,17 @@ A Propeller task for wasi-nn includes:
 ```json
 {
   "name": "wasi-nn-inference",
-  "file": "<wasm-binary-bytes>",
-  "cli_args": ["--wasi-modules=experimental-wasi-nn"],
+  "file": "<base64-encoded-wasm-binary>",
+  "cli_args": ["-S", "nn", "--dir=fixture"],
   "env": {
-    "MODEL_DIR": "/models"
+    "MODEL_DIR": "/models",
+    "DYLD_LIBRARY_PATH": "/opt/homebrew/lib"
   },
   "daemon": false
 }
 ```
+
+> **Note:** The `cli_args` must be an array with separate elements. Do not combine multiple flags into a single string.
 
 ---
 
@@ -154,42 +166,43 @@ A Propeller task for wasi-nn includes:
 
 ### Development Machine
 
-1. **Rust Toolchain** with `wasm32-wasi` target:
+1. **Rust Toolchain** with `wasm32-wasip1` target:
    ```bash
    # Install Rust if not already installed
-   # curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   
-   # Add WASI target
-   rustup target add wasm32-wasi
-   
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+   # Add WASI target (note: wasm32-wasi was renamed to wasm32-wasip1)
+   rustup target add wasm32-wasip1
+
    # Verify installation
    rustc --version
-   rustup target list | grep wasm32-wasi
+   rustup target list | grep wasm32-wasip1
    ```
 
 2. **Wasmtime Repository** (for examples):
    ```bash
    # Clone the repository
    git clone https://github.com/bytecodealliance/wasmtime.git
-   
+
    # Navigate to wasi-nn examples
    cd wasmtime/crates/wasi-nn/examples
-   
+
    # Verify examples exist
    ls -la
    ```
 
-3. **Wasmtime CLI** (for local testing):
+3. **Wasmtime CLI** with wasi-nn support:
    ```bash
-   # Option 1: Install via cargo (requires Rust)
-   cargo install wasmtime-cli
-   
-   # Option 2: Download pre-built binary
-   # Linux: wget https://github.com/bytecodealliance/wasmtime/releases/latest/download/wasmtime-v*-x86_64-linux.tar.xz
-   # macOS: wget https://github.com/bytecodealliance/wasmtime/releases/latest/download/wasmtime-v*-x86_64-macos.tar.xz
-   # Extract and add to PATH
-   
-   # Verify installation
+   # Option 1: Build from source with wasi-nn support
+   cd wasmtime
+   cargo build --release --features wasi-nn
+   # Binary will be at: target/release/wasmtime
+
+   # Option 2: Use pre-installed wasmtime (check for wasi-nn support)
+   wasmtime run -S help | grep nn
+   # Should show: -S nn[=y|n] -- Enable support for WASI neural network imports
+
+   # Verify wasmtime version
    wasmtime --version
    ```
 
@@ -199,19 +212,50 @@ A Propeller task for wasi-nn includes:
    ```bash
    which wasmtime
    wasmtime --version
+   
+   # Verify wasi-nn support
+   wasmtime run -S help | grep nn
    ```
 
 2. **OpenVINO Runtime** (if using OpenVINO backend):
-   - Install OpenVINO 2022.1.0.643 or compatible version
-   - Ensure libraries are in `LD_LIBRARY_PATH`
+   
+   **Linux:**
+   ```bash
+   # Install OpenVINO (follow official docs)
+   # Ensure libraries are in LD_LIBRARY_PATH
+   export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH
+   
+   # Verify installation
+   ldconfig -p | grep openvino
+   ```
+   
+   **macOS:**
+   ```bash
+   # Install via Homebrew
+   brew install openvino
+   
+   # Libraries will be at /opt/homebrew/lib
+   export DYLD_LIBRARY_PATH=/opt/homebrew/lib
+   
+   # Verify installation
+   ls /opt/homebrew/lib | grep openvino
+   ```
 
 3. **Propeller Worker** configured with:
    - Host runtime enabled
    - `EXTERNAL_WASM_RUNTIME` environment variable set to `wasmtime`
+   - Proper MQTT credentials provisioned in SuperMQ
 
 4. **Model Files** staged on worker:
    - Models in OpenVINO IR format (`.xml` + `.bin`)
    - Accessible at a known path (e.g., `/models`)
+   - Example: Download MobileNet model:
+   ```bash
+   mkdir -p ~/models
+   cd ~/models
+   curl -LO https://github.com/intel/openvino-rs/raw/main/crates/openvino/tests/mobilenet/mobilenet.xml
+   curl -LO https://github.com/intel/openvino-rs/raw/main/crates/openvino/tests/mobilenet/mobilenet.bin
+   ```
 
 ---
 
@@ -221,26 +265,24 @@ A Propeller task for wasi-nn includes:
 
 **Location**: `wasmtime/crates/wasi-nn/examples/`
 
-**Available Examples** (typical structure):
-- `rust/`: Rust examples using wasi-nn bindings
-- `c/`: C examples (if available)
+**Available Examples**:
+- `classification-example/`: Image classification using MobileNet
+- `classification-component-onnx/`: ONNX-based classification
+- `classification-example-pytorch/`: PyTorch models
 
 **Build Process:**
 
 ```bash
-# Navigate to examples directory
-cd wasmtime/crates/wasi-nn/examples/rust
+# Navigate to classification example
+cd wasmtime/crates/wasi-nn/examples/classification-example
 
-# Build for WASM target
-cargo build --target wasm32-wasi --release
+# Build for WASM target (note: use wasm32-wasip1, not wasm32-wasi)
+cargo build --target wasm32-wasip1 --release
 
-# Output location
-ls -lh target/wasm32-wasi/release/*.wasm
+# Verify output
+ls -lh target/wasm32-wasip1/release/*.wasm
+# Should show: wasi-nn-example.wasm
 ```
-
-**Example Output:**
-- `classification.wasm`: Image classification example
-- `inference.wasm`: Generic inference example
 
 ### Phase 2: Prepare Model Artifacts
 
@@ -248,488 +290,1018 @@ ls -lh target/wasm32-wasi/release/*.wasm
 - Format: OpenVINO IR (`.xml` + `.bin` pair)
 - Location: Accessible to Propeller worker
 
-**Workflow:**
+**Complete Setup:**
 
 ```bash
-# 1. Obtain or convert model to OpenVINO format
-# Example: Use OpenVINO Model Optimizer (mo.py)
-# mo.py --input_model model.onnx --output_dir /models
+# 1. Create fixture directory
+cd wasmtime/crates/wasi-nn/examples/classification-example
+mkdir -p fixture
 
-# 2. Verify model files
-ls -lh /models/
-# Should show: model.xml, model.bin
+# 2. Download MobileNet model files
+wget https://download.01.org/openvinotoolkit/fixtures/mobilenet/mobilenet.xml -O fixture/model.xml
+wget https://download.01.org/openvinotoolkit/fixtures/mobilenet/mobilenet.bin -O fixture/model.bin
 
-# 3. Copy to worker (if worker is remote)
-scp /models/*.xml /models/*.bin worker:/models/
+# 3. Download input tensor (test image data)
+wget https://download.01.org/openvinotoolkit/fixtures/mobilenet/tensor-1x224x224x3-f32.bgr -O fixture/tensor.bgr
+
+# 4. Verify all files
+ls -lh fixture/
+# Should show: model.xml, model.bin, tensor.bgr
 ```
 
 **Model Path Convention:**
-- Models should be in a directory accessible to the worker
-- Use environment variable `MODEL_DIR` to specify the path
-- Example: `MODEL_DIR=/models` → worker looks for models in `/models/`
+- The example code looks for models in the `fixture/` directory
+- This directory must be mapped to the WASM module via `--dir=fixture` flag
+- Models are accessed as `fixture/model.xml` and `fixture/model.bin` from within WASM
 
 ### Phase 3: Test Locally (Before Propeller)
 
 **Verify wasi-nn Support:**
 
 ```bash
-# Check wasmtime supports wasi-nn
-# Note: wasmtime must be installed (cargo install wasmtime-cli or download from releases)
-wasmtime --help 2>&1 | grep -i wasi-nn || echo "wasi-nn support may not be available in this wasmtime build"
+# Check wasmtime version and wasi-nn support
+wasmtime --version
+wasmtime run -S help | grep nn
 
-# Run example locally
-wasmtime --wasi-modules=experimental-wasi-nn \
-  --env MODEL_DIR=/models \
-  target/wasm32-wasi/release/classification.wasm
+# Should show output like:
+# -S nn[=y|n] -- Enable support for WASI neural network imports
+```
+
+**Run Local Test:**
+
+```bash
+cd wasmtime/crates/wasi-nn/examples/classification-example
+
+# Execute with wasi-nn enabled (Wasmtime 14.0+)
+wasmtime run -S nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wasm
+
+# For older Wasmtime versions (0.40-13.x):
+# wasmtime --wasi-modules=experimental-wasi-nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wasm
 ```
 
 **Expected Output:**
-- Inference results printed to stdout
-- Any errors logged to stderr
+```
+Read graph XML, first 50 characters: <?xml version="1.0" ?>
+<net name="mobilenet_v2_1.0
+Read graph weights, size in bytes: 13956476
+Loaded graph into wasi-nn with ID: 0
+Created wasi-nn execution context with ID: 0
+Read input tensor, size in bytes: 602112
+Executed graph inference
+Found results, sorted top 5: [InferenceResult(904, 0.4025879), InferenceResult(885, 0.3581543), ...]
+```
 
 ### Phase 4: Configure Propeller Worker
 
-**Worker Configuration** (`config.toml` or environment variables):
+#### SuperMQ Provisioning
 
-```toml
-[proplet]
-domain_id = "..."
-client_id = "..."
-client_key = "..."
-channel_id = "..."
+Propeller requires valid SuperMQ credentials for MQTT communication:
+
+```bash
+# Navigate to Propeller directory
+cd /path/to/propeller
+
+# Run provisioning (creates domain, channels, and clients in SuperMQ)
+propeller-cli provision
+
+# This generates a config.toml file with:
+# - manager credentials
+# - proplet credentials  
+# - proxy credentials
 ```
 
-**Environment Variables:**
+#### Configuration Methods
+
+**Choose ONE of these methods:**
+
+**Method A: Environment Variables (Recommended for Docker Compose)**
+
+Update your `.env` file with values from the generated `config.toml`:
+
 ```bash
-export EXTERNAL_WASM_RUNTIME=wasmtime
+# Manager Configuration
+MANAGER_DOMAIN_ID="016fd903-9dda-4f14-b12c-566cfa685698"
+MANAGER_CHANNEL_ID="6ed13fba-bd73-4a12-9e92-6251763374c4"
+MANAGER_CLIENT_ID="5c02f237-c252-435e-b75c-4132a9cf885a"
+MANAGER_CLIENT_KEY="51d62814-21e3-4857-8f4d-5e41e26eadd9"
+
+# Proplet Configuration
+PROPLET_DOMAIN_ID="016fd903-9dda-4f14-b12c-566cfa685698"
+PROPLET_CHANNEL_ID="6ed13fba-bd73-4a12-9e92-6251763374c4"
+PROPLET_CLIENT_ID="38a244df-6081-4b11-9437-847a825c7cec"
+PROPLET_CLIENT_KEY="6c1d3f6c-267d-4b1c-8407-7882ae9577c3"
+PROPLET_EXTERNAL_WASM_RUNTIME="wasmtime"
+
+# Proxy Configuration
+PROXY_DOMAIN_ID="016fd903-9dda-4f14-b12c-566cfa685698"
+PROXY_CHANNEL_ID="6ed13fba-bd73-4a12-9e92-6251763374c4"
+PROXY_CLIENT_ID="38a244df-6081-4b11-9437-847a825c7cec"
+PROXY_CLIENT_KEY="6c1d3f6c-267d-4b1c-8407-7882ae9577c3"
 ```
 
-**Verify Worker Setup:**
+**Important:** Comment out config file variables:
 ```bash
-# Check wasmtime is available
+# PROPLET_CONFIG_FILE=""  # Comment out
+# PROPLET_CONFIG_SECTION=""  # Comment out
+```
+
+**Method B: Config File**
+
+Use the generated `config.toml` directly:
+
+```bash
+# Set environment variables to point to config file
+PROPLET_CONFIG_FILE="/config.toml"
+PROPLET_CONFIG_SECTION="proplet"
+```
+
+> **Warning:** Do not mix both methods! Choose environment variables OR config file, not both. Mixing them causes credential conflicts.
+
+#### Docker Compose Configuration
+
+**Example `compose.yaml` snippet for proplet:**
+
+```yaml
+proplet:
+  image: ghcr.io/absmach/propeller/proplet:latest
+  container_name: propeller-proplet
+  restart: on-failure
+  depends_on:
+    - mqtt-adapter
+  ports:
+    - 8082:8081
+  environment:
+    PROPLET_LOG_LEVEL: ${PROPLET_LOG_LEVEL}
+    PROPLET_MQTT_ADDRESS: ${PROPLET_MQTT_ADDRESS}
+    PROPLET_MQTT_QOS: ${PROPLET_MQTT_QOS}
+    PROPLET_MQTT_TIMEOUT: ${PROPLET_MQTT_TIMEOUT}
+    PROPLET_LIVELINESS_INTERVAL: ${PROPLET_LIVELINESS_INTERVAL}
+    PROPLET_DOMAIN_ID: ${PROPLET_DOMAIN_ID}
+    PROPLET_CHANNEL_ID: ${PROPLET_CHANNEL_ID}
+    PROPLET_CLIENT_ID: ${PROPLET_CLIENT_ID}
+    PROPLET_CLIENT_KEY: ${PROPLET_CLIENT_KEY}
+    PROPLET_EXTERNAL_WASM_RUNTIME: ${PROPLET_EXTERNAL_WASM_RUNTIME}
+    # Platform-specific: Use DYLD_LIBRARY_PATH on macOS, LD_LIBRARY_PATH on Linux
+    DYLD_LIBRARY_PATH: "/opt/homebrew/lib"  # macOS
+    # LD_LIBRARY_PATH: "/usr/local/lib"  # Linux
+  networks:
+    - supermq-base-net
+  volumes:
+    # Mount models directory (use absolute paths)
+    - /Users/username/models:/models
+    # Mount fixture directory for the example
+    - /Users/username/wasmtime/crates/wasi-nn/examples/classification-example/fixture:/fixture
+    # Optional: Mount config file if using Method B
+    # - ./config.toml:/config.toml
+```
+
+**Key Configuration Points:**
+- Use absolute paths for volume mounts (relative paths may fail)
+- Set the correct library path variable for your platform (see Platform-Specific Notes)
+- Ensure `EXTERNAL_WASM_RUNTIME` is set to `wasmtime`
+- Make sure all credentials match between `.env` and `config.toml` (if using both)
+
+#### Verify Worker Setup
+
+```bash
+# 1. Check wasmtime is available
 which wasmtime
+wasmtime run -S help | grep nn
 
-# Check OpenVINO (if using)
-# Linux: ldconfig -p | grep openvino
-# macOS: otool -L /path/to/libopenvino.dylib
-ldconfig -p 2>/dev/null | grep openvino || echo "OpenVINO libraries not found in system paths"
+# 2. Check OpenVINO (macOS)
+ls /opt/homebrew/lib | grep openvino
+
+# 3. Check OpenVINO (Linux)
+ldconfig -p | grep openvino
+
+# 4. Start Propeller services
+docker compose up -d
+
+# 5. Verify proplet is running and registered
+docker compose logs proplet | grep "Starting Proplet"
+docker compose logs manager | grep "successfully created proplet"
 ```
 
 ### Phase 5: Submit Task to Propeller
 
-**Via Propeller CLI:**
+**Via Propeller CLI and API:**
 
 ```bash
+# Navigate to your WASM binary location
+cd wasmtime/crates/wasi-nn/examples/classification-example
+
 # 1. Create task
-propeller tasks create wasi-nn-inference
+propeller-cli tasks create wasi-nn-inference
 
-# 2. Get task ID (requires jq: sudo apt-get install jq or brew install jq)
-TASK_ID=$(propeller tasks list | jq -r '.tasks[] | select(.name=="wasi-nn-inference") | .id')
+# 2. Save task ID from output
+TASK_ID="<id-from-create-output>"
 
-# 3. Update task with WASM binary and configuration (via API)
-# Cross-platform base64 encoding (works on both GNU and BSD base64)
-WASM_B64=$(base64 -w 0 classification.wasm 2>/dev/null || base64 classification.wasm | tr -d '\n')
+# 3. Encode WASM binary to base64
+# macOS:
+WASM_B64=$(base64 -i target/wasm32-wasip1/release/wasi-nn-example.wasm | tr -d '\n')
 
-curl -X PUT http://manager:8080/tasks/$TASK_ID \
+# Linux:
+# WASM_B64=$(base64 -w 0 target/wasm32-wasip1/release/wasi-nn-example.wasm)
+
+# 4. Update task with WASM binary and configuration
+curl -X PUT http://localhost:7070/tasks/$TASK_ID \
   -H "Content-Type: application/json" \
   -d "{
     \"name\": \"wasi-nn-inference\",
     \"file\": \"$WASM_B64\",
-    \"cli_args\": [\"--wasi-modules=experimental-wasi-nn\"],
-    \"env\": {\"MODEL_DIR\": \"/models\"},
-    \"daemon\": false
-  }"
-
-# 4. Start task
-propeller tasks start $TASK_ID
-```
-
-**Via Propeller API:**
-
-```bash
-# Step 1: Create task (with name only)
-TASK_RESPONSE=$(curl -X POST http://manager:8080/tasks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "wasi-nn-inference"
-  }')
-
-# Extract task ID (requires jq: sudo apt-get install jq or brew install jq)
-TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.task.id')
-
-# Step 2: Update task with WASM binary and configuration
-# Note: File should be base64-encoded bytes
-# For GNU base64 (Linux): use -w 0 to disable line wrapping
-# For BSD base64 (macOS): omit -w flag
-WASM_B64=$(base64 -w 0 classification.wasm 2>/dev/null || base64 classification.wasm | tr -d '\n')
-
-curl -X PUT http://manager:8080/tasks/$TASK_ID \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"name\": \"wasi-nn-inference\",
-    \"file\": \"$WASM_B64\",
-    \"cli_args\": [\"--wasi-modules=experimental-wasi-nn\"],
+    \"cli_args\": [\"-S\", \"nn\", \"--dir=fixture\"],
     \"env\": {
-      \"MODEL_DIR\": \"/models\"
+      \"DYLD_LIBRARY_PATH\": \"/opt/homebrew/lib\"
     },
     \"daemon\": false
   }"
 
-# Step 3: Start task
-curl -X POST http://manager:8080/tasks/$TASK_ID/start
+# 5. Verify task was updated
+curl -s http://localhost:7070/tasks/$TASK_ID | jq '.name, .state'
+
+# 6. Start task
+propeller-cli tasks start $TASK_ID
+
+# 7. Check execution logs
+docker compose logs proplet --tail 50
 ```
+
+> **Platform Note:** Adjust the `env` section based on your platform:
+> - **macOS**: `"DYLD_LIBRARY_PATH": "/opt/homebrew/lib"`
+> - **Linux**: `"LD_LIBRARY_PATH": "/usr/local/lib"` (or your OpenVINO installation path)
 
 ### Phase 6: Monitor Execution
 
 **Check Task Status:**
 
 ```bash
-# View task
-propeller tasks view <task-id>
+# View task details
+propeller-cli tasks view $TASK_ID
 
-# Or via API
-curl http://manager:8080/tasks/<task-id>
+# Watch for task completion
+watch -n 1 "propeller-cli tasks view $TASK_ID | jq '.state'"
 ```
+
+**Task States:**
+- `0`: Created
+- `1`: Pending
+- `2`: Running
+- `3`: Completed
+- `4`: Failed
 
 **View Logs:**
 
 ```bash
-# Propeller worker logs (if accessible)
-tail -f /var/log/propeller/proplet.log
+# Proplet execution logs
+docker compose logs proplet --tail 100 | grep -v DEBUG
 
-# Or check manager logs for task status
-tail -f /var/log/propeller/manager.log
+# Manager logs
+docker compose logs manager --tail 50
+
+# MQTT adapter logs (for connectivity issues)
+docker compose logs mqtt-adapter --tail 50
 ```
 
 **Retrieve Results:**
 
-Results are published to MQTT topic: `m/{domain_id}/c/{channel_id}/control/proplet/results`
-
-Or query via API:
 ```bash
-curl http://manager:8080/tasks/<task-id>
-# Response includes "results" field with stdout output
+# Get task with results
+curl -s http://localhost:7070/tasks/$TASK_ID | jq '.results'
+
+# Or via CLI
+propeller-cli tasks view $TASK_ID
 ```
+
+---
+
+## Platform-Specific Notes
+
+### macOS (Apple Silicon - M1/M2/M3)
+
+**Library Path Variable:**
+```bash
+# macOS uses DYLD_LIBRARY_PATH (not LD_LIBRARY_PATH)
+export DYLD_LIBRARY_PATH=/opt/homebrew/lib
+```
+
+**Base64 Encoding:**
+```bash
+# macOS base64 requires -i flag
+WASM_B64=$(base64 -i file.wasm | tr -d '\n')
+
+# The -w flag (line wrapping) doesn't exist on macOS base64
+```
+
+**OpenVINO Installation:**
+```bash
+# Install via Homebrew
+brew install openvino
+
+# Libraries location
+/opt/homebrew/lib/libopenvino*.dylib
+
+# Verify
+ls /opt/homebrew/lib | grep openvino
+```
+
+**Docker Platform Warning:**
+
+You may see this warning:
+```
+The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
+```
+
+This is normal - Docker will use emulation (Rosetta 2). For production, consider building ARM64 images:
+```bash
+docker buildx build --platform linux/arm64 -t propeller/proplet:latest .
+```
+
+**WASI Target:**
+```bash
+# Use wasm32-wasip1 (wasm32-wasi was renamed)
+rustup target add wasm32-wasip1
+cargo build --target wasm32-wasip1 --release
+```
+
+### Linux
+
+**Library Path Variable:**
+```bash
+# Linux uses LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH
+```
+
+**Base64 Encoding:**
+```bash
+# Linux base64 uses -w flag for line wrapping
+WASM_B64=$(base64 -w 0 file.wasm)
+```
+
+**OpenVINO Installation:**
+```bash
+# Follow official OpenVINO docs for Linux installation
+# https://docs.openvino.ai/latest/openvino_docs_install_guides_installing_openvino_linux.html
+
+# Verify installation
+ldconfig -p | grep openvino
+```
+
+**File Permissions:**
+```bash
+# Ensure model files are readable
+chmod -R 755 /models
+ls -l /models
+```
+
+### Configuration Compatibility Matrix
+
+| Platform | Library Path Var | Base64 Flag | OpenVINO Path |
+|----------|-----------------|-------------|---------------|
+| macOS (Intel) | `DYLD_LIBRARY_PATH` | `-i` | `/usr/local/lib` |
+| macOS (Apple Silicon) | `DYLD_LIBRARY_PATH` | `-i` | `/opt/homebrew/lib` |
+| Linux | `LD_LIBRARY_PATH` | `-w 0` | `/opt/intel/openvino/runtime/lib` |
 
 ---
 
 ## Concrete Commands
 
-### Complete Workflow Example
-
-**Step 1: Build WASM Example**
+### Complete Workflow Example (macOS)
 
 ```bash
-# Clone Wasmtime
+# ====================
+# Phase 1: Build WASM
+# ====================
+
+# Clone and build
 git clone https://github.com/bytecodealliance/wasmtime.git
-cd wasmtime
+cd wasmtime/crates/wasi-nn/examples/classification-example
 
-# Navigate to wasi-nn examples
-cd crates/wasi-nn/examples/rust
+# Add WASI target
+rustup target add wasm32-wasip1
 
-# Build WASM binary
-cargo build --target wasm32-wasi --release
+# Build
+cargo build --target wasm32-wasip1 --release
 
-# Verify output (file command is usually pre-installed on Linux/macOS)
-file target/wasm32-wasi/release/classification.wasm
-# Expected output: WebAssembly (wasm) binary module version 0x1
-# Note: If file command not found, install with: sudo apt-get install file or brew install file
+# Verify
+ls -lh target/wasm32-wasip1/release/wasi-nn-example.wasm
 
-# Note the path for later
-WASM_PATH="$(pwd)/target/wasm32-wasi/release/classification.wasm"
-```
+# ====================
+# Phase 2: Prepare Models
+# ====================
 
-**Step 2: Prepare Models**
+# Create fixture and download files
+mkdir -p fixture
+cd fixture
 
-```bash
-# Create model directory
-mkdir -p /tmp/wasi-nn-models
+# Download model files
+curl -LO https://github.com/intel/openvino-rs/raw/main/crates/openvino/tests/mobilenet/mobilenet.xml
+curl -LO https://github.com/intel/openvino-rs/raw/main/crates/openvino/tests/mobilenet/mobilenet.bin
 
-# Download or convert model to OpenVINO format
-# Example: If you have a model in ONNX format
-# mo.py --input_model model.onnx --output_dir /tmp/wasi-nn-models
+# Rename for the example
+mv mobilenet.xml model.xml
+mv mobilenet.bin model.bin
 
-# For testing, you can use a sample model from OpenVINO Model Zoo
-# Example: Download AlexNet
-# wget -O /tmp/wasi-nn-models/alexnet.xml <model-url>
-# wget -O /tmp/wasi-nn-models/alexnet.bin <model-url>
+# Download input tensor
+curl -LO https://download.01.org/openvinotoolkit/fixtures/mobilenet/tensor-1x224x224x3-f32.bgr
 
-# Verify model files
-ls -lh /tmp/wasi-nn-models/
-# Should show: *.xml and *.bin files
-```
+# Verify all files
+ls -lh
+cd ..
 
-**Step 3: Test Locally**
+# ====================
+# Phase 3: Test Locally
+# ====================
 
-```bash
-# Install OpenVINO (if not installed)
-# Follow: https://docs.openvino.ai/latest/openvino_docs_install_guides_installing_openvino_linux.html
+# Install OpenVINO (if not already installed)
+brew install openvino
 
-# Test WASM execution
-wasmtime --wasi-modules=experimental-wasi-nn \
-  --env MODEL_DIR=/tmp/wasi-nn-models \
-  "$WASM_PATH"
+# Set library path
+export DYLD_LIBRARY_PATH=/opt/homebrew/lib
 
-# Expected: Inference output printed to stdout
-```
+# Test execution
+wasmtime run -S nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wasm
 
-**Step 4: Stage Models on Worker**
+# Should see inference results
 
-```bash
-# Copy models to worker (adjust host/path as needed)
-scp /tmp/wasi-nn-models/* worker-host:/models/
+# ====================
+# Phase 4: Configure Propeller
+# ====================
 
-# Or if worker is local
-sudo mkdir -p /models
-sudo cp /tmp/wasi-nn-models/* /models/
-sudo chmod -R 755 /models
-```
+# Navigate to Propeller directory
+cd /path/to/propeller
 
-**Step 5: Configure Propeller Worker**
+# Provision SuperMQ credentials
+propeller-cli provision
 
-```bash
-# On worker machine, ensure wasmtime is in PATH
-which wasmtime
+# This creates config.toml - copy values to .env file
 
-# Set environment variable for host runtime
-export EXTERNAL_WASM_RUNTIME=wasmtime
+# Update docker/compose.yaml with correct volume mounts:
+# volumes:
+#   - /Users/username/wasmtime/crates/wasi-nn/examples/classification-example/fixture:/fixture
+#   - /Users/username/models:/models  # if models are separate
 
-# Or add to worker's config.toml/systemd service
-```
+# Start Propeller services
+cd docker
+docker compose up -d
 
-**Step 6: Submit Task via Propeller**
+# Verify proplet registered
+sleep 10
+docker compose logs manager | grep "successfully created proplet"
 
-```bash
-# Set manager URL
-export PROPELLER_MANAGER_URL=http://localhost:8080
+# ====================
+# Phase 5: Submit Task
+# ====================
 
-# Method 1: Using Propeller CLI
+cd /path/to/wasmtime/crates/wasi-nn/examples/classification-example
+
 # Create task
-propeller tasks create wasi-nn-inference
+propeller-cli tasks create wasi-nn-demo
 
-# Get task ID (from output or list)
-# Note: Requires jq to be installed (sudo apt-get install jq or brew install jq)
-TASK_ID=$(propeller tasks list | jq -r '.tasks[] | select(.name=="wasi-nn-inference") | .id')
+# Set task ID
+TASK_ID="<id-from-output>"
 
-# Update task with WASM binary (via API, as CLI may not support file upload)
-# Cross-platform base64 encoding
-WASM_B64=$(base64 -w 0 "$WASM_PATH" 2>/dev/null || base64 "$WASM_PATH" | tr -d '\n')
+# Encode WASM
+WASM_B64=$(base64 -i target/wasm32-wasip1/release/wasi-nn-example.wasm | tr -d '\n')
 
-curl -X PUT "$PROPELLER_MANAGER_URL/tasks/$TASK_ID" \
+# Update task
+curl -X PUT http://localhost:7070/tasks/$TASK_ID \
   -H "Content-Type: application/json" \
   -d "{
-    \"name\": \"wasi-nn-inference\",
+    \"name\": \"wasi-nn-demo\",
     \"file\": \"$WASM_B64\",
-    \"cli_args\": [\"--wasi-modules=experimental-wasi-nn\"],
-    \"env\": {
-      \"MODEL_DIR\": \"/models\"
-    },
+    \"cli_args\": [\"-S\", \"nn\", \"--dir=fixture\"],
+    \"env\": {\"DYLD_LIBRARY_PATH\": \"/opt/homebrew/lib\"},
     \"daemon\": false
   }"
 
 # Start task
-propeller tasks start "$TASK_ID"
+propeller-cli tasks start $TASK_ID
 
-# Method 2: Direct API calls (alternative)
-# Create task
-TASK_RESPONSE=$(curl -X POST "$PROPELLER_MANAGER_URL/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "wasi-nn-inference"}')
+# ====================
+# Phase 6: Monitor
+# ====================
 
-# Extract task ID (requires jq)
-TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.task.id')
+# Check proplet logs
+docker compose logs proplet --tail 100 | grep -v DEBUG
 
-# Update with WASM and config
-curl -X PUT "$PROPELLER_MANAGER_URL/tasks/$TASK_ID" \
+# View task status
+propeller-cli tasks view $TASK_ID
+
+# Get results
+curl -s http://localhost:7070/tasks/$TASK_ID | jq '.results'
+```
+
+### Complete Workflow Example (Linux)
+
+```bash
+# ====================
+# Phase 1: Build WASM
+# ====================
+
+# Clone and build
+git clone https://github.com/bytecodealliance/wasmtime.git
+cd wasmtime/crates/wasi-nn/examples/classification-example
+
+# Add WASI target
+rustup target add wasm32-wasip1
+
+# Build
+cargo build --target wasm32-wasip1 --release
+
+# ====================
+# Phase 2: Prepare Models
+# ====================
+
+mkdir -p fixture
+cd fixture
+
+# Download model files
+wget https://github.com/intel/openvino-rs/raw/main/crates/openvino/tests/mobilenet/mobilenet.xml -O model.xml
+wget https://github.com/intel/openvino-rs/raw/main/crates/openvino/tests/mobilenet/mobilenet.bin -O model.bin
+wget https://download.01.org/openvinotoolkit/fixtures/mobilenet/tensor-1x224x224x3-f32.bgr
+
+cd ..
+
+# ====================
+# Phase 3: Test Locally
+# ====================
+
+# Install OpenVINO (follow official docs)
+# Set library path
+export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH
+
+# Test execution
+wasmtime run -S nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wasm
+
+# ====================
+# Phase 4: Configure Propeller
+# ====================
+
+cd /path/to/propeller
+propeller-cli provision
+
+# Update .env with provisioned credentials
+# Update docker/compose.yaml with volume mounts
+
+cd docker
+docker compose up -d
+
+# ====================
+# Phase 5: Submit Task
+# ====================
+
+cd /path/to/wasmtime/crates/wasi-nn/examples/classification-example
+
+propeller-cli tasks create wasi-nn-demo
+TASK_ID="<id-from-output>"
+
+# Linux base64 syntax
+WASM_B64=$(base64 -w 0 target/wasm32-wasip1/release/wasi-nn-example.wasm)
+
+curl -X PUT http://localhost:7070/tasks/$TASK_ID \
   -H "Content-Type: application/json" \
   -d "{
-    \"name\": \"wasi-nn-inference\",
+    \"name\": \"wasi-nn-demo\",
     \"file\": \"$WASM_B64\",
-    \"cli_args\": [\"--wasi-modules=experimental-wasi-nn\"],
-    \"env\": {\"MODEL_DIR\": \"/models\"},
+    \"cli_args\": [\"-S\", \"nn\", \"--dir=fixture\"],
+    \"env\": {\"LD_LIBRARY_PATH\": \"/opt/intel/openvino/runtime/lib\"},
     \"daemon\": false
   }"
 
-# Start task
-curl -X POST "$PROPELLER_MANAGER_URL/tasks/$TASK_ID/start"
-```
+propeller-cli tasks start $TASK_ID
 
-**Step 7: Monitor Execution**
+# ====================
+# Phase 6: Monitor
+# ====================
 
-```bash
-# Check task status
-propeller tasks view "$TASK_ID"
-
-# Watch task status (requires watch command: sudo apt-get install watch or brew install watch)
-watch -n 1 "propeller tasks view $TASK_ID | jq '.state'"
-
-# Check worker logs (if accessible)
-tail -f /var/log/propeller/proplet.log | grep "$TASK_ID"
-```
-
-**Step 8: Retrieve Results**
-
-```bash
-# Get task results
-propeller tasks view "$TASK_ID" | jq '.results'
-
-# Or via API
-curl "$PROPELLER_MANAGER_URL/tasks/$TASK_ID" | jq '.results'
-```
-
-### Alternative: Using Propeller SDK (Go)
-
-**Note**: The Propeller SDK's `Task` struct may not include all fields. Use the HTTP API directly or extend the SDK for full functionality.
-
-**Option 1: Direct HTTP API calls from Go**
-
-```go
-package main
-
-import (
-    "bytes"
-    "encoding/base64"
-    "encoding/json"
-    "io"
-    "net/http"
-    "os"
-)
-
-func main() {
-    managerURL := "http://localhost:8080"
-    
-    // Step 1: Create task
-    createReq := map[string]interface{}{
-        "name": "wasi-nn-inference",
-    }
-    createBody, _ := json.Marshal(createReq)
-    resp, _ := http.Post(managerURL+"/tasks", "application/json", bytes.NewReader(createBody))
-    var createResp struct {
-        Task struct {
-            ID string `json:"id"`
-        } `json:"task"`
-    }
-    json.NewDecoder(resp.Body).Decode(&createResp)
-    taskID := createResp.Task.ID
-    
-    // Step 2: Read and encode WASM
-    wasmBytes, _ := os.ReadFile("classification.wasm")
-    wasmB64 := base64.StdEncoding.EncodeToString(wasmBytes)
-    
-    // Step 3: Update task
-    updateReq := map[string]interface{}{
-        "name": "wasi-nn-inference",
-        "file": wasmB64,
-        "cli_args": []string{"--wasi-modules=experimental-wasi-nn"},
-        "env": map[string]string{
-            "MODEL_DIR": "/models",
-        },
-        "daemon": false,
-    }
-    updateBody, _ := json.Marshal(updateReq)
-    req, _ := http.NewRequest("PUT", managerURL+"/tasks/"+taskID, bytes.NewReader(updateBody))
-    req.Header.Set("Content-Type", "application/json")
-    http.DefaultClient.Do(req)
-    
-    // Step 4: Start task
-    http.Post(managerURL+"/tasks/"+taskID+"/start", "application/json", nil)
-}
-```
-
-**Option 2: Extend SDK (if SDK supports UpdateTask with all fields)**
-
-```go
-// Check if SDK.UpdateTask supports File, CLIArgs, Env fields
-// If not, use Option 1 (direct HTTP API)
+docker compose logs proplet --tail 100
+propeller-cli tasks view $TASK_ID
 ```
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-**1. wasi-nn module not found**
+#### 1. wasi-nn module not recognized
 
-**Error:**
-
-```text
+**Symptom:**
+```
 Error: unknown flag: --wasi-modules
 ```
 
+or
+
+```
+Error: unknown flag: -S
+```
+
+**Cause:** Wasmtime version doesn't support the flag syntax used, or wasi-nn feature not compiled in.
+
 **Solution:**
-- Ensure Wasmtime version supports wasi-nn (typically Wasmtime 0.40+)
-- Check wasmtime build includes wasi-nn: `wasmtime --help | grep wasi-nn`
 
-**2. Model files not found**
+```bash
+# Check Wasmtime version
+wasmtime --version
 
-**Error:**
+# Check available WASI options
+wasmtime run -S help
 
-```text
+# Verify wasi-nn support
+wasmtime run -S help | grep nn
+
+# If not present, rebuild Wasmtime with wasi-nn:
+cd /path/to/wasmtime
+cargo clean
+cargo build --release --features wasi-nn
+```
+
+#### 2. Model files not found
+
+**Symptom:**
+```
 Error: failed to load model: file not found
 ```
 
+or
+
+```
+Error: failed to open fixture/model.xml
+```
+
+**Cause:** Model files not accessible to the WASM module, or incorrect path mapping.
+
 **Solution:**
-- Verify model files exist on worker at the path specified in `MODEL_DIR`
-- Check file permissions: `ls -la /models/`
-- Ensure worker can access the model directory
 
-**3. OpenVINO backend not available**
+```bash
+# Verify model files exist
+ls -lh fixture/model.xml fixture/model.bin
 
-**Error:**
+# Verify volume mounts in compose.yaml
+docker compose config | grep -A 5 volumes
 
-```text
+# Check proplet can access files
+docker compose exec proplet ls -la /fixture
+
+# Ensure --dir flag is included
+# cli_args: ["-S", "nn", "--dir=fixture"]
+```
+
+#### 3. OpenVINO backend not available
+
+**Symptom:**
+```
+Error: Failed while accessing backend
+```
+
+or
+
+```
 Error: backend not available
 ```
 
+**Cause:** OpenVINO libraries not found or not in library path.
+
 **Solution:**
-- Install OpenVINO runtime on worker
-- Set `LD_LIBRARY_PATH` to include OpenVINO libraries
-- Verify OpenVINO installation: `ldconfig -p | grep openvino`
 
-**4. Host runtime not configured**
+**macOS:**
+```bash
+# Verify OpenVINO installation
+ls /opt/homebrew/lib | grep openvino
 
-**Error:**
+# Set library path
+export DYLD_LIBRARY_PATH=/opt/homebrew/lib
 
-```text
-Error: wasmtime command not found
+# Test locally first
+wasmtime run -S nn --dir=fixture wasi-nn-example.wasm
+
+# In compose.yaml, add:
+# environment:
+#   DYLD_LIBRARY_PATH: "/opt/homebrew/lib"
 ```
 
+**Linux:**
+```bash
+# Verify OpenVINO installation
+ldconfig -p | grep openvino
+
+# Set library path
+export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH
+
+# In compose.yaml, add:
+# environment:
+#   LD_LIBRARY_PATH: "/opt/intel/openvino/runtime/lib"
+```
+
+#### 4. MQTT Connection Issues - "client_id not found"
+
+**Symptom:**
+```
+{"level":"WARN","msg":"failed to proxy from MQTT broker to client with id  with error: client_id not found"}
+```
+
+**Cause:** The client IDs in configuration don't exist in SuperMQ database.
+
 **Solution:**
-- Ensure `wasmtime` is in worker's PATH
-- Set `EXTERNAL_WASM_RUNTIME=wasmtime` environment variable
-- Verify worker is using host runtime (not wazero)
 
-**5. Task fails silently**
+```bash
+# 1. Re-provision to create fresh clients
+cd /path/to/propeller
+propeller-cli provision
 
-**Debug Steps:**
-- Check worker logs: `/var/log/propeller/proplet.log`
-- Verify WASM binary is valid: `wasm-objdump -h classification.wasm`
-- Test WASM locally first: `wasmtime --wasi-modules=experimental-wasi-nn classification.wasm`
-- Check MQTT connectivity between manager and worker
+# 2. Verify clients were created in SuperMQ
+TOKEN=$(curl -s -X POST http://localhost:9002/users/tokens/issue \
+  -H "Content-Type: application/json" \
+  -d '{"identity": "admin@example.com", "secret": "12345678"}' \
+  | jq -r '.access_token')
+
+curl -s http://localhost:9006/clients/YOUR_CLIENT_ID \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# 3. Update .env file with new client IDs from config.toml
+# Ensure EXACT match between .env and config.toml
+
+# 4. Restart services
+docker compose down
+docker compose up -d
+```
+
+#### 5. Manager Not Seeing Proplet - "entity already exists"
+
+**Symptom:**
+```
+{"level":"WARN","msg":"Failed to handle MQTT message: entity already exists"}
+```
+
+**Cause:** Manager's proplet registry is in a stale state.
+
+**Solution:**
+
+```bash
+# Restart manager to clear registry
+docker compose restart manager
+
+# Wait for proplet to re-register
+sleep 10
+
+# Verify registration
+docker compose logs manager | grep "successfully created proplet"
+# Should see: {"level":"INFO","msg":"successfully created proplet"}
+```
+
+#### 6. Task Starts But Proplet Doesn't Execute
+
+**Symptom:**
+- Manager logs: "Starting task completed successfully"
+- Proplet logs: No execution logs, only liveliness messages
+
+**Cause:** Task message not reaching proplet, or proplet not subscribed to correct topic.
+
+**Solution:**
+
+```bash
+# 1. Verify manager knows about proplet
+docker compose logs manager | grep proplet
+
+# 2. Check MQTT connectivity
+docker compose logs mqtt-adapter | grep "published.*control/manager/start"
+
+# 3. Verify proplet subscription
+docker compose logs proplet | grep "Subscribed to topic"
+
+# 4. Check for MQTT connection errors
+docker compose logs proplet | grep "connection error" | wc -l
+# High number indicates connectivity issues
+
+# 5. Restart both manager and proplet
+docker compose restart manager proplet
+sleep 15
+# Try task submission again
+```
+
+#### 7. Base64 Encoding Errors
+
+**Symptom:**
+```
+Error: invalid base64
+```
+
+or task file is empty/corrupted.
+
+**Cause:** Platform-specific base64 command differences.
+
+**Solution:**
+
+**macOS:**
+```bash
+# Correct
+WASM_B64=$(base64 -i file.wasm | tr -d '\n')
+
+# Incorrect (will fail)
+WASM_B64=$(base64 -w 0 file.wasm)  # -w doesn't exist on macOS
+```
+
+**Linux:**
+```bash
+# Correct
+WASM_B64=$(base64 -w 0 file.wasm)
+
+# Also works (slower)
+WASM_B64=$(base64 file.wasm | tr -d '\n')
+```
+
+#### 8. Volume Mount Failures
+
+**Symptom:**
+```
+Error: not a directory
+```
+
+or files not accessible inside container.
+
+**Cause:** Incorrect volume mount syntax or relative paths.
+
+**Solution:**
+
+```bash
+# Use ABSOLUTE paths
+# ✅ Correct
+volumes:
+  - /Users/username/models:/models
+  - /Users/username/wasmtime/crates/wasi-nn/examples/classification-example/fixture:/fixture
+
+# ❌ Incorrect
+volumes:
+  - ~/models:/models  # Tilde expansion may not work
+  - ./fixture:/fixture  # Relative paths depend on docker compose execution location
+
+# Verify mounts
+docker compose exec proplet ls -la /models
+docker compose exec proplet ls -la /fixture
+```
 
 ### Debugging Commands
 
 ```bash
-# Verify WASM binary (requires wasm-objdump from wabt package)
-# Install with: sudo apt-get install wabt or brew install wabt
-wasm-objdump -h classification.wasm 2>/dev/null || echo "wasm-objdump not found. Install wabt package."
+# ===============================
+# Verify WASM Binary
+# ===============================
 
-# Test wasmtime locally
-wasmtime --wasi-modules=experimental-wasi-nn \
-  --env MODEL_DIR=/models \
-  classification.wasm
+# Check WASM structure (requires wabt package)
+wasm-objdump -h target/wasm32-wasip1/release/wasi-nn-example.wasm
 
-# Check OpenVINO installation
+# Verify it's valid WASM
+file target/wasm32-wasip1/release/wasi-nn-example.wasm
+# Should output: WebAssembly (wasm) binary module
+
+# ===============================
+# Test Wasmtime Locally
+# ===============================
+
+# Test with debug output
+RUST_LOG=debug wasmtime run -S nn --dir=fixture wasi-nn-example.wasm
+
+# Test with specific model path
+wasmtime run -S nn -S nn-graph=openvino::fixture --dir=fixture wasi-nn-example.wasm
+
+# ===============================
+# Check OpenVINO
+# ===============================
+
+# macOS
+ls -la /opt/homebrew/lib | grep openvino
+otool -L /opt/homebrew/lib/libopenvino.dylib
+
+# Linux
 ldconfig -p | grep openvino
+ldd /usr/local/lib/libopenvino.so
 
-# Verify worker configuration
-cat /etc/propeller/config.toml | grep -A 5 proplet
+# ===============================
+# Verify Propeller Configuration
+# ===============================
 
-# Check worker process
-ps aux | grep proplet
+# Check environment variables
+docker compose exec proplet env | grep PROPLET
 
-# Monitor MQTT messages (requires mosquitto-clients)
-# Install with: sudo apt-get install mosquitto-clients or brew install mosquitto
-mosquitto_sub -h localhost -t 'm/+/c/+/control/proplet/#' -v 2>/dev/null || echo "mosquitto_sub not found. Install mosquitto-clients package."
+# Check config file (if using)
+docker compose exec proplet cat /config.toml
+
+# Verify wasmtime in container
+docker compose exec proplet which wasmtime
+docker compose exec proplet wasmtime --version
+
+# ===============================
+# Monitor MQTT Traffic
+# ===============================
+
+# Install mosquitto-clients if not present
+# macOS: brew install mosquitto
+# Linux: sudo apt-get install mosquitto-clients
+
+# Subscribe to all propeller topics
+mosquitto_sub -h localhost -t 'm/+/c/+/control/#' -v
+
+# Watch for task start messages
+mosquitto_sub -h localhost -t 'm/+/c/+/control/manager/start' -v
+
+# ===============================
+# Check SuperMQ Clients
+# ===============================
+
+# Get admin token
+TOKEN=$(curl -s -X POST http://localhost:9002/users/tokens/issue \
+  -H "Content-Type: application/json" \
+  -d '{"identity": "admin@example.com", "secret": "12345678"}' \
+  | jq -r '.access_token')
+
+# List all clients in domain
+DOMAIN_ID="<your-domain-id>"
+curl -s "http://localhost:9006/domains/$DOMAIN_ID/clients" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# Check specific client
+CLIENT_ID="<your-client-id>"
+curl -s "http://localhost:9006/clients/$CLIENT_ID" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# ===============================
+# Service Health Checks
+# ===============================
+
+# Check all Propeller services
+docker compose ps
+
+# Check manager health
+curl http://localhost:7070/health
+
+# Check SuperMQ services
+docker compose ps | grep supermq
+
+# ===============================
+# Log Analysis
+# ===============================
+
+# Manager logs (without DEBUG)
+docker compose logs manager | grep -v DEBUG
+
+# Proplet logs (without DEBUG)
+docker compose logs proplet | grep -v DEBUG
+
+# MQTT adapter logs
+docker compose logs mqtt-adapter --tail 100
+
+# All errors across services
+docker compose logs | grep -i error
 ```
+
+### Verification Checklist
+
+Before submitting a task, verify:
+
+- [ ] Wasmtime installed and has wasi-nn support: `wasmtime run -S help | grep nn`
+- [ ] OpenVINO libraries accessible: `ls $DYLD_LIBRARY_PATH` or `ldconfig -p | grep openvino`
+- [ ] WASM binary built successfully: `ls target/wasm32-wasip1/release/*.wasm`
+- [ ] Model files present: `ls fixture/model.xml fixture/model.bin fixture/tensor.bgr`
+- [ ] Local test passes: `wasmtime run -S nn --dir=fixture wasi-nn-example.wasm`
+- [ ] Propeller services running: `docker compose ps`
+- [ ] Proplet registered with manager: `docker compose logs manager | grep "successfully created proplet"`
+- [ ] No MQTT connection errors: `docker compose logs proplet | grep "connection error" | wc -l` (should be low/zero)
+- [ ] Credentials match in `.env` and `config.toml`
+- [ ] Volume mounts configured with absolute paths
+
+If all checks pass, task submission should succeed!
+
+---
+
+## Additional Resources
+
+- [Wasmtime wasi-nn Documentation](https://github.com/bytecodealliance/wasmtime/tree/main/crates/wasi-nn)
+- [OpenVINO Installation Guide](https://docs.openvino.ai/latest/openvino_docs_install_guides_installing_openvino.html)
+- [Propeller Documentation](https://docs.propeller.absmach.eu/)
+- [SuperMQ Documentation](https://docs.supermq.abstractmachines.fr/)
+- [WASI Preview 2](https://github.com/WebAssembly/WASI/blob/main/preview2/README.md)
+
+---
+
+## Summary
+
+This guide has covered:
+
+1. **Conceptual understanding** of wasi-nn and its integration with Propeller
+2. **Prerequisites** for development and worker machines
+3. **Step-by-step workflow** from building WASM to executing on Propeller
+4. **Platform-specific considerations** for macOS and Linux
+5. **Comprehensive troubleshooting** for common issues
+6. **Debugging commands** and verification procedures
+
+Key takeaways:
+
+- Always test locally with `wasmtime` before submitting to Propeller
+- Use the correct Wasmtime flag syntax for your version (`-S nn=y` for 14.0+)
+- Platform differences (DYLD vs LD, base64 flags) are critical
+- Credentials must match exactly between `.env` and `config.toml`
+- Manager must successfully register the proplet before tasks can execute
+- Volume mounts must use absolute paths
+
+For additional support, consult the [Propeller community forums](https://github.com/absmach/propeller/discussions) or [file an issue](https://github.com/absmach/propeller/issues).
