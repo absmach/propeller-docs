@@ -38,7 +38,9 @@ Federated learning provides natural scalability advantages:
 
 Propeller's FML system is built on a workload-agnostic design where the core orchestration layer (Manager) provides HTTP endpoints for FL operations but delegates all FL-specific logic to an external Coordinator service. This separation of concerns allows Propeller to support federated learning while remaining flexible enough to orchestrate other types of distributed workloads.
 
-![The FML system consists of the following components](images/fml-architecture.png)
+The following diagram illustrates the high-level architecture of Propeller's FML system, showing how the core components (Manager, Coordinator, Aggregator, Model Registry, Proplets, and supporting services) interact to enable federated learning. The diagram highlights the separation between orchestration (Manager) and FL-specific logic (Coordinator), as well as the communication patterns used between components.
+
+![FML System Architecture](images/fml-architecture.png)
 
 ### Core Design Principles
 
@@ -236,7 +238,9 @@ SuperMQ provides the underlying MQTT messaging infrastructure that enables async
 
 ## Training Round Lifecycle
 
-![The FML Model Lifecycle](images/fml-model-lifecycle.png)
+The federated learning process in Propeller follows a well-defined lifecycle that repeats for each training round. The following diagram illustrates the complete model lifecycle, showing how models progress from initial version through multiple training rounds, with each round producing an improved model version that incorporates knowledge from participating edge devices.
+
+![FML Model Lifecycle:.](images/fml-model-lifecycle.png)
 
 ### 1. Round Initialization
 
@@ -336,7 +340,9 @@ Propeller's FML system uses several communication patterns to coordinate distrib
 
 ### Communication Flow
 
-![The FML message flow between components](images/fml-message-flow.png)
+The following diagram provides a detailed view of the message flow between all FML components during a typical training round. It shows the sequence of interactions, the protocols used (HTTP vs MQTT), and the direction of data flow.
+
+![FML Message Flow](images/fml-message-flow.png)
 
 ### HTTP Endpoints
 
