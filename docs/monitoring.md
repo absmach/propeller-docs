@@ -4,7 +4,7 @@
 
 Propeller tracks OS-level metrics for every WebAssembly task running on proplets. The system collects CPU usage, memory consumption, disk I/O, thread counts, and more with minimal performance overhead.
 
-Both Go and Rust proplets include built-in monitoring using `gopsutil` for Go and `sysinfo` for Rust. These libraries provide cross-platform compatibility across Linux, macOS, and Windows environments.
+Propeller tracks OS-level metrics for every WebAssembly task running on proplets. The system collects CPU usage, memory consumption, disk I/O, thread counts, and more with minimal performance overhead. The Rust proplet includes built-in monitoring using the `sysinfo` crate for cross-platform metrics. This provides compatibility across Linux, macOS, and Windows environments.
 
 ## Architecture
 
@@ -16,7 +16,9 @@ Each proplet monitors its running tasks independently and reports metrics to the
 
 1. Proplet spawns a monitoring thread for each task
 2. Thread collects process metrics at configured intervals (1-120 seconds)
-3. Metrics are published to MQTT topic `m/{domain}/c/{channel}/metrics/proplet`
+3. Metrics are published to MQTT topics:
+   - Proplet-level: `m/{domain}/c/{channel}/control/proplet/metrics`
+   - Task-level: `m/{domain}/c/{channel}/control/proplet/task_metrics`
 4. Manager receives and stores metrics in memory
 5. API clients query metrics via HTTP endpoints
 

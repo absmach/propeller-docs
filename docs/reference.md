@@ -1,6 +1,6 @@
 # Process Monitoring Implementation
 
-This document describes the complete process monitoring implementation for both Go and Rust proplets in the Propeller distributed task execution system.
+This document describes the complete process monitoring implementation for Rust proplets in the Propeller distributed task execution system.
 
 ## Overview
 
@@ -12,17 +12,29 @@ Comprehensive OS-level process monitoring has been implemented for:
 
 ## Monitoring Profiles
 
-Both implementations provide identical profiles:
+Profiles define which metrics to collect, how often, and how much history to retain.
 
-| Profile             | Interval | Metrics                            | Export | History | Use Case            |
-| ------------------- | -------- | ---------------------------------- | ------ | ------- | ------------------- |
-| Standard            | 10s      | All                                | Yes    | 100     | General purpose     |
-| Minimal             | 60s      | CPU, Memory                        | No     | 0       | Lightweight         |
-| Intensive           | 1s       | All                                | Yes    | 1000    | Debug/analysis      |
-| Batch Processing    | 30s      | CPU, Memory, Disk                  | Yes    | 200     | Data processing     |
-| Real-time API       | 5s       | CPU, Memory, Network, Threads, FDs | Yes    | 500     | HTTP/API servers    |
-| Long-running Daemon | 120s     | All                                | Yes    | 500     | Background services |
-| Disabled            | -        | None                               | No     | 0       | No monitoring       |
+The Rust implementation provides two built-in profiles:
+
+| Profile             | Interval | Metrics | Export | History | Use Case            |
+| ------------------- | -------- | ------- | ------ | ------- | ------------------- |
+| Standard            | 10s      | All     | Yes    | 100     | General purpose     |
+| Long-running Daemon | 120s     | All     | Yes    | 500     | Background services |
+
+### Custom Profiles
+
+You can also define custom monitoring profiles via JSON configuration with the following options:
+
+- `enabled`: Enable/disable monitoring (default: `true`)
+- `interval`: Collection interval in seconds (default: `10`)
+- `collect_cpu`: Collect CPU metrics (default: `true`)
+- `collect_memory`: Collect memory metrics (default: `true`)
+- `collect_disk_io`: Collect disk I/O metrics (default: `true`)
+- `collect_threads`: Collect thread count (default: `true`)
+- `collect_file_descriptors`: Collect file descriptor count (default: `true`)
+- `export_to_mqtt`: Publish metrics to MQTT (default: `true`)
+- `retain_history`: Keep metrics history (default: `true`)
+- `history_size`: Maximum history entries (default: `100`)
 
 ## Metrics Collected
 
@@ -44,11 +56,10 @@ Both implementations provide identical profiles:
 
 ## MQTT Topics
 
-### Proplet-Level Metrics (Go)
+### Proplet-Level Metrics
 
-```txt
+````txt
 m/{domain_id}/c/{channel_id}/control/proplet/metrics
-```
 
 Publishes overall proplet health metrics.
 
@@ -57,7 +68,7 @@ Publishes overall proplet health metrics.
 ```txt
 m/{domain_id}/c/{channel_id}/control/proplet/task_metrics   # Go
 m/{domain_id}/c/{channel_id}/metrics/proplet                 # Rust
-```
+````
 
 Publishes per-task process metrics.
 
@@ -96,18 +107,11 @@ Publishes per-task process metrics.
 
 ## Configuration
 
-### Go Proplet Environment Variables
-
-```bash
-PROPLET_METRICS_INTERVAL=10        # Interval in seconds
-PROPLET_ENABLE_MONITORING=true     # Enable/disable
-```
-
 ### Rust Proplet Environment Variables
 
 ```bash
-PROPLET_ENABLE_MONITORING=true     # Enable/disable
-PROPLET_METRICS_INTERVAL=10        # Interval in seconds
+export PROPLET_ENABLE_MONITORING=true     # Enable/disable monitoring (default: true)
+export PROPLET_METRICS_INTERVAL=10        # Proplet-level metrics interval in seconds (default: 10)
 ```
 
 ### Per-Task Configuration (JSON)
@@ -141,8 +145,6 @@ Measured overhead across platforms:
 | Intensive | < 2%         | ~5 MB           |
 
 ## Usage Examples
-
-### Go - Start Task with Monitoring
 
 ```go
 task := task.Task{
@@ -233,21 +235,18 @@ mosquitto_sub -h localhost -t "m/+/c/+/*/metrics" -v
 ## Future Enhancements
 
 1. Manager Integration
-
    - Aggregate metrics from all proplets
    - Historical metrics storage
    - Metrics API endpoints
    - Alerting on anomalies
 
 2. Advanced Metrics
-
    - GPU usage (if available)
    - Container-specific metrics (cgroups)
    - Custom application metrics
    - Distributed tracing correlation
 
 3. Optimization
-
    - Adaptive sampling rates
    - Metric compression
    - Batched MQTT publishing
