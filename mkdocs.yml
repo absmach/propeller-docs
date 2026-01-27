@@ -23,6 +23,7 @@ nav:
   - Manager: manager.md
   - Proplet: proplet.md
   - Embedded Proplet: embedded-proplet.md
+  - Encrypted workloads in TEEs: tee-workloads.md
   - Proxy: proxy.md
   - Developer's Guide: developer-guide.md
   - Zephyr: zephyr.md
