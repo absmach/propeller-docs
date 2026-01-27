@@ -261,6 +261,7 @@ The Local Data Store service provides training datasets to proplets via HTTP.
 - **Schema Management**: Validates dataset format and ensures compatibility with WASM client expectations.
 
 **Dataset Format**: Datasets are returned in JSON format containing:
+
 - `schema`: Schema identifier (e.g., "fl-demo-dataset-v1")
 - `proplet_id`: UUID of the proplet
 - `data`: Array of training samples, each with feature vector `x` and label `y`
@@ -551,6 +552,7 @@ Propeller combines MQTT publish-subscribe and HTTP request-response patterns in 
 Propeller uses HTTP for synchronous, point-to-point communication where request-response semantics are needed:
 
 **Manager Endpoints**:
+
 - `POST /fl/experiments` - Configure an FL experiment and trigger round start
 - `GET /fl/task?round_id={id}&proplet_id={id}` - Forward task requests to Coordinator
 - `POST /fl/update` - Forward update submissions to Coordinator (JSON)
@@ -558,6 +560,7 @@ Propeller uses HTTP for synchronous, point-to-point communication where request-
 - `GET /fl/rounds/{round_id}/complete` - Check round completion status
 
 **Coordinator Endpoints**:
+
 - `POST /experiments` - Receive experiment configuration and initialize round
 - `GET /task?round_id={id}&proplet_id={id}` - Provide FL task details to proplets
 - `POST /update` - Receive training updates from proplets (JSON)
@@ -566,13 +569,16 @@ Propeller uses HTTP for synchronous, point-to-point communication where request-
 - `GET /rounds/next` - Check if next round is available
 
 **Model Registry Endpoints**:
+
 - `GET /models/{version}` - Fetch a specific model version
 - `POST /models` - Store a new model version
 
 **Aggregator Endpoints**:
+
 - `POST /aggregate` - Perform FedAvg on collected updates
 
 **Local Data Store Endpoints**:
+
 - `GET /datasets/{proplet_id}` - Fetch dataset for a specific proplet
 
 ### Publish-Subscribe (MQTT Topics)
@@ -681,7 +687,7 @@ Propeller's FML architecture is designed to scale across several dimensions:
 
 Propeller's FML system implements comprehensive error handling for various failure scenarios:
 
-**HTTP Endpoint Failures**
+#### HTTP Endpoint Failures
 
 - **Coordinator Unavailable**: When the Coordinator is unreachable, the Manager returns a 503 Service Unavailable error to external clients.
 
@@ -691,7 +697,7 @@ Propeller's FML system implements comprehensive error handling for various failu
 
 - **Model Registry Unavailable**: When the Model Registry is unavailable, proplets receive a 503 error when attempting to fetch the model.
 
-**Aggregator Service Failures**
+#### Aggregator Service Failures
 
 - **Aggregator Unavailable**: When the Coordinator attempts to call the Aggregator but the service is unreachable, the Coordinator implements a retry policy with exponential backoff. After 3 failed retry attempts, the Coordinator stores the unaggregated updates for later recovery and completes the round with a warning status.
 
@@ -699,7 +705,7 @@ Propeller's FML system implements comprehensive error handling for various failu
 
 - **Timeout on Aggregation**: The Coordinator sets a timeout (configurable, default 30 seconds) for Aggregator requests.
 
-**Proplet Failures**
+#### Proplet Failures
 
 - **Proplet Timeout**: When a proplet does not submit an update within the round timeout, the Coordinator excludes it from aggregation but continues the round with the remaining participants.
 
@@ -707,7 +713,7 @@ Propeller's FML system implements comprehensive error handling for various failu
 
 - **WASM Execution Errors**: If the WASM module encounters an error during training (e.g., division by zero, out of memory), the proplet reports it to the Coordinator via a special error update message. The Coordinator logs the error and excludes the proplet from the round.
 
-**Network-Related Failures**
+#### Network-Related Failures
 
 - **HTTP to MQTT Fallback**: Proplets prefer HTTP for update submission but fall back to MQTT if HTTP fails. The fallback is triggered after 3 consecutive HTTP failures.
 
