@@ -6,7 +6,7 @@ Run WebAssembly workloads inside hardware-protected environments.
 
 A Trusted Execution Environment (TEE) is a secure area inside a processor that protects code and data from unauthorized access. TEEs use hardware-based security features to create isolated execution environments.
 
-**Common TEE Technologies:**
+Common TEE technologies:
 
 - Intel TDX - Trust Domain Extensions for virtual machines
 - AMD SEV-SNP - Secure Encrypted Virtualization with Secure Nested Paging
@@ -18,8 +18,6 @@ TEEs ensure that even system administrators or cloud providers cannot access you
 
 Propeller runs WASM workloads inside TEEs by combining encrypted container images with hardware attestation.
 
-**The workflow:**
-
 1. Proplet detects if it runs inside a TEE
 2. Manager sends an encrypted workload request
 3. Proplet retrieves attestation proof from TEE hardware
@@ -30,15 +28,11 @@ All execution happens inside the protected environment. The WASM code and data r
 
 ## Prerequisites
 
-Install these components before running encrypted workloads:
-
 - KBS (Key Broker Service) - Stores encryption keys and validates attestations
 - Attestation Agent - Communicates with TEE hardware and KBS
 - Proplet with TEE support - Built with TEE features enabled
 
 ## Set up the Key Broker Service
-
-The KBS manages encryption keys and validates TEE attestations.
 
 ### Start KBS with Docker
 
@@ -52,16 +46,12 @@ This starts KBS on `http://localhost:8080`.
 
 ### Generate encryption keys
 
-Create a key pair for encrypting WASM images:
-
 ```bash
 openssl genrsa -out private_key.pem 2048
 openssl rsa -in private_key.pem -pubout -out public_key.pem
 ```
 
 ### Upload private key to KBS
-
-Store the private key in KBS:
 
 ```bash
 ./target/release/kbs-client \
@@ -75,9 +65,9 @@ Store the private key in KBS:
 
 The path `default/key/my-app` identifies this key. Use it when creating tasks.
 
-## Build Proplet with TEE support
+![KBS Setup](images/tee-kbs-setup.png)
 
-Proplet needs TEE features compiled in.
+## Build Proplet with TEE support
 
 ### Install dependencies
 
@@ -106,8 +96,6 @@ The binary will be in `target/release/proplet`.
 
 ## Encrypt a WASM image
 
-Container images must be encrypted before deployment.
-
 ### Push WASM to local registry
 
 ```bash
@@ -131,9 +119,9 @@ skopeo copy \
   docker://docker.io/username/my-app:encrypted
 ```
 
-## Configure attestation agent
+![Image Encryption](images/tee-image-encryption.png)
 
-The attestation agent connects Proplet to the TEE hardware and KBS.
+## Configure attestation agent
 
 ### Create configuration file
 
@@ -177,13 +165,13 @@ export PROPLET_CLIENT_KEY=your-client-key
 
 Proplet will log the detected TEE type:
 
-```
+```bash
 INFO TEE detected automatically: TDX (method: device_file)
 ```
 
 Or if no TEE is present:
 
-```
+```bash
 INFO No TEE detected, running in standard mode
 ```
 
@@ -201,7 +189,7 @@ Create a task manifest for the encrypted WASM:
 }
 ```
 
-**Important fields:**
+Important fields:
 
 - `encrypted: true` - Tells Proplet to use TEE runtime
 - `image_url` - Location of encrypted image (required for encrypted workloads)
@@ -228,13 +216,15 @@ propeller-cli task get <task-id>
 
 The output shows execution status and results. All decryption and execution happened inside the TEE.
 
+![Encrypted Task Execution](images/tee-encrypted-task-execution.png)
+
 ## Troubleshoot common issues
 
 ### "KBS URI must be configured when TEE is detected"
 
-**Cause:** Proplet detected a TEE but `PROPLET_KBS_URI` is not set.
+Proplet detected a TEE but `PROPLET_KBS_URI` is not set.
 
-**Fix:** Set the KBS endpoint:
+Set the KBS endpoint:
 
 ```bash
 export PROPLET_KBS_URI=http://localhost:8080
@@ -242,9 +232,9 @@ export PROPLET_KBS_URI=http://localhost:8080
 
 ### "TEE runtime not available"
 
-**Cause:** Task is marked `encrypted: true` but Proplet lacks TEE support.
+Task is marked `encrypted: true` but Proplet lacks TEE support.
 
-**Fix:** Rebuild Proplet with TEE features:
+Rebuild Proplet with TEE features:
 
 ```bash
 cargo build --release --features "tee,all-attesters"
@@ -252,9 +242,9 @@ cargo build --release --features "tee,all-attesters"
 
 ### "image_url is required for encrypted workloads"
 
-**Cause:** Encrypted task has `file` field or missing `image_url`.
+Encrypted task has `file` field or missing `image_url`.
 
-**Fix:** Remove `file` field and set `image_url`:
+Remove `file` field and set `image_url`:
 
 ```json
 {
@@ -265,9 +255,9 @@ cargo build --release --features "tee,all-attesters"
 
 ### Attestation agent connection failed
 
-**Cause:** Attestation agent is not running or on wrong port.
+Attestation agent is not running or on wrong port.
 
-**Fix:** Start attestation agent and verify port 50010:
+Start attestation agent and verify port 50010:
 
 ```bash
 netstat -tlnp | grep 50010
@@ -277,28 +267,7 @@ netstat -tlnp | grep 50010
 
 ### Component interaction
 
-```
-┌─────────────┐
-│   Manager   │ Sends encrypted task request via MQTT
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│   Proplet   │ Detects TEE, requests attestation
-└──────┬──────┘
-       │
-       ├─────────────────┐
-       │                 │
-       ▼                 ▼
-┌─────────────┐   ┌─────────────┐
-│     TEE     │   │     KBS     │
-│  Hardware   │◄──┤  Validates  │
-└─────────────┘   │ attestation │
-                  └──────┬──────┘
-                         │
-                         ▼
-                  Returns decryption key
-```
+![Architecture](images/tee-architecture.png)
 
 ### Execution flow
 
@@ -310,6 +279,8 @@ netstat -tlnp | grep 50010
 6. Decryption - Image layers decrypted inside TEE
 7. Execution - WASM runs in protected environment
 8. Results - Output published to Manager via MQTT
+
+![Attestation](images/tee-attestation.png)
 
 ### Security guarantees
 
