@@ -89,7 +89,7 @@ rustc --version
 rustup target list | grep wasm32-wasip1
 ```
 
-2. **Wasmtime Repository** (for examples):
+1. **Wasmtime Repository** (for examples):
 
 ```bash
 # Clone the repository
@@ -104,7 +104,7 @@ cd wasmtime/crates/wasi-nn/examples
 # - classification-example-pytorch/: PyTorch models
 ```
 
-3. **Wasmtime CLI** with wasi-nn support:
+1. **Wasmtime CLI** with wasi-nn support:
 
 ```bash
 # Option 1: Build from source with wasi-nn support
@@ -129,9 +129,10 @@ wasmtime --version
 wasmtime run -S help | grep nn
 ```
 
-2. **OpenVINO Runtime**:
+1. **OpenVINO Runtime**:
 
 **macOS:**
+
 ```bash
 brew install openvino
 
@@ -143,6 +144,7 @@ ls /opt/homebrew/lib | grep openvino
 ```
 
 **Linux:**
+
 ```bash
 # Install OpenVINO (follow official docs)
 # https://docs.openvino.ai/latest/openvino_docs_install_guides_installing_openvino_linux.html
@@ -154,7 +156,7 @@ export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH
 ldconfig -p | grep openvino
 ```
 
-3. **Propeller Worker** configured with:
+1. **Propeller Worker** configured with:
    - Host runtime enabled
    - `EXTERNAL_WASM_RUNTIME` environment variable set to `wasmtime`
    - Proper MQTT credentials provisioned in SuperMQ
@@ -221,7 +223,7 @@ wasmtime run -S nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wa
 
 **Expected Output:**
 
-```
+```text
 Read graph XML, first 50 characters: <?xml version="1.0" ?>
 <net name="mobilenet_v2_1.0
 Read graph weights, size in bytes: 13956476
@@ -381,11 +383,11 @@ curl -s http://localhost:7070/tasks/$TASK_ID | jq '.results'
 
 ## Platform Notes
 
-| Platform | Library Path Var | Base64 Flag | OpenVINO Path |
-|----------|-----------------|-------------|---------------|
-| macOS (Intel) | `DYLD_LIBRARY_PATH` | `-i` | `/usr/local/lib` |
-| macOS (Apple Silicon) | `DYLD_LIBRARY_PATH` | `-i` | `/opt/homebrew/lib` |
-| Linux | `LD_LIBRARY_PATH` | `-w 0` | `/opt/intel/openvino/runtime/lib` |
+| Platform              | Library Path Var      | Base64 Flag | OpenVINO Path                      |
+| --------------------- | --------------------- | ----------- | ---------------------------------- |
+| macOS (Intel)         | `DYLD_LIBRARY_PATH`   | `-i`        | `/usr/local/lib`                   |
+| macOS (Apple Silicon) | `DYLD_LIBRARY_PATH`   | `-i`        | `/opt/homebrew/lib`                |
+| Linux                 | `LD_LIBRARY_PATH`     | `-w 0`      | `/opt/intel/openvino/runtime/lib`  |
 
 ### macOS Notes
 
