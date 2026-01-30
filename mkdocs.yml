@@ -16,6 +16,12 @@ markdown_extensions:
   - toc:
       permalink: "#"
 
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
 nav:
   - Overview: index.md
   - Getting Started: getting-started.md
@@ -24,5 +30,7 @@ nav:
   - Proplet: proplet.md
   - Embedded Proplet: embedded-proplet.md
   - Proxy: proxy.md
+  - Monitoring: monitoring.md
+  - Reference: reference.md
   - Developer's Guide: developer-guide.md
   - Zephyr: zephyr.md

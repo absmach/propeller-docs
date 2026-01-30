@@ -25,6 +25,8 @@ cd propeller
 
 ## Build and Install the Artifacts
 
+To install the Magistrala CLI, follow the [instructions](https://docs.magistrala.abstractmachines.fr/getting-started/#step-2-install-the-cli).
+
 This step compiles all Propeller components (manager, proplet, CLI, proxy, and example WASM modules).
 Run the following:
 

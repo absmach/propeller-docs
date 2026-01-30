@@ -30,16 +30,10 @@ git clone https://github.com/absmach/propeller-docs.git
    source venv/bin/activate
    ```
 
-3. Install [MkDocs](https://www.mkdocs.org/#installation)
+3. Install [MkDocs](https://www.mkdocs.org/#installation) and dependencies:
 
    ```bash
-   pip install mkdocs
-   ```
-
-4. Additionally, install [Material theme](https://squidfunk.github.io/mkdocs-material/):
-
-   ```bash
-   pip install mkdocs-material
+   pip install -r requirements.txt
    ```
 
 ## Usage
