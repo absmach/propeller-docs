@@ -1,0 +1,1516 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Propeller Documentation">
+      
+      
+      
+      
+        <link rel="prev" href="../embedded-proplet/">
+      
+      
+        <link rel="next" href="../monitoring/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Proxy - Propeller</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#proxy-service" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Propeller" class="md-header__button md-logo" aria-label="Propeller" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Propeller
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Proxy
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/absmach/propeller-docs.git" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Propeller" class="md-nav__button md-logo" aria-label="Propeller" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Propeller
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/absmach/propeller-docs.git" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../proplet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proplet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedded-proplet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedded Proplet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Details
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture Details">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#streaming-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming System
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mqtt-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MQTT Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registry-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usernamepassword-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Username/Password Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the Service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploying-a-local-oci-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploying a Local OCI Registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying a Local OCI Registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-run-a-local-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Run a Local Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-push-a-wasm-module-to-the-local-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Push a WASM Module to the Local Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Configure the Proxy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#http-registry-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Registry Operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer's Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zephyr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zephyr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Details
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture Details">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#streaming-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming System
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mqtt-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MQTT Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registry-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usernamepassword-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Username/Password Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the Service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploying-a-local-oci-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploying a Local OCI Registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying a Local OCI Registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-run-a-local-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Run a Local Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-push-a-wasm-module-to-the-local-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Push a WASM Module to the Local Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Configure the Proxy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#http-registry-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Registry Operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="proxy-service">Proxy Service<a class="headerlink" href="#proxy-service" title="Permanent link">#</a></h1>
+<p>The Proxy Service acts as a bridge between MQTT and HTTP protocols in the Propeller system. It enables bidirectional communication between MQTT clients and HTTP endpoints, allowing for seamless integration of different protocols. The proxy service is responsible for fetching WebAssembly modules from an OCI-compliant registry, chunking them, and publishing them over MQTT for <code>proplet</code> instances to consume.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
+<p>The proxy service performs two main functions:</p>
+<ol>
+<li>Subscribes to MQTT topics and forwards messages to HTTP endpoints</li>
+<li>Streams data between MQTT and HTTP protocols</li>
+</ol>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
+<p>To use the proxy service, you need to set the required environment variables and run the <code>main.go</code> file in the <code>cmd/proxy</code> directory.</p>
+<div class="highlight"><pre><span></span><code><span class="nv">PROXY_REGISTRY_URL</span><span class="o">=</span><span class="s2">&quot;docker.io&quot;</span>
+<span class="nv">PROXY_AUTHENTICATE</span><span class="o">=</span><span class="s2">&quot;TRUE&quot;</span>
+<span class="nv">PROXY_REGISTRY_USERNAME</span><span class="o">=</span><span class="s2">&quot;docker_username&quot;</span>
+<span class="nv">PROXY_REGISTRY_PASSWORD</span><span class="o">=</span><span class="s2">&quot;docker_password&quot;</span>
+propeller-proxy
+</code></pre></div>
+<p>This will change the task definition. Since we are using hosted wasm modules, we need to specify the image URL. Hence the task definition will look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;add&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;inputs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;image_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;docker.io/mrstevenyaga/add.wasm&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">#</a></h3>
+<p>The proxy service facilitates the download of WebAssembly (WASM) containers through a multi-step process:</p>
+<p><img alt="Proxy Service Architecture" src="../images/proxy.png" /></p>
+<ol>
+<li>
+<p><strong>Initial Request</strong>
+   The proplet sends a download request via the MQTT topic: <code>m/:domain_id/c/:channel_id/messages/registry/proplet</code>
+   This request is received by the proxy service's MQTT subscriber</p>
+</li>
+<li>
+<p><strong>OCI Registry Download</strong>
+   The HTTP side of the proxy service receives this request
+   It then sends a download request to the OCI registry to fetch the WASM container
+   The container is downloaded as an OCI image</p>
+</li>
+<li>
+<p><strong>Chunked Data Transfer</strong>
+   Once downloaded, the WASM image is split into chunks
+   These chunks are sent back to the proplet via the MQTT topic: <code>m/:domain_id/c/:channel_id/messages/registry/server</code>
+   This chunked approach ensures efficient handling of large WASM files</p>
+</li>
+</ol>
+<h3 id="architecture-details">Architecture Details<a class="headerlink" href="#architecture-details" title="Permanent link">#</a></h3>
+<h4 id="streaming-system">Streaming System<a class="headerlink" href="#streaming-system" title="Permanent link">#</a></h4>
+<p>The proxy service implements a concurrent streaming architecture with two main components:</p>
+<ol>
+<li>
+<p><strong>HTTP Stream</strong>
+   Handles container fetching from the OCI registry.
+   Splits containers into configurable chunk sizes
+   Forwards chunks to the MQTT stream via an internal channel.
+   Implements context-based cancellation for graceful shutdown.</p>
+</li>
+<li>
+<p><strong>MQTT Stream</strong>
+   Receives chunks from the HTTP stream.
+   Publishes chunks to MQTT topics.
+   Tracks chunk delivery progress.
+   Maintains a map of container chunks to ensure complete delivery.</p>
+</li>
+</ol>
+<h4 id="chunk-management">Chunk Management<a class="headerlink" href="#chunk-management" title="Permanent link">#</a></h4>
+<ul>
+<li>Uses a buffered channel system with a capacity of 10 chunks</li>
+<li>Tracks the progress of chunk delivery for each container</li>
+<li>Provides completion notifications when all chunks are successfully sent</li>
+<li>Automatically cleans up tracking data after successful delivery</li>
+</ul>
+<h4 id="performance-features">Performance Features<a class="headerlink" href="#performance-features" title="Permanent link">#</a></h4>
+<ul>
+<li><strong>Buffered Operations</strong>: Implements chunk buffering to optimize memory usage and transfer speed</li>
+<li><strong>Concurrent Processing</strong>: Separate goroutines for HTTP and MQTT operations</li>
+<li><strong>Progress Tracking</strong>: Real-time tracking of chunk delivery status</li>
+<li><strong>Memory Management</strong>: Automatic cleanup of completed transfers</li>
+</ul>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
+<p>The proxy service is configured using environment variables.</p>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Environment Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROXY_LOG_LEVEL</code></td>
+<td>Log level (e.g., <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>).</td>
+</tr>
+<tr>
+<td><code>PROXY_INSTANCE_ID</code></td>
+<td>A unique ID for this proxy instance.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="mqtt-configuration">MQTT Configuration<a class="headerlink" href="#mqtt-configuration" title="Permanent link">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROXY_MQTT_ADDRESS</code></td>
+<td>URL of the MQTT broker</td>
+<td><code>tcp://localhost:1883</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PROXY_MQTT_TIMEOUT</code></td>
+<td>The timeout for MQTT operations.</td>
+<td><code>30s</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>PROXY_MQTT_QOS</code></td>
+<td>The Quality of Service level for MQTT messages.</td>
+<td><code>2</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>PROXY_DOMAIN_ID</code></td>
+<td>The domain ID for this proxy.</td>
+<td><code>""</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PROXY_CLIENT_ID</code></td>
+<td>Unique identifier for the proplet</td>
+<td><code>""</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PROXY_CHANNEL_ID</code></td>
+<td>Channel identifier for MQTT</td>
+<td><code>""</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PROXY_CLIENT_KEY</code></td>
+<td>Password for MQTT authentication</td>
+<td><code>""</code></td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="registry-configuration">Registry Configuration<a class="headerlink" href="#registry-configuration" title="Permanent link">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROXY_REGISTRY_URL</code></td>
+<td>URL of the OCI registry</td>
+<td><code>""</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PROXY_AUTHENTICATE</code></td>
+<td>Enable/disable registry authentication</td>
+<td><code>false</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>PROXY_REGISTRY_USERNAME</code></td>
+<td>Username for registry authentication</td>
+<td><code>""</code></td>
+<td>Only if <code>PROXY_AUTHENTICATE=true</code></td>
+</tr>
+<tr>
+<td><code>PROXY_REGISTRY_PASSWORD</code></td>
+<td>Password for registry authentication</td>
+<td><code>""</code></td>
+<td>Only if <code>PROXY_AUTHENTICATE=true</code></td>
+</tr>
+<tr>
+<td><code>PROXY_REGISTRY_TOKEN</code></td>
+<td>Access token for registry authentication</td>
+<td><code>""</code></td>
+<td>Alternative to username/password</td>
+</tr>
+<tr>
+<td><code>PROXY_CHUNK_SIZE</code></td>
+<td>The size of the chunks to split the Wasm module into</td>
+<td><code>512000</code></td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-configuration">Example Configuration<a class="headerlink" href="#example-configuration" title="Permanent link">#</a></h3>
+<p>Export the required environment variables in your terminal:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Registry Configuration</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_URL</span><span class="o">=</span><span class="s2">&quot;&lt;registry_url&gt;&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_AUTHENTICATE</span><span class="o">=</span><span class="s2">&quot;TRUE&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_USERNAME</span><span class="o">=</span><span class="s2">&quot;&lt;your_docker_username&gt;&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_PASSWORD</span><span class="o">=</span><span class="s2">&quot;&lt;your_docker_password&gt;&quot;</span>
+
+<span class="c1"># MQTT Configuration</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_THING_KEY</span><span class="o">=</span><span class="s2">&quot;&lt;secret&gt;&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_THING_ID</span><span class="o">=</span><span class="s2">&quot;&lt;proplet_id&gt;&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CHANNEL_ID</span><span class="o">=</span><span class="s2">&quot;&lt;channel_id&gt;&quot;</span>
+</code></pre></div>
+<h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">#</a></h3>
+<p>If your registry requires authentication, you can set the <code>PROXY_AUTHENTICATE</code> environment variable to <code>true</code> and provide either a token or a username and password.</p>
+<h4 id="token-authentication">Token Authentication<a class="headerlink" href="#token-authentication" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_AUTHENTICATE</span><span class="o">=</span><span class="s2">&quot;true&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_TOKEN</span><span class="o">=</span><span class="s2">&quot;your_token&quot;</span>
+</code></pre></div>
+<h4 id="usernamepassword-authentication">Username/Password Authentication<a class="headerlink" href="#usernamepassword-authentication" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_AUTHENTICATE</span><span class="o">=</span><span class="s2">&quot;true&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_USERNAME</span><span class="o">=</span><span class="s2">&quot;your_username&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_PASSWORD</span><span class="o">=</span><span class="s2">&quot;your_password&quot;</span>
+</code></pre></div>
+<h2 id="running-the-service">Running the Service<a class="headerlink" href="#running-the-service" title="Permanent link">#</a></h2>
+<p>After exporting the environment variables, you can run the proxy service as shown:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>all<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>install
+propeller-proxy
+</code></pre></div>
+<p>This will install the binary in your GOBIN directory (ensure your GOBIN is configured correctly).</p>
+<h2 id="deploying-a-local-oci-registry">Deploying a Local OCI Registry<a class="headerlink" href="#deploying-a-local-oci-registry" title="Permanent link">#</a></h2>
+<p>Propeller supports pulling Wasm modules from any OCI-compliant registry. You can use a public registry like Docker Hub or set up your own private registry. You can deploy your own OCI registry using Docker and configure the proxy to pull WASM modules from it. This is useful for development and testing purposes.</p>
+<h3 id="1-run-a-local-registry">1. Run a Local Registry<a class="headerlink" href="#1-run-a-local-registry" title="Permanent link">#</a></h3>
+<p>First, run a local OCI registry using the official Docker image:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>-p<span class="w"> </span><span class="m">5000</span>:5000<span class="w"> </span>--name<span class="w"> </span>registry<span class="w"> </span>registry:3.0.0
+</code></pre></div>
+<p>This command will start a local registry in detached mode and map port 5000 on your host to port 5000 on the container.</p>
+<h3 id="2-push-a-wasm-module-to-the-local-registry">2. Push a WASM Module to the Local Registry<a class="headerlink" href="#2-push-a-wasm-module-to-the-local-registry" title="Permanent link">#</a></h3>
+<p>Next, you need to push a WASM module to your local registry. You can use a tool like <code>oras</code> or <code>wasm-to-oci</code> to do this. First, create WASM module. We can use the <code>addition.wasm</code> module from the <a href="https://github.com/absmach/propeller/tree/main/examples/addition">propeller</a> example after building the wasm module.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/absmach/propeller.git
+<span class="nb">cd</span><span class="w"> </span>propeller
+make<span class="w"> </span>all
+</code></pre></div>
+<p>Now, push the <code>addition.wasm</code> file to your local registry using <code>wasm-to-oci</code>:</p>
+<div class="highlight"><pre><span></span><code>wasm-to-oci<span class="w"> </span>push<span class="w"> </span>./build/addition.wasm<span class="w"> </span>localhost:5000/rodneydav/addition.wasm
+wasm-to-oci<span class="w"> </span>push<span class="w"> </span>./build/addition.wasm<span class="w"> </span>docker.io/rodneydav/addition.wasm
+</code></pre></div>
+<h3 id="3-configure-the-proxy">3. Configure the Proxy<a class="headerlink" href="#3-configure-the-proxy" title="Permanent link">#</a></h3>
+<p>Finally, configure the proxy to use your local registry by setting the following environment variables:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_REGISTRY_URL</span><span class="o">=</span><span class="s2">&quot;localhost:5000&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROXY_AUTHENTICATE</span><span class="o">=</span><span class="s2">&quot;false&quot;</span><span class="w">  </span><span class="c1"># No authentication for local registry</span>
+</code></pre></div>
+<p>Now, when you run the proxy, it will pull the <code>addition.wasm</code> module from your local registry when a request for <code>localhost:5000/addition</code> is made.</p>
+<h2 id="service-flow">Service Flow<a class="headerlink" href="#service-flow" title="Permanent link">#</a></h2>
+<ol>
+<li>
+<p><strong>Initialization</strong>
+   Loads configuration from environment variables.
+   Sets up logging with structured logging support.
+   Creates a new proxy service instance.
+   Initializes MQTT client and communication channels.</p>
+</li>
+<li>
+<p><strong>Connection</strong>
+   Establishes connection to the MQTT broker.
+   Subscribes to configured topics.
+   Sets up HTTP streaming with the registry.
+   Initializes chunk buffering system.</p>
+</li>
+<li>
+<p><strong>Operation</strong>
+   Runs two concurrent streams:</p>
+</li>
+<li>
+<p>StreamHTTP: Handles HTTP communication with the OCI registry.</p>
+</li>
+<li>StreamMQTT: Handles MQTT communication for proplet requests and responses.</li>
+</ol>
+<p>Uses error groups for graceful error handling and shutdown. Maintains chunk delivery tracking. Provides real-time progress logging.</p>
+<ol>
+<li><strong>Error Handling</strong>
+   Implements comprehensive error logging with context. Graceful shutdown with proper resource cleanup. Automatic disconnection from MQTT broker on service termination. Retry mechanisms for failed operations. Context-based cancellation support.</li>
+</ol>
+<h2 id="http-registry-operations">HTTP Registry Operations<a class="headerlink" href="#http-registry-operations" title="Permanent link">#</a></h2>
+<p>The HTTP configuration supports:</p>
+<ul>
+<li>Registry operations with optional authentication (username/password or token)</li>
+<li>Automatic retry mechanism for failed requests</li>
+<li>Chunked data handling with configurable chunk size (512KB default)</li>
+<li>Static credential caching for authenticated requests</li>
+<li>Progress tracking for multi-chunk transfers</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright (c) Abstract Machines
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

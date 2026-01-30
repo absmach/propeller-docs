@@ -1,0 +1,1525 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Propeller Documentation">
+      
+      
+      
+      
+        <link rel="prev" href="../manager/">
+      
+      
+        <link rel="next" href="../embedded-proplet/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Proplet - Propeller</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#proplet" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Propeller" class="md-header__button md-logo" aria-label="Propeller" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Propeller
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Proplet
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/absmach/propeller-docs.git" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Propeller" class="md-nav__button md-logo" aria-label="Propeller" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Propeller
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/absmach/propeller-docs.git" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proplet
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proplet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-embedded-wazero-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the Embedded wazero Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-a-host-webassembly-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using a Host WebAssembly Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proplet-command-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proplet Command Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proplet Command Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start-command-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start Command Flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Start Command Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-parse-the-start-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Parse the Start Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-publish-a-fetch-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Publish a Fetch Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wait-for-wasm-binary-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Wait for Wasm Binary Chunks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-assemble-and-validate-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Assemble and Validate Chunks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-deploy-and-run-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Deploy and Run the Application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-functions-startapp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Functions: StartApp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime Functions: StartApp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6-log-success-or-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Log Success or Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-command-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop Command Flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stop Command Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-parse-the-stop-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Parse the Stop Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-stop-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Stop the Application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-functions-stopapp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Functions: StopApp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime Functions: StopApp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3-log-success-or-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Log Success or Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registry-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registry Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-fetch-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Fetch Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-image-chunks-delivery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Image Chunks Delivery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-registry-configuration-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Registry Configuration Update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-acknowledgment-for-registry-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Acknowledgment for Registry Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedded-proplet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedded Proplet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer's Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zephyr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zephyr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-embedded-wazero-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the Embedded wazero Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-a-host-webassembly-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using a Host WebAssembly Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proplet-command-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proplet Command Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proplet Command Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start-command-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start Command Flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Start Command Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-parse-the-start-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Parse the Start Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-publish-a-fetch-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Publish a Fetch Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wait-for-wasm-binary-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Wait for Wasm Binary Chunks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-assemble-and-validate-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Assemble and Validate Chunks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-deploy-and-run-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Deploy and Run the Application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-functions-startapp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Functions: StartApp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime Functions: StartApp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6-log-success-or-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Log Success or Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-command-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop Command Flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stop Command Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-parse-the-stop-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Parse the Stop Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-stop-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Stop the Application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-functions-stopapp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Functions: StopApp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime Functions: StopApp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3-log-success-or-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Log Success or Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registry-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registry Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-fetch-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Fetch Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-image-chunks-delivery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Image Chunks Delivery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-registry-configuration-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Registry Configuration Update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-acknowledgment-for-registry-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Acknowledgment for Registry Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="proplet">Proplet<a class="headerlink" href="#proplet" title="Permanent link">#</a></h1>
+<p>The <code>proplet</code> is a worker that executes WebAssembly functions. It can be configured to use either the embedded <code>wazero</code> runtime or an external WebAssembly runtime on the host system.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
+<p>The <code>proplet</code> is configured using environment variables.</p>
+<table>
+<thead>
+<tr>
+<th>Environment Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROPLET_LOG_LEVEL</code></td>
+<td>Log level (e.g., <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>)</td>
+<td><code>info</code></td>
+</tr>
+<tr>
+<td><code>PROPLET_INSTANCE_ID</code></td>
+<td>A unique ID for this proplet instance.</td>
+<td>A new UUID</td>
+</tr>
+<tr>
+<td><code>PROPLET_MQTT_ADDRESS</code></td>
+<td>The address of the MQTT broker.</td>
+<td><code>tcp://localhost:1883</code></td>
+</tr>
+<tr>
+<td><code>PROPLET_MQTT_TIMEOUT</code></td>
+<td>The timeout for MQTT operations.</td>
+<td><code>30s</code></td>
+</tr>
+<tr>
+<td><code>PROPLET_MQTT_QOS</code></td>
+<td>The Quality of Service level for MQTT messages.</td>
+<td><code>2</code></td>
+</tr>
+<tr>
+<td><code>PROPLET_LIVELINESS_INTERVAL</code></td>
+<td>The interval at which the proplet sends liveliness messages.</td>
+<td><code>10s</code></td>
+</tr>
+<tr>
+<td><code>PROPLET_DOMAIN_ID</code></td>
+<td>The domain ID for this proplet.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PROPLET_CHANNEL_ID</code></td>
+<td>The channel ID for this proplet.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PROPLET_CLIENT_ID</code></td>
+<td>The client ID for MQTT authentication.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PROPLET_CLIENT_KEY</code></td>
+<td>The client key for MQTT authentication.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PROPLET_EXTERNAL_WASM_RUNTIME</code></td>
+<td>The path to an external WebAssembly runtime. If not set, the embedded <code>wazero</code> runtime will be used.</td>
+<td><code>""</code> (empty string)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
+<h3 id="using-the-embedded-wazero-runtime">Using the Embedded <code>wazero</code> Runtime<a class="headerlink" href="#using-the-embedded-wazero-runtime" title="Permanent link">#</a></h3>
+<p>By default, <code>proplet</code> uses the embedded <code>wazero</code> runtime. To run it, simply set the required environment variables and start the application:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_DOMAIN_ID</span><span class="o">=</span><span class="s2">&quot;your_domain_id&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CHANNEL_ID</span><span class="o">=</span><span class="s2">&quot;your_channel_id&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;your_client_id&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CLIENT_KEY</span><span class="o">=</span><span class="s2">&quot;your_client_key&quot;</span>
+propeller-proplet
+</code></pre></div>
+<h3 id="using-a-host-webassembly-runtime">Using a Host WebAssembly Runtime<a class="headerlink" href="#using-a-host-webassembly-runtime" title="Permanent link">#</a></h3>
+<p>To use an external WebAssembly runtime (e.g., <code>wasmtime</code>, <code>wasmer</code>), set the <code>PROPLET_EXTERNAL_WASM_RUNTIME</code> environment variable to the path of the runtime executable.</p>
+<p>For example, to use <code>wasmtime</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_DOMAIN_ID</span><span class="o">=</span><span class="s2">&quot;your_domain_id&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CHANNEL_ID</span><span class="o">=</span><span class="s2">&quot;your_channel_id&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;your_client_id&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_CLIENT_KEY</span><span class="o">=</span><span class="s2">&quot;your_client_key&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROPLET_EXTERNAL_WASM_RUNTIME</span><span class="o">=</span><span class="s2">&quot;/usr/bin/wasmtime&quot;</span>
+<span class="nv">PROPLET_EXTERNAL_WASM_RUNTIME</span><span class="o">=</span>wasmtime<span class="w"> </span>propeller-proplet
+</code></pre></div>
+<p>You will also need to provide cli arguments to the task so that the runtime can be started. For example, to run the <code>addition</code> example with <code>wasmtime</code>:</p>
+<div class="highlight"><pre><span></span><code>wasmtime<span class="w"> </span>--invoke<span class="w"> </span>add<span class="w"> </span>/home/rodneyosodo/code/absmach/propeller/db3d44e8-6e27-464a-aaeb-e643ec298dff.wasm<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="m">20</span>
+</code></pre></div>
+<p>Hence the cli aguments are <code>--invoke</code> and <code>add</code> and the path to the wasm file. The task will then be created as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;add&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cli_args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--invoke&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;add&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;inputs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="proplet-command-handling"><strong>Proplet Command Handling</strong><a class="headerlink" href="#proplet-command-handling" title="Permanent link">#</a></h2>
+<h3 id="start-command-flow"><strong>Start Command Flow</strong><a class="headerlink" href="#start-command-flow" title="Permanent link">#</a></h3>
+<p>The start command is sent by the Manager to the Proplet on the topic <code>m/:domain_id/c/:channel_id/control/manager/start</code></p>
+<h4 id="1-parse-the-start-command">1. <strong>Parse the Start Command</strong><a class="headerlink" href="#1-parse-the-start-command" title="Permanent link">#</a></h4>
+<p>The MQTT message payload is unmarshaled into a <code>StartRequest</code> structure containing the <code>AppName</code> and any required parameters for the application. If the payload is invalid or <code>AppName</code> is missing, an error is logged, and no further action is taken.</p>
+<h4 id="2-publish-a-fetch-request">2. <strong>Publish a Fetch Request</strong><a class="headerlink" href="#2-publish-a-fetch-request" title="Permanent link">#</a></h4>
+<p>A fetch request is sent to the Registry Proxy to retrieve the WebAssembly (Wasm) binary chunks for the specified application. This request is published to the topic <code>m/:domain_id/c/:channel_id/registry/proplet</code>.</p>
+<h4 id="3-wait-for-wasm-binary-chunks">3. <strong>Wait for Wasm Binary Chunks</strong><a class="headerlink" href="#3-wait-for-wasm-binary-chunks" title="Permanent link">#</a></h4>
+<p>The system monitors the reception of Wasm chunks from the Registry Proxy, which are published to the topic <code>m/:domain_id/c/:channel_id/registry/server</code> and processed by the <code>handleChunk</code> function.</p>
+<h4 id="4-assemble-and-validate-chunks">4. <strong>Assemble and Validate Chunks</strong><a class="headerlink" href="#4-assemble-and-validate-chunks" title="Permanent link">#</a></h4>
+<p>Once all chunks are received, as determined by comparing the number of received chunks to the <code>TotalChunks</code> field in the chunk metadata, the chunks are assembled into a complete Wasm binary and validated to ensure integrity.</p>
+<h4 id="5-deploy-and-run-the-application">5. <strong>Deploy and Run the Application</strong><a class="headerlink" href="#5-deploy-and-run-the-application" title="Permanent link">#</a></h4>
+<p>The assembled Wasm binary is passed to the Wazero runtime for instantiation and execution, where the specified function (e.g., <code>main</code>) in the Wasm module is invoked.</p>
+<h3 id="runtime-functions-startapp"><strong>Runtime Functions: StartApp</strong><a class="headerlink" href="#runtime-functions-startapp" title="Permanent link">#</a></h3>
+<p>The <code>StartApp</code> function in <code>runtime.go</code> handles the instantiation and execution of Wasm modules. It:</p>
+<ol>
+<li><strong>Validate Input Parameters</strong>: Ensures <code>appName</code>, <code>wasmBinary</code>, and <code>functionName</code> are provided and valid. Errors are returned if any parameter is missing or invalid.</li>
+<li><strong>Acquire Mutex Lock</strong>: Locks the runtime to ensure thread-safe access to the <code>modules</code> map.</li>
+<li><strong>Check for Existing App Instance</strong>: Verifies if the app is already running. If found, an error is returned to prevent duplicate instances.</li>
+<li><strong>Instantiate the Wasm Module</strong>: Passes the <code>wasmBinary</code> to the Wazero runtime's <code>Instantiate</code> method to create a Wasm module.</li>
+<li><strong>Retrieve the Exported Function</strong>: Locates the <code>functionName</code> in the module. If the function is missing, the module is closed, and an error is returned.</li>
+<li><strong>Store the Module in the Runtime</strong>: Saves the instantiated module in the <code>modules</code> map for tracking running applications.</li>
+<li><strong>Release Mutex Lock</strong>: Unlocks the runtime after the module is added to the map.</li>
+<li><strong>Return the Exported Function</strong>: Returns the Wasm function for execution.</li>
+</ol>
+<h4 id="6-log-success-or-errors">6. <strong>Log Success or Errors</strong><a class="headerlink" href="#6-log-success-or-errors" title="Permanent link">#</a></h4>
+<p>A success message is logged if the application starts successfully, while detailed errors are logged if any step in the process (e.g., chunk assembly, instantiation, or execution) fails.</p>
+<h3 id="stop-command-flow"><strong>Stop Command Flow</strong><a class="headerlink" href="#stop-command-flow" title="Permanent link">#</a></h3>
+<p>The stop command is sent by the Manager to the Proplet on the topic <code>m/:domain_id/c/:channel_id/control/manager/stop</code></p>
+<h4 id="1-parse-the-stop-command">1. <strong>Parse the Stop Command</strong><a class="headerlink" href="#1-parse-the-stop-command" title="Permanent link">#</a></h4>
+<p>The MQTT message payload is unmarshaled into a <code>StopRequest</code> structure containing the <code>AppName</code> of the application to stop. If the payload is invalid or <code>AppName</code> is missing, an error is logged, and no further action is taken.</p>
+<h4 id="2-stop-the-application">2. <strong>Stop the Application</strong><a class="headerlink" href="#2-stop-the-application" title="Permanent link">#</a></h4>
+<p>The <code>StopApp</code> method in the Wazero runtime is invoked, which checks if the application is running, closes the corresponding Wasm module, and removes the application from the runtime's internal tracking.</p>
+<h3 id="runtime-functions-stopapp"><strong>Runtime Functions: StopApp</strong><a class="headerlink" href="#runtime-functions-stopapp" title="Permanent link">#</a></h3>
+<p>The <code>StopApp</code> function in <code>runtime.go</code> stops and cleans up a running Wasm module. It:</p>
+<ol>
+<li><strong>Validate Input Parameters</strong>: Checks if <code>appName</code> is provided. If missing, an error is returned.</li>
+<li><strong>Acquire Mutex Lock</strong>: Locks the runtime to ensure thread-safe access to the <code>modules</code> map.</li>
+<li><strong>Check for Running App</strong>: Looks up the app in the <code>modules</code> map. If the app is not found, an error is returned.</li>
+<li><strong>Close the Wasm Module</strong>: Calls the module's <code>Close</code> method to release all resources associated with the app. If closing fails, an error is logged and returned.</li>
+<li><strong>Remove the App from Runtime</strong>: Deletes the app entry from the <code>modules</code> map to update the runtime's state.</li>
+<li><strong>Release Mutex Lock</strong>: Unlocks the runtime after the app has been removed from the map.</li>
+</ol>
+<h4 id="3-log-success-or-errors">3. <strong>Log Success or Errors</strong><a class="headerlink" href="#3-log-success-or-errors" title="Permanent link">#</a></h4>
+<p>A success message is logged with the text <code>"App '&lt;AppName&gt;' stopped successfully."</code> if the application stops successfully. If the application is not running or an error occurs during the stop operation, detailed error information is logged.</p>
+<p>The Manager knows which Proplet is on which channel through the following mechanisms:</p>
+<ol>
+<li><strong>Startup Notification (<code>create</code> topic):</strong></li>
+</ol>
+<p>When a Proplet starts, it publishes a message on the topic:</p>
+<div class="highlight"><pre><span></span><code>m/:domain_id/c/:manager_channel_id/messages/control/proplet/create
+</code></pre></div>
+<p>The payload of this message includes the <code>PropletID</code> and <code>ChannelID</code>, notifying the Manager about the mapping of Proplet IDs to their respective channels:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;PropletID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{PropletID}&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChanID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{ChannelID}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<ol>
+<li><strong>Liveliness Updates (<code>alive</code> topic):</strong></li>
+</ol>
+<p>To ensure that the Proplet is still active, it periodically publishes messages on the topic:</p>
+<div class="highlight"><pre><span></span><code>m/:domain_id/c/:manager_channel_id/messages/control/proplet/alive
+</code></pre></div>
+<p>The payload contains the same <code>PropletID</code> and <code>ChannelID</code> information. This helps the Manager maintain an updated map of active Proplets and their channels:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;alive&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;PropletID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{PropletID}&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChanID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{ChannelID}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<ol>
+<li><strong>Last Will &amp; Testament (LWT):</strong></li>
+</ol>
+<p>If the Proplet goes offline unexpectedly, the MQTT broker automatically publishes a message on the same <code>alive</code> topic with a payload indicating the Proplet's offline status:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;offline&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;PropletID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{PropletID}&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChanID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{ChannelID}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>These mechanisms ensure that the Manager is always aware of the active Proplets and their corresponding channels. The Manager can utilize this data to send specific control commands or monitor the Proplets effectively.</p>
+<h3 id="registry-workflow"><strong>Registry Workflow</strong><a class="headerlink" href="#registry-workflow" title="Permanent link">#</a></h3>
+<ol>
+<li>
+<p><strong>Proplet Fetches Wasm Binary:</strong></p>
+</li>
+<li>
+<p>Publishes a fetch request on the <code>proplet</code> topic.</p>
+</li>
+<li>
+<p>Waits for chunks on the <code>server</code> topic.</p>
+</li>
+<li>
+<p><strong>Proplet Handles Registry Updates:</strong></p>
+</li>
+<li>Subscribes to the <code>updateRegistry</code> topic.</li>
+<li>Updates the registry configuration upon receiving a valid payload.</li>
+<li>Publishes the status (success or failure) to the <code>registry</code> topic.</li>
+</ol>
+<h4 id="1-fetch-request">1. <strong>Fetch Request</strong><a class="headerlink" href="#1-fetch-request" title="Permanent link">#</a></h4>
+<p>The Proplet uses this topic to request Wasm binary chunks for a specific application from the Registry Proxy.</p>
+<ul>
+<li><strong>Topic</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>m/:domain_id/c/:channel_id/registry/proplet
+</code></pre></div>
+<ul>
+<li>Payload is a JSON object containing the name of the application (<code>app_name</code>) for which the WebAssembly (Wasm) binary chunks are requested:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;app_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{AppName}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="2-image-chunks-delivery">2. <strong>Image Chunks Delivery</strong><a class="headerlink" href="#2-image-chunks-delivery" title="Permanent link">#</a></h4>
+<p>The Registry Proxy publishes Wasm binary chunks to this topic for the Proplet to assemble into a complete binary. The Proplet monitors this topic to receive the chunks sequentially.</p>
+<ul>
+<li><strong>Topic</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>m/:domain_id/c/:channel_id/registry/server
+</code></pre></div>
+<ul>
+<li>Payload is a JSON object representing a single chunk of the requested Wasm binary:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;app_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{AppName}&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;chunk_idx&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">Chu</span><span class="kc">n</span><span class="err">kI</span><span class="kc">n</span><span class="err">dex</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;total_chunks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">To</span><span class="kc">tal</span><span class="err">Chu</span><span class="kc">n</span><span class="err">ks</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{Base64EncodedChunkData}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="3-registry-configuration-update">3. <strong>Registry Configuration Update</strong><a class="headerlink" href="#3-registry-configuration-update" title="Permanent link">#</a></h4>
+<ul>
+<li>Allows the Manager to update the Proplet's registry configuration dynamically.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>m/:domain_id/c/:channel_id/control/manager/updateRegistry
+</code></pre></div>
+<ul>
+<li>Payload is a JSON object containing the new registry URL and token for updating the Proplet's registry configuration:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;registry_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{NewRegistryURL}&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;registry_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{NewRegistryToken}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="4-acknowledgment-for-registry-updates">4. <strong>Acknowledgment for Registry Updates</strong><a class="headerlink" href="#4-acknowledgment-for-registry-updates" title="Permanent link">#</a></h4>
+<ul>
+<li>The Proplet uses this topic to acknowledge whether the registry configuration update was successful or failed.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>m/:domain_id/c/:channel_id/control/manager/registry
+</code></pre></div>
+<ul>
+<li>
+<p>Payload is a JSON object indicating the success or failure of a registry update:</p>
+</li>
+<li>
+<p>Success:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+</li>
+<li>
+<p>Failure:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;failure&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{ErrorMessage}&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright (c) Abstract Machines
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
