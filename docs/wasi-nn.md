@@ -72,8 +72,6 @@ When a task runs: Proplet writes the WASM binary to a temp file → spawns `/usr
 
 ## Prerequisites
 
-### Development Environment
-
 Install Rust and add WebAssembly support to compile the example code:
 
 ```bash
@@ -82,6 +80,7 @@ rustup target add wasm32-wasip1
 ```
 
 Get the example code from the wasmtime repository:
+In a separate folder from the propeller folder, clone the wasmtime repo.
 
 ```bash
 git clone https://github.com/bytecodealliance/wasmtime.git
@@ -91,28 +90,20 @@ cd wasmtime/crates/wasi-nn/examples/classification-example
 Install wasmtime locally for testing. This allows you to verify the WASM binary and model files work correctly before deploying to Propeller:
 
 ```bash
-# Option 1: Build from source
-cd wasmtime
-cargo build --release --features wasi-nn
-
-# Option 2: Check existing installation
+# Option 1: Check existing installation
 wasmtime run -S help | grep nn
 # Should show: -S nn[=y|n] -- Enable support for WASI neural network imports
+
+# Option 2: Build from source
+cd wasmtime
+cargo build --release --features wasi-nn
 ```
-
-### Propeller Worker Environment
-
-The Propeller Docker image comes pre-built with:
-
-- wasmtime v39.0.1 with wasi-nn support at `/usr/local/bin/wasmtime`
-- OpenVINO 2025.4.0 libraries at `/opt/intel/openvino_2025`
-- All necessary environment variables configured
-
-You only need to configure the proplet to use the external runtime and mount your model files.
 
 ## Execution Steps
 
-### Build the WASM Binary
+### Local Development Environment
+
+#### Build the WASM Binary
 
 Compile the example to WebAssembly:
 
@@ -121,7 +112,9 @@ cd wasmtime/crates/wasi-nn/examples/classification-example
 cargo build --target wasm32-wasip1 --release
 ```
 
-### Prepare Model Files
+The .wasm output will bw stored at `target/wasm32-wasip1/release/wasi-nn-example.wasm`
+
+#### Prepare Model Files
 
 Download the MobileNet model and test input. OpenVINO models have two files: an XML definition and binary weights.
 
@@ -137,14 +130,15 @@ mv mobilenet.bin model.bin
 cd ..
 ```
 
-### Test Locally
+#### Test Locally
 
 Run the example locally to verify everything works before deploying to Propeller:
 
 ```bash
-export DYLD_LIBRARY_PATH=/opt/homebrew/lib  # macOS Apple Silicon
+export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH  # Linux
+# export DYLD_LIBRARY_PATH=/opt/homebrew/lib  # macOS Apple Silicon
 # export DYLD_LIBRARY_PATH=/usr/local/lib  # macOS Intel
-# export LD_LIBRARY_PATH=/opt/intel/openvino/runtime/lib:$LD_LIBRARY_PATH  # Linux
+
 
 wasmtime run -S nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wasm
 ```
@@ -162,9 +156,24 @@ Executed graph inference
 Found results, sorted top 5: [InferenceResult(904, 0.4025879), ...]
 ```
 
-### Configure Propeller
+### Propeller Worker Environment
 
-Create MQTT credentials for Propeller components to communicate[more details here](https://docs.propeller.absmach.eu/getting-started/#2-provision-supermq-with-propeller-cli):
+The Propeller Docker image comes pre-built with:
+
+- wasmtime v39.0.1 with wasi-nn support at `/usr/local/bin/wasmtime`
+- OpenVINO 2025.4.0 libraries at `/opt/intel/openvino_2025`
+- All necessary environment variables configured
+
+You only need to configure the proplet to use the external runtime and mount your model files.
+
+#### 1. Configure Propeller
+
+Navigate to the root of the propeller directory. Create MQTT credentials for Propeller components to communicate. Make sure SuperMQ is running before provisioning Propeller ([more details here](https://docs.propeller.absmach.eu/getting-started/#run-supermq-and-propeller)).
+
+```bash
+cd /path/to/propeller
+propeller-cli provision
+```
 
 Update `.env` with credentials from the generated `config.toml`:
 
@@ -188,110 +197,125 @@ proplet:
     - ./fixture:/home/proplet/fixture
 ```
 
-#### Start Services
+**Understanding directory mapping:**
+
+For your WASM module to access model files, two mappings are required:
+
+| Layer               | Mapping                                           | Purpose                                                            |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
+| 1. Host → Container | `./fixture:/home/proplet/fixture` (volume mount)  | Makes your local model files accessible inside the container       |
+| 2. Container → WASM | `--dir=/home/proplet/fixture::fixture` (cli_args) | Makes container files accessible to the WASM sandbox as `fixture/` |
+
+The volume mount above handles layer 1. Layer 2 is configured when submitting the task (see cli_args below).
+
+Start Propeller services:
 
 ```bash
 docker compose up -d
-
-# Wait for services to initialize
-sleep 10
-
-# Verify proplet registered with manager
-docker compose logs manager | grep "successfully created proplet"
 ```
 
-### 5. Submit Task
+### 2. Create Task
 
-#### Task Structure
+There are multiple ways someone can create a task to assign to a proplet in propeller. You can submit it using our APIs or you can use our propeller-cli to do the same. However, at any given time, `cli_args` needs to be passed with appropriate values to allow wasi-nn functionality.
 
-A Propeller task for wasi-nn includes:
+**Understanding cli_args:**
+
+| Flag                                   | Purpose                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| `-S nn`                                | Enables wasi-nn support in wasmtime                                       |
+| `--dir=/home/proplet/fixture::fixture` | Maps container path `/home/proplet/fixture` to WASM sandbox as `fixture/` |
+
+---
+
+The `--dir` flag completes the second layer of directory mapping. Your WASM code can now access files as `fixture/model.xml`, `fixture/model.bin`, etc.
+
+#### a. Create task using the API(cli_args must be set at creation time)
+
+```bash
+curl -X POST http://localhost:7070/tasks \
+ -H "Content-Type: application/json" \
+ -d '{
+"name": "wasi-nn-demo",
+"cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"]
+}'
+
+```
+
+Sample response:
 
 ```json
 {
-  "name": "wasi-nn-inference",
-  "file": "<base64-encoded-wasm-binary>",
-  "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"]
+  "id": "3fc0a69a-6c1c-4944-bd71-1117e9ddcf31",
+  "name": "wasi-nn-demo2",
+  "state": 0,
+  "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-01-30T14:30:35.983946888Z",
+  "updated_at": "0001-01-01T00:00:00Z"
 }
 ```
 
-> **Note:** The `cli_args` must be an array with separate elements. Do not combine multiple flags into a single string.
-
-#### Submit via CLI and API
+Save the task ID from the response:
 
 ```bash
-cd wasmtime/crates/wasi-nn/examples/classification-example
+TASK_ID="3fc0a69a-6c1c-4944-bd71-1117e9ddcf31"
+```
 
-# Create task
-propeller-cli tasks create wasi-nn-demo
+Upload the WASM binary using the upload endpoint. Make sure the path specified in file matches where the .wasm target is stored:
 
-# Save task ID from output
+```bash
+# Upload as multipart form data
+curl -X PUT "http://localhost:7070/tasks/${TASK_ID}/upload" \
+  -F "file=@target/wasm32-wasip1/release/wasi-nn-example.wasm"
+
+`Sample Output:
+{"id":"3fc0a69a-6c1c-4944-bd71-1117e9ddcf31","name":"wasi-nn-demo2","state":0,"file":"<Encoded Wasm B64>","cli_args":["-S","nn","--dir=/home/proplet/fixture::fixture"],"daemon":false,"encrypted":false,"start_time":"0001-01-01T00:00:00Z","finish_time":"0001-01-01T00:00:00Z","created_at":"2026-01-30T14:30:35.983946888Z","updated_at":"2026-01-30T14:44:59.866850384Z"}
+`
+```
+
+Start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/${TASK_ID}/start"
+`Sample Output:
+{"started":true}`
+```
+
+#### b. Create task with Propeller CLI (cli_args must be passed)
+
+```bash
+# Create with cli_args using CLI
+propeller-cli tasks create wasi-nn-demo --cli-args="-S,nn,--dir=/home/proplet/fixture::fixture"
+
+#Sample Output
+#{
+# "cli_args": [
+#    "-S",
+#    "--dir=/home/proplet/fixture::fixture"
+#  ],
+#  "created_at": "2026-01-30T14:51:24.25935184Z",
+#  "finish_time": "0001-01-01T00:00:00Z",
+#  "id": "d03fd7e6-fb24-4b76-aec7-3dd245b47ed9",
+#  "name": "wasi-nn-demo",
+#  "start_time": "0001-01-01T00:00:00Z",
+#  "updated_at": "0001-01-01T00:00:00Z"
+#}
+
+# Get task ID from output
 TASK_ID="<id-from-output>"
 
-# Encode WASM binary to base64
-# Linux:
-WASM_B64=$(base64 -w 0 target/wasm32-wasip1/release/wasi-nn-example.wasm)
+# Upload WASM file
+curl -X PUT "http://localhost:7070/tasks/${TASK_ID}/upload" \
+  -F "file=@target/wasm32-wasip1/release/wasi-nn-example.wasm"
 
-# macOS:
-#WASM_B64=$(base64 -i target/wasm32-wasip1/release/wasi-nn-example.wasm | tr -d '\n')
-
-```
-
-#### Update Task with WASM Binary and Configuration
-
-```bash
-curl -X PUT http://localhost:7070/tasks/$TASK_ID \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"name\": \"wasi-nn-demo\",
-    \"file\": \"$WASM_B64\",
-    \"cli_args\": [\"-S\", \"nn\", \"--dir=/home/proplet/fixture::fixture\"]
-  }"
-```
-
-**Field Reference:**
-
-| Field      | Required          | Description                              |
-| ---------- | ----------------- | ---------------------------------------- |
-| `name`     | Yes               | Task identifier                          |
-| `file`     | Yes               | Base64-encoded WASM binary               |
-| `cli_args` | Yes (for wasi-nn) | Arguments passed to wasmtime (see below) |
-
-**Understanding `cli_args`:**
-
-The `cli_args` array passes flags directly to the wasmtime CLI. For wasi-nn tasks, two flags are required:
-
-- **`-S nn`**: Enables wasmtime's wasi-nn support. Without this, the WASM module fails with "unknown import: wasi_ephemeral_nn".
-
-- **`--dir=/home/proplet/fixture::fixture`**: Maps a directory into the WASM sandbox. The format is `--dir=<container-path>::<guest-path>`. This allows the WASM module to access model files at the `fixture/` path.
-
-**Directory Mapping (Two Layers):**
-
-For the WASM module to access model files, you need both:
-
-1. **Host → Container** (Docker volume mount above): Maps your local `./fixture` directory into the container at `/home/proplet/fixture`. This makes files accessible to the proplet.
-
-   ```yaml
-   volumes:
-     - ./fixture:/home/proplet/fixture
-   ```
-
-   This makes your host `fixture/` directory available inside the container at `/home/proplet/fixture`. The fixtures directory contains the models.
-
-2. **wasmtime `--dir` flag** in `cli_args`:
-
-   ```json
-   "--dir=/home/proplet/fixture::fixture"
-   ```
-
-   This exposes the container path to the WASM sandbox as `fixture/`. The WASM code then accesses files via `fixture/model.xml`, `fixture/model.bin`, etc.
-
-**Note:** The path `/home/proplet/fixture` must match your volume mount destination in `compose.yaml`. If you mount to a different path, update the `--dir` flag accordingly.
-
-#### Start Task
-
-```bash
+# Start
 propeller-cli tasks start $TASK_ID
 ```
+
+> **Important:** `cli_args` must be set when creating the task. They cannot be changed via the update endpoint.
 
 ### 6. Monitor Execution
 
@@ -318,19 +342,7 @@ curl -s http://localhost:7070/tasks/$TASK_ID | jq '.results'
 Sample results:
 
 ```bash
-Task 841b61
-09-5459-4109-8153-b917214c04c5 completed successfully.
-Result: Read graph XML, first 50 characters: <?xml version="1.0" ?>
-<net name="nobilenet_v2_1.0
-Read graph weights, size in bytes: 13956476
-Loaded graph into wast-nn with ID: e
-Created wasi-nn execution context with ID: 0
-Read input tensor, size in bytes: 602112
-Executed graph inference
-Found results, sorted top 5: [InferenceResult(885, 0.3958259),
-InferenceResult(904, 0.36464667),
-InferenceResult(84, 0.010480282), InferenceResult(911, 0.008229051), InferenceResult(741,
-8.007244824)]
+"Read graph XML, first 50 characters: <?xml version=\"1.0\" ?>\n<net name=\"mobilenet_v2_1.0\nRead graph weights, size in bytes: 13956476\nLoaded graph into wasi-nn with ID: 0\nCreated wasi-nn execution context with ID: 0\nRead input tensor, size in bytes: 602112\nExecuted graph inference\nFound results, sorted top 5: [InferenceResult(885, 0.3958259), InferenceResult(904, 0.36464667), InferenceResult(84, 0.010480282), InferenceResult(911, 0.008229051), InferenceResult(741, 0.007244824)]\n"
 ```
 
 ## Platform Notes
@@ -443,6 +455,69 @@ volumes:
 
 # Verify mounts
 docker compose exec proplet ls -la /home/proplet/fixture
+```
+
+### Failed to spawn host runtime process
+
+**Symptom:** ERROR Task 9a4bd523-a65b-499b-8a55-e756752db9db failed: Failed to spawn host runtime process: . Command: []
+
+**Solution:**
+The error shows the external runtime path is empty. The PROPLET_EXTERNAL_WASM_RUNTIME needs to be set to wasmtime for wasi-nn tasks. Please set this variable in the .env file. Then recreate the proplet to pick up the environment variable.
+
+```bash
+# External runtime required for wasi-nn tasks
+PROPLET_EXTERNAL_WASM_RUNTIME="wasmtime"
+
+#Recreate proplet after modifying env file
+docker compose -f docker/compose.yaml --env-file docker/.env up -d --force-recreate proplet
+```
+
+### Error: failed to run main module `/tmp/proplet\_<proplet_guid>
+
+**Symptom:** 1, stderr: Error: failed to run main module `/tmp/proplet_9a4bd523-a65b-499b-8a55-e756752db9db.wasm`
+
+```
+Caused by:
+
+0: failed to instantiate "/tmp/proplet_9a4bd523-a65b-499b-8a55-e756752db9db.wasm"
+
+1: unknown import: `wasi_ephemeral_nn::get_output` has not been defined
+```
+
+The error shows wasmtime is running but wasi-nn is not enabled. You need to include -S nn in the task's cli_args.
+
+**Solution**
+The task should be created with:
+
+```bash
+./build/cli tasks create wasi-nn-demo --cli-args="-S,nn,--dir=/home/proplet/fixture::fixture"
+Or via curl:
+curl -X POST http://localhost:7070/tasks \  -H "Content-Type: application/json" \  -d '{    "name": "wasi-nn-demo",    "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"]  }'
+```
+
+Then upload the WASM file and start the task.
+
+```bash
+# Upload WASM (use the new task ID from above)
+TASK_ID="<new-task-id>"curl -X PUT "http://localhost:7070/tasks/${TASK_ID}/upload" \    -F "file=@/target/wasm32-wasip1/release/wasi-nn-example.wasm"
+# Start task
+./build/cli tasks start $TASK_ID
+```
+
+The -S nn flag is what tells wasmtime to enable wasi-nn support.
+
+### Error handling message: either file or image_url must be provided
+
+**Symptom:** ERROR Error handling message: either file or image_url must be provided
+
+**Solution:**
+The task was created with cli_args. Now you need to upload the WASM file before starting. Make sure the path in file exists.
+
+```bash
+# Upload WASM (use the new task ID from above)
+TASK_ID="<new-task-id>"curl -X PUT "http://localhost:7070/tasks/${TASK_ID}/upload" \    -F "file=@/target/wasm32-wasip1/release/wasi-nn-example.wasm"
+# Start task
+./build/cli tasks start $TASK_ID
 ```
 
 ## Resources
