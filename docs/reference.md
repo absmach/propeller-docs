@@ -6,7 +6,6 @@ This document describes the complete process monitoring implementation for Rust 
 
 Comprehensive OS-level process monitoring has been implemented for:
 
-- Go Proplet - Using `gopsutil/v3` for cross-platform metrics
 - Rust Proplet - Using `sysinfo` crate for cross-platform metrics
 - Manager - Ready for integration (metrics aggregation and visualization)
 
@@ -66,8 +65,8 @@ Publishes overall proplet health metrics.
 ### Task-Level Metrics
 
 ```txt
-m/{domain_id}/c/{channel_id}/control/proplet/task_metrics   # Go
-m/{domain_id}/c/{channel_id}/metrics/proplet                 # Rust
+m/{domain_id}/c/{channel_id}/control/proplet/task_metrics
+m/{domain_id}/c/{channel_id}/metrics/proplet
 ````
 
 Publishes per-task process metrics.
@@ -260,8 +259,6 @@ mosquitto_sub -h localhost -t "m/+/c/+/*/metrics" -v
 
 ## References
 
-- Go Implementation: `proplet/monitoring/`
 - Rust Implementation: `proplet-rs/src/monitoring/`
 - Examples: `examples/monitoring-example.md`
 - Rust Docs: `proplet-rs/MONITORING.md`
-- Go Docs: `proplet/monitoring/README.md`
