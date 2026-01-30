@@ -476,7 +476,7 @@ docker compose -f docker/compose.yaml --env-file docker/.env up -d --force-recre
 
 **Symptom:** 1, stderr: Error: failed to run main module `/tmp/proplet_9a4bd523-a65b-499b-8a55-e756752db9db.wasm`
 
-```
+```bash
 Caused by:
 
 0: failed to instantiate "/tmp/proplet_9a4bd523-a65b-499b-8a55-e756752db9db.wasm"
