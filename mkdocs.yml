@@ -26,3 +26,6 @@ nav:
   - Proxy: proxy.md
   - Developer's Guide: developer-guide.md
   - Zephyr: zephyr.md
+  - wasi-nn:
+      - Examples: wasi-nn/README.md
+      - Propeller Guide: wasi-nn/PROPELLER.md
