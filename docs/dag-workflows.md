@@ -49,10 +49,10 @@ The dependency relationships between all tasks in a workflow form a DAG. The "ac
 
 Each task can specify a `run_if` condition that controls whether it actually executes when its dependencies are met:
 
-| Condition    | Behavior                                                       |
-|--------------|----------------------------------------------------------------|
-| `"success"`  | Run only if **all** parent tasks completed successfully (default) |
-| `"failure"`  | Run if **at least one** parent task failed                     |
+| Condition    | Behavior                                                           |
+|--------------|----------------------------------------------------------------    |
+| `"success"`  | Run only if **all** parent tasks completed successfully (default)  |
+| `"failure"`  | Run if **at least one** parent task failed                         |
 
 If the condition is not met, the task is marked as **Skipped** rather than running. Skipped tasks do not block downstream tasks — they count as a terminal state.
 

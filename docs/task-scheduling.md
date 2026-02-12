@@ -24,23 +24,23 @@ Cron expressions define the timing of scheduled tasks using a standard five-fiel
 
 | Field         | Allowed Values     | Special Characters |
 |---------------|--------------------|--------------------|
-| Minute        | 0–59               | `*` `,` `-` `/`   |
-| Hour          | 0–23               | `*` `,` `-` `/`   |
-| Day of Month  | 1–31               | `*` `,` `-` `/`   |
-| Month         | 1–12 or JAN–DEC   | `*` `,` `-` `/`   |
-| Day of Week   | 0–6 or SUN–SAT    | `*` `,` `-` `/`   |
+| Minute        | 0–59               | `*` `,` `-` `/`    |
+| Hour          | 0–23               | `*` `,` `-` `/`    |
+| Day of Month  | 1–31               | `*` `,` `-` `/`    |
+| Month         | 1–12 or JAN–DEC    | `*` `,` `-` `/`    |
+| Day of Week   | 0–6 or SUN–SAT     | `*` `,` `-` `/`    |
 
 Common patterns:
 
-| Expression        | Meaning                          |
-|-------------------|----------------------------------|
-| `* * * * *`       | Every minute                     |
-| `*/5 * * * *`     | Every 5 minutes                  |
-| `0 * * * *`       | Every hour, on the hour          |
-| `0 0 * * *`       | Daily at midnight                |
-| `0 9 * * MON-FRI` | Weekdays at 9:00 AM             |
+| Expression        | Meaning                             |
+|-------------------|----------------------------------   |
+| `* * * * *`       | Every minute                        |
+| `*/5 * * * *`     | Every 5 minutes                     |
+| `0 * * * *`       | Every hour, on the hour             |
+| `0 0 * * *`       | Daily at midnight                   |
+| `0 9 * * MON-FRI` | Weekdays at 9:00 AM                 |
 | `0 0 1 * *`       | First day of each month at midnight |
-| `30 14 * * *`     | Daily at 2:30 PM                 |
+| `30 14 * * *`     | Daily at 2:30 PM                    |
 
 ### Timezones
 

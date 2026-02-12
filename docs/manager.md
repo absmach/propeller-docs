@@ -90,7 +90,7 @@ When creating or updating a task, the following scheduling and priority fields a
 | -------------- | --------- | -------- | ------- | -------------------------------------------------------- |
 | `schedule`     | `string`  | No       | `""`    | Cron expression defining when the task should run        |
 | `is_recurring` | `boolean` | No       | `false` | Whether the task should repeat after each execution      |
-| `timezone`     | `string`  | No       | `"UTC"` | IANA timezone for interpreting the cron schedule          |
+| `timezone`     | `string`  | No       | `"UTC"` | IANA timezone for interpreting the cron schedule         |
 | `priority`     | `integer` | No       | `50`    | Task priority from 0 to 100 (higher = higher priority)   |
 | `next_run`     | `string`  | No       | -       | Read-only. Calculated next execution time (RFC 3339)     |
 
@@ -98,7 +98,7 @@ When creating or updating a task, the following scheduling and priority fields a
 
 The `schedule` field uses standard 5-field cron expressions:
 
-```
+```text
 ┌───────────── minute (0-59)
 │ ┌───────────── hour (0-23)
 │ │ ┌───────────── day of month (1-31)
