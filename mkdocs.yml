@@ -31,6 +31,8 @@ nav:
   - Embedded Proplet: embedded-proplet.md
   - Proxy: proxy.md
   - Monitoring: monitoring.md
+  - Task Scheduling: task-scheduling.md
+  - DAG Workflows: dag-workflows.md
   - Reference: reference.md
   - Developer's Guide: developer-guide.md
   - Zephyr: zephyr.md
