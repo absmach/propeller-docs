@@ -5,7 +5,7 @@ description: "Propeller's Manager is the Go-based orchestration engine that sche
 
 The Manager is Propeller's central orchestration service. It coordinates the complete lifecycle of WebAssembly workloads across distributed proplets—from task creation and scheduling through execution tracking and result collection.
 
-For a quick start with basic task operations, see the [Getting Started](/docs/getting-started) guide. For advanced workflow patterns, see [Task Scheduling](/docs/task-scheduling).
+For a quick start with basic task operations, see the [Getting Started](/getting-started) guide. For advanced workflow patterns, see [Task Scheduling](/task-scheduling).
 
 ## Why the Manager
 
@@ -26,7 +26,7 @@ The Manager acts as an intermediary between HTTP clients and MQTT-connected prop
 
 This separation allows clients to use familiar REST APIs while proplets communicate over lightweight MQTT—ideal for constrained edge devices.
 
-For the full system architecture and component overview, see the [Architecture](/docs/architecture) documentation.
+For the full system architecture and component overview, see the [Architecture](/architecture) documentation.
 
 ## Running the Manager
 
@@ -337,7 +337,7 @@ Propeller supports federated machine learning workflows where proplets train loc
 | ------------------------- | ----------------------------------- | ------------------ |
 | `MANAGER_COORDINATOR_URL` | External FL Coordinator service URL | `""` (FL disabled) |
 
-The Manager acts as a proxy between proplets and an external FL Coordinator service. The coordinator handles aggregation algorithms (FedAvg, etc.) while the Manager handles task distribution and result collection. For a complete overview of the architecture and training round lifecycle, see the [Federated Learning](/docs/fml/federated-learning) documentation.
+The Manager acts as a proxy between proplets and an external FL Coordinator service. The coordinator handles aggregation algorithms (FedAvg, etc.) while the Manager handles task distribution and result collection. For a complete overview of the architecture and training round lifecycle, see the [Federated Learning](/fml/federated-learning) documentation.
 
 ##### Enabling Federated Learning
 
@@ -347,7 +347,7 @@ Set `MANAGER_COORDINATOR_URL` to your FL Coordinator's base URL:
 export MANAGER_COORDINATOR_URL=http://fl-coordinator:8080
 ```
 
-The Manager then proxies FL endpoints to the coordinator. For the complete endpoint reference, see the [Federated Learning API](/docs/api/federated-ml).
+The Manager then proxies FL endpoints to the coordinator. For the complete endpoint reference, see the [Federated Learning API](/api/federated-ml).
 
 ##### When FL is Disabled
 
@@ -363,7 +363,7 @@ This allows you to run Propeller without FL dependencies when you only need stan
 
 Tasks are the fundamental unit of work in Propeller. Each task represents a WebAssembly module to execute on a proplet.
 
-For a hands-on tutorial with commands and expected outputs, see the [Getting Started](/docs/getting-started) guide. For the complete task data model including all fields and states, see the [Reference](/docs/reference#task) documentation.
+For a hands-on tutorial with commands and expected outputs, see the [Getting Started](/getting-started) guide. For the complete task data model including all fields and states, see the [Reference](/reference#task) documentation.
 
 ### WASM Module Deployment
 
@@ -371,9 +371,9 @@ Tasks execute independently on proplets—possibly on different nodes—so each 
 
 1. **Upload directly**: Use `PUT /tasks/{id}/upload` with a multipart form to upload a `.wasm` file. The module is stored with the task and delivered to the proplet when execution starts.
 
-2. **Reference via URL**: Set `image_url` when creating the task to reference a WASM module hosted in an OCI registry (Docker Hub, GHCR, private registries). The [Proxy service](/docs/proxy) fetches the module from the registry, chunks it for efficient transfer, and delivers it to the proplet over MQTT.
+2. **Reference via URL**: Set `image_url` when creating the task to reference a WASM module hosted in an OCI registry (Docker Hub, GHCR, private registries). The [Proxy service](/proxy) fetches the module from the registry, chunks it for efficient transfer, and delivers it to the proplet over MQTT.
 
-The URL approach is recommended for production deployments. It keeps your WASM binaries versioned in a registry, avoids embedding large files in API requests, and allows multiple proplets to fetch the same module without re-uploading. See the [Proxy documentation](/docs/proxy) for setup instructions and authentication configuration.
+The URL approach is recommended for production deployments. It keeps your WASM binaries versioned in a registry, avoids embedding large files in API requests, and allows multiple proplets to fetch the same module without re-uploading. See the [Proxy documentation](/proxy) for setup instructions and authentication configuration.
 
 ### Manager's Role in Task Execution
 
@@ -446,7 +446,7 @@ The Manager receives this message and:
 
 Proplets are the edge runtimes that execute tasks. The Manager tracks their availability through MQTT heartbeats and manages their lifecycle.
 
-For detailed proplet configuration and capabilities, see the [Proplet](/docs/proplet) documentation.
+For detailed proplet configuration and capabilities, see the [Proplet](/proplet) documentation.
 
 ### Manager's Role in Proplet Tracking
 
@@ -609,7 +609,7 @@ Your output should look like this:
 
 ### Execution Modes
 
-For execution mode options (`parallel`, `sequential`, `configurable`) and their behavior, see [Task Scheduling: Jobs](/docs/task-scheduling#jobs).
+For execution mode options (`parallel`, `sequential`, `configurable`) and their behavior, see [Task Scheduling: Jobs](/task-scheduling#jobs).
 
 When a task completes, the Manager checks if it belongs to a job. For sequential jobs, it automatically starts the next task in order.
 
@@ -639,7 +639,7 @@ curl -X POST "http://localhost:7070/jobs/{job_id}/stop"
 
 Workflows use DAG-based ordering to express dependencies between tasks. A task only starts when all its dependencies have completed.
 
-For detailed workflow patterns, conditional execution, and examples, see [Task Scheduling](/docs/task-scheduling).
+For detailed workflow patterns, conditional execution, and examples, see [Task Scheduling](/task-scheduling).
 
 ### Manager's Role in Workflow Orchestration
 
@@ -793,7 +793,7 @@ When a task starts without a specified `proplet_id`, the Manager's scheduler sel
 
 ### Cron Scheduler and Priority
 
-For recurring task execution with cron schedules and priority-based dispatch ordering, see [Task Scheduling](/docs/task-scheduling#priority-based-scheduling).
+For recurring task execution with cron schedules and priority-based dispatch ordering, see [Task Scheduling](/task-scheduling#priority-based-scheduling).
 
 The Manager's cron loop calls `StartTask` for due tasks, which then goes through the same proplet selection process described above.
 
@@ -817,4 +817,4 @@ After registration, the proplet enters a continuous heartbeat loop, sending aliv
 
 ## API Reference
 
-For detailed request/response schemas and examples, see the [API Reference](/docs/api).
+For detailed request/response schemas and examples, see the [API Reference](/api).

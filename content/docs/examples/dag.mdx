@@ -14,14 +14,14 @@ Both use the same underlying tasks but differ in how execution order is determin
 
 ## Part 1: DAG Workflow
 
-This section demonstrates [DAG (Directed Acyclic Graph) workflow](/docs/task-scheduling#workflows) execution. Workflows allow you to define task dependencies where child tasks only execute after their parent tasks complete successfully.
+This section demonstrates [DAG (Directed Acyclic Graph) workflow](/task-scheduling#workflows) execution. Workflows allow you to define task dependencies where child tasks only execute after their parent tasks complete successfully.
 
 ### Prerequisites
 
 Ensure you have:
 
 - Propeller services running (`make start-all`)
-- A [provisioned config](/docs/getting-started#step-3-provision-propeller) with valid credentials
+- A [provisioned config](/getting-started#step-3-provision-propeller) with valid credentials
 - The `addition.wasm` module built
 
 ### Source Code
@@ -65,7 +65,7 @@ This confirms the file is a valid WebAssembly binary. "Version 0x1 (MVP)" indica
 
 ### Create Workflow
 
-Create a DAG workflow with three tasks. Three tasks is the minimum needed to demonstrate [parallel fan-out](/docs/task-scheduling#fan-out-and-fan-in): Task 1 is the root, and Task 2 and Task 3 both depend on it. When Task 1 completes, Tasks 2 and 3 start simultaneously.
+Create a DAG workflow with three tasks. Three tasks is the minimum needed to demonstrate [parallel fan-out](/task-scheduling#fan-out-and-fan-in): Task 1 is the root, and Task 2 and Task 3 both depend on it. When Task 1 completes, Tasks 2 and 3 start simultaneously.
 
 ![Example DAG](../images/dag/example-dag.svg)
 
@@ -160,11 +160,11 @@ The response shows all three tasks created with `state: 0` (Pending). Key fields
 - **inputs**: The integer pairs that will be passed to the `main` function
 - **start_time / finish_time**: Zero values (`0001-01-01`) indicate the tasks haven't run yet
 
-For details on dependency validation, see [Task and Dependency Fields](/docs/task-scheduling#task-and-dependency-fields).
+For details on dependency validation, see [Task and Dependency Fields](/task-scheduling#task-and-dependency-fields).
 
 ### Upload WASM
 
-Since we built `addition.wasm` locally, we upload it directly to each task. For production workflows, you can use `image_url` instead—see [WASM Module Deployment](/docs/task-scheduling#wasm-module-deployment).
+Since we built `addition.wasm` locally, we upload it directly to each task. For production workflows, you can use `image_url` instead—see [WASM Module Deployment](/task-scheduling#wasm-module-deployment).
 
 #### Task 1
 
@@ -314,13 +314,13 @@ After completion, your output should look like this:
 | `start_time` | `15:22:08.180` (task-001), `.333` (task-002), `.371` (task-003) | Task 2 and 3 started ~150ms after Task 1, confirming fan-out |
 | `depends_on` | `["task-001"]`                                                  | Only present on task-002 and task-003                        |
 
-For conditional execution with `run_if` and DAG validation rules, see [Task Scheduling](/docs/task-scheduling#run_if-values).
+For conditional execution with `run_if` and DAG validation rules, see [Task Scheduling](/task-scheduling#run_if-values).
 
 ---
 
 ## Part 2: Job
 
-This section demonstrates [job-based execution](/docs/task-scheduling#jobs). Jobs group tasks with a shared execution mode—no explicit dependencies. The mode controls whether tasks run in parallel or sequentially.
+This section demonstrates [job-based execution](/task-scheduling#jobs). Jobs group tasks with a shared execution mode—no explicit dependencies. The mode controls whether tasks run in parallel or sequentially.
 
 ### Create Job
 
@@ -629,4 +629,4 @@ After completion:
 
 The `depends_on` chains enforce the ordering — seq-task-002 starts only after seq-task-001 finishes, and seq-task-003 starts only after seq-task-002 finishes. If any task fails, the job stops immediately (fail-fast).
 
-For a comparison of workflows vs jobs and detailed job configuration options, see [Workflow vs Job Comparison](/docs/task-scheduling#workflow-vs-job-comparison).
+For a comparison of workflows vs jobs and detailed job configuration options, see [Workflow vs Job Comparison](/task-scheduling#workflow-vs-job-comparison).

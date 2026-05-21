@@ -3,7 +3,7 @@ title: Deploy Propeller on Kubernetes without the Operator
 description: Run Propeller's manager, proplet, and proxy components directly as Kubernetes Deployments without the CRD operator.
 ---
 
-The [Propeller Kubernetes Operator](/docs/k8s/operator) provides a high-level control-plane abstraction using Custom Resource Definitions. If you prefer to keep the setup simpler—or if you do not have cluster-admin access to install CRDs—you can run Propeller's core components directly as standard Kubernetes Deployments.
+The [Propeller Kubernetes Operator](/k8s/operator) provides a high-level control-plane abstraction using Custom Resource Definitions. If you prefer to keep the setup simpler—or if you do not have cluster-admin access to install CRDs—you can run Propeller's core components directly as standard Kubernetes Deployments.
 
 In this model, Propeller is managed through its HTTP API and CLI rather than through Kubernetes manifests.
 
@@ -29,7 +29,7 @@ All three connect to a SuperMQ MQTT broker for inter-component communication, ex
 
 - A running Kubernetes cluster with `kubectl` configured.
 - A SuperMQ instance accessible from inside the cluster. You can run SuperMQ outside the cluster (e.g. as Docker containers on the host) and expose it via a `NodePort` or `LoadBalancer`, or deploy it inside the cluster.
-- SuperMQ credentials (domain ID, channel ID, client IDs and keys) provisioned with `propeller-cli provision`. See the [Getting Started guide](/docs/getting-started) for provisioning instructions.
+- SuperMQ credentials (domain ID, channel ID, client IDs and keys) provisioned with `propeller-cli provision`. See the [Getting Started guide](/getting-started) for provisioning instructions.
 - The Propeller container images available in a registry your cluster can pull from.
 
 ## Deploying
@@ -188,7 +188,7 @@ kubectl port-forward -n propeller svc/propeller-manager 7070:7070
 
 ### 5. Submit tasks via the HTTP API
 
-With the manager accessible at `localhost:7070`, use `propeller-cli` or the HTTP API directly to create and monitor tasks. See the [API reference](/docs/api) for available endpoints.
+With the manager accessible at `localhost:7070`, use `propeller-cli` or the HTTP API directly to create and monitor tasks. See the [API reference](/api) for available endpoints.
 
 ```bash
 # List registered proplets

@@ -5,7 +5,7 @@ description: Federated learning example
 
 This is a complete end-to-end federated learning example. Proplets train models locally on their private data, and the coordinator aggregates updates using the FedAvg algorithm. The model never leaves the device — only weight updates are shared.
 
-For a comprehensive guide on federated learning architecture, motivation, and the complete training lifecycle, see the [Federated Machine Learning](/docs/fml/federated-learning) documentation.
+For a comprehensive guide on federated learning architecture, motivation, and the complete training lifecycle, see the [Federated Machine Learning](/fml/federated-learning) documentation.
 
 ## Prerequisites
 
@@ -534,7 +534,7 @@ The WASM binary should be approximately 3.1MB.
 
 ## Step 9: Push WASM to GitHub Container Registry (GHCR)
 
-The [Proxy service](/docs/proxy) fetches WASM binaries from OCI-compliant container registries and delivers them to proplets. In this example, we use GitHub Container Registry (GHCR) which provides native HTTPS support.
+The [Proxy service](/proxy) fetches WASM binaries from OCI-compliant container registries and delivers them to proplets. In this example, we use GitHub Container Registry (GHCR) which provides native HTTPS support.
 
 While a local registry is simpler to set up, the proxy service connects via **HTTPS**. Local registries typically use **HTTP**, causing connection failures:
 
@@ -542,7 +542,7 @@ While a local registry is simpler to set up, the proxy service connects via **HT
 failed to fetch container for task: error sending request
 ```
 
-Using GHCR avoids this issue. For local registry setup with HTTPS, see the [Proxy documentation](/docs/proxy#setting-up-a-local-registry-for-development).
+Using GHCR avoids this issue. For local registry setup with HTTPS, see the [Proxy documentation](/proxy#setting-up-a-local-registry-for-development).
 
 ### Login to GHCR
 
@@ -591,7 +591,7 @@ By default, GHCR packages are private. To make it public:
 
 ## Step 10: Configure Proxy for GHCR Authentication
 
-Update `docker/.env` with GHCR credentials so the Proxy can fetch the WASM binary. For full configuration options, see the [Proxy documentation](/docs/proxy#setting-up-authentication).
+Update `docker/.env` with GHCR credentials so the Proxy can fetch the WASM binary. For full configuration options, see the [Proxy documentation](/proxy#setting-up-authentication).
 
 ### Edit Environment Variables
 

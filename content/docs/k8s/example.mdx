@@ -5,7 +5,7 @@ description: Propeller Kubernetes Operator example
 
 This is a Propeller Kubernetes Operator example. It provisions [SuperMQ](https://docs.supermq.absmach.eu/), deploys the operator, registers an external proplet, and runs a WebAssembly addition task.
 
-For a complete reference of the operator's architecture, Custom Resource Definitions, configuration options, and MQTT communication patterns, see the [Propeller Kubernetes Operator documentation](/docs/k8s/operator).
+For a complete reference of the operator's architecture, Custom Resource Definitions, configuration options, and MQTT communication patterns, see the [Propeller Kubernetes Operator documentation](/k8s/operator).
 
 ## Source Code
 
@@ -70,7 +70,7 @@ You need the following tools installed before proceeding:
 
 You also need:
 
-- The **Propeller repository** cloned locally with binaries already built. If you have not built it yet, follow the [Getting Started guide](/docs/getting-started) first.
+- The **Propeller repository** cloned locally with binaries already built. If you have not built it yet, follow the [Getting Started guide](/getting-started) first.
 - The **Propeller k8s operator repository** cloned locally:
 
   ```bash
@@ -168,7 +168,7 @@ customresourcedefinition.apiextensions.k8s.io/tasks.propeller.propeller.abstract
 customresourcedefinition.apiextensions.k8s.io/trainingrounds.propeller.propeller.abstractmachines.fr created
 ```
 
-All five CRDs are now registered with the Kubernetes API server. See the [CRD reference](/docs/k8s/operator#custom-resource-definitions) for details on each resource type.
+All five CRDs are now registered with the Kubernetes API server. See the [CRD reference](/k8s/operator#custom-resource-definitions) for details on each resource type.
 
 
 ## Step 3 — Create a Workloads Namespace
@@ -621,7 +621,7 @@ Your output should look like this:
 
 ## Step 9 — Create an External Proplet
 
-Register the running docker proplet as an external Proplet CRD. The `spec.connectionConfig.clientId` must match the `proplet_id` the proplet sends in alive messages (verified in step 6 to be the proplet's `client_id`). See the [Proplet spec reference](/docs/k8s/features#proplet-spec-reference) for all available fields.
+Register the running docker proplet as an external Proplet CRD. The `spec.connectionConfig.clientId` must match the `proplet_id` the proplet sends in alive messages (verified in step 6 to be the proplet's `client_id`). See the [Proplet spec reference](/k8s/features#proplet-spec-reference) for all available fields.
 
 ```bash
 kubectl apply -n propeller-workloads -f - <<'EOF'
@@ -718,7 +718,7 @@ Both `Ready` and `Connected` conditions are `True`. The `Last Seen` timestamp up
 
 ### Proplet Spec Reference
 
-The table below lists common fields. For the complete specification, see the [features documentation](/docs/k8s/features#proplet-spec-reference).
+The table below lists common fields. For the complete specification, see the [features documentation](/k8s/features#proplet-spec-reference).
 
 | Field                            | Type                 | Required       | Description                                         |
 | -------------------------------- | -------------------- | -------------- | --------------------------------------------------- |
@@ -746,7 +746,7 @@ The table below lists common fields. For the complete specification, see the [fe
 
 ## Step 10 — Run a Task
 
-Create a Task that targets the docker proplet. This uses the addition WASM module (the same binary used in the [addition example](/docs/examples/addition))—a minimal module that exports a `main` function taking two integers and returning their sum. See the [Task spec reference](/docs/k8s/features#task-spec-reference) for all available fields.
+Create a Task that targets the docker proplet. This uses the addition WASM module (the same binary used in the [addition example](/examples/addition))—a minimal module that exports a `main` function taking two integers and returning their sum. See the [Task spec reference](/k8s/features#task-spec-reference) for all available fields.
 
 ```bash
 kubectl apply -n propeller-workloads -f - <<'EOF'
@@ -866,7 +866,7 @@ The proplet executed the WASM binary with Wasmtime, published the result to `con
 
 ### Task Spec Reference
 
-The table below lists common fields. For the complete specification, see the [features documentation](/docs/k8s/features#task-spec-reference).
+The table below lists common fields. For the complete specification, see the [features documentation](/k8s/features#task-spec-reference).
 
 | Field                                | Type                | Required   | Description                                                            |
 | ------------------------------------ | ------------------- | ---------- | ---------------------------------------------------------------------- |

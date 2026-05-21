@@ -5,7 +5,7 @@ description: Workload-agnostic federated learning architecture and lifecycle in 
 
 Propeller implements Federated Machine Learning (FML) as a workload-agnostic framework that enables distributed machine learning training across multiple edge devices without centralizing raw data.
 
-For a quick start tutorial with commands and expected outputs, see the [Federated Learning Example](/docs/fml/example).
+For a quick start tutorial with commands and expected outputs, see the [Federated Learning Example](/fml/example).
 
 ## Why Federated Learning
 
@@ -279,15 +279,15 @@ A background goroutine checks round timeouts every 5 seconds. If a round exceeds
 
 **Manager FL API**
 
-The Manager exposes FL endpoints for experiment configuration and coordination. See the [API Reference](/docs/api#federated-learning) for complete endpoint documentation.
+The Manager exposes FL endpoints for experiment configuration and coordination. See the [API Reference](/api#federated-learning) for complete endpoint documentation.
 
 | Endpoint                                                                                    | Description                          |
 | ------------------------------------------------------------------------------------------- | ------------------------------------ |
-| [POST /fl/experiments](/docs/api/federated-ml/experiments/post)                             | Configure and start an FL experiment |
-| [GET /fl/task](/docs/api/federated-ml/task/get)                                             | Get FL task details for a proplet    |
-| [POST /fl/update](/docs/api/federated-ml/update/post)                                       | Submit training updates (JSON)       |
-| [POST /fl/update_cbor](/docs/api/federated-ml/update_cbor/post)                             | Submit training updates (CBOR)       |
-| [GET /fl/rounds/\{round_id\}/complete](/docs/api/federated-ml/rounds/round_id/complete/get) | Check round completion status        |
+| [POST /fl/experiments](/api/federated-ml/experiments/post)                             | Configure and start an FL experiment |
+| [GET /fl/task](/api/federated-ml/task/get)                                             | Get FL task details for a proplet    |
+| [POST /fl/update](/api/federated-ml/update/post)                                       | Submit training updates (JSON)       |
+| [POST /fl/update_cbor](/api/federated-ml/update_cbor/post)                             | Submit training updates (CBOR)       |
+| [GET /fl/rounds/\{round_id\}/complete](/api/federated-ml/rounds/round_id/complete/get) | Check round completion status        |
 
 **Internal FL Service Endpoints**
 
@@ -508,8 +508,8 @@ docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml \
 
 Ready to go beyond logistic regression + FedAvg? These guides show you how:
 
-- [FedProx Algorithm](/docs/fml/fedprox) - Modify the WASM client to handle non-IID data with proximal regularization
-- [Byzantine-Robust Aggregation](/docs/fml/byzantine-robust) - Replace FedAvg with median-based aggregation for untrusted environments
+- [FedProx Algorithm](/fml/fedprox) - Modify the WASM client to handle non-IID data with proximal regularization
+- [Byzantine-Robust Aggregation](/fml/byzantine-robust) - Replace FedAvg with median-based aggregation for untrusted environments
 
 ### Update Message Format
 
@@ -543,9 +543,9 @@ Each proplet submits an update with this structure:
 
 ## WASM Training Client
 
-The FL training client runs as a WebAssembly module executed by the proplet. When you specify an `image_url` in your FL task, the [Proxy service](/docs/proxy) fetches the WASM binary from the container registry (Docker Hub, GHCR, or a private registry), chunks it for MQTT transfer, and delivers it to the proplet.
+The FL training client runs as a WebAssembly module executed by the proplet. When you specify an `image_url` in your FL task, the [Proxy service](/proxy) fetches the WASM binary from the container registry (Docker Hub, GHCR, or a private registry), chunks it for MQTT transfer, and delivers it to the proplet.
 
-This is the same module delivery mechanism used for standard tasks—see the [Manager documentation](/docs/manager#wasm-module-deployment) for details. For FL, the WASM module contains your training algorithm (e.g., logistic regression with SGD).
+This is the same module delivery mechanism used for standard tasks—see the [Manager documentation](/manager#wasm-module-deployment) for details. For FL, the WASM module contains your training algorithm (e.g., logistic regression with SGD).
 
 ### Environment Variables
 
@@ -782,7 +782,7 @@ FL_DATASET_PARTICIPANTS="uuid1,uuid2,uuid3"
 
 ## FL Demo Application
 
-For detailed setup instructions, step-by-step commands, and expected outputs, see the [Federated Learning Example](/docs/fml/example).
+For detailed setup instructions, step-by-step commands, and expected outputs, see the [Federated Learning Example](/fml/example).
 
 The demo includes:
 

@@ -404,17 +404,17 @@ The workflow coordinator will:
 3. Start dependent tasks when their prerequisites are satisfied
 4. Evaluate `run_if` conditions before starting each task
 
-For a complete working example with real WASM modules and actual API responses, see [DAG Workflows and Jobs](/docs/examples/dag).
+For a complete working example with real WASM modules and actual API responses, see [DAG Workflows and Jobs](/examples/dag).
 
 ## Workflow vs Job Comparison
 
 | Aspect              | Workflow                                                                        | Job                                                             |
 | ------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| **Endpoint**        | [`POST /workflows`](/docs/api/workflows/post)                                   | [`POST /jobs`](/docs/api/jobs/post)                             |
+| **Endpoint**        | [`POST /workflows`](/api/workflows/post)                                   | [`POST /jobs`](/api/jobs/post)                             |
 | **Execution order** | Defined by `depends_on` arrays                                                  | Controlled by `execution_mode`                                  |
 | **Dependencies**    | Explicit task-to-task                                                           | None—mode determines order                                      |
 | **Use case**        | Complex DAGs with fan-out/fan-in                                                | Simple parallel or sequential batches                           |
-| **Start command**   | [`POST /tasks/{task_id}/start`](/docs/api/tasks/task_id/start/post) (root task) | [`POST /jobs/{job_id}/start`](/docs/api/jobs/job_id/start/post) |
+| **Start command**   | [`POST /tasks/{task_id}/start`](/api/tasks/task_id/start/post) (root task) | [`POST /jobs/{job_id}/start`](/api/jobs/job_id/start/post) |
 
 ## DAG Validation
 
@@ -797,4 +797,4 @@ Daemon tasks:
 - Automatically restart on the same proplet if they crash
 - Don't count toward workflow completion
 
-For complete working examples including ETL pipelines and troubleshooting guides, see [DAG Workflows and Jobs](/docs/examples/dag).
+For complete working examples including ETL pipelines and troubleshooting guides, see [DAG Workflows and Jobs](/examples/dag).

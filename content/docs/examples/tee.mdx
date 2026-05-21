@@ -5,7 +5,7 @@ description: Running Addition Example in TEE
 
 This is a Trusted Execution Environment (TEE) example. It runs the addition example inside a secure enclave, protecting code and data from the host OS.
 
-For a comprehensive guide on TEE concepts, Trustee setup, and encrypted workload configuration, see the [Encrypted Workloads](/docs/tee) documentation.
+For a comprehensive guide on TEE concepts, Trustee setup, and encrypted workload configuration, see the [Encrypted Workloads](/tee) documentation.
 
 TEE mode is **auto-detected** by the proplet — no environment variable is needed to enable it. When running inside a Confidential VM (Intel TDX or AMD SEV), the proplet automatically detects the TEE environment and enables encrypted workload support.
 
@@ -19,7 +19,7 @@ export PROPLET_KBS_URI="http://kbs.example.com:8082"
 export PROPLET_AA_CONFIG_PATH="/etc/default/proplet.toml"
 ```
 
-If using the [HAL script](/docs/hal), set `KBS_URL` instead (it gets translated to `PROPLET_KBS_URI` inside the VM).
+If using the [HAL script](/hal), set `KBS_URL` instead (it gets translated to `PROPLET_KBS_URI` inside the VM).
 
 ## Source Code
 

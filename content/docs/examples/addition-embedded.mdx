@@ -3,12 +3,12 @@ title: Addition (Embedded Proplet)
 description: Addition example on the Embedded Proplet running Zephyr RTOS and WAMR
 ---
 
-This is a simple addition example running on the [Embedded Proplet](/docs/embedded-proplet). It takes two numbers as inputs and returns their sum, executing inside WAMR on an ESP32-S3 running Zephyr RTOS. The module is written in WebAssembly Text format because WAMR on Zephyr does not support WASI (all WASI interfaces are disabled in the build configuration). For architecture details, memory constraints, and configuration options, see the [Embedded Proplet](/docs/embedded-proplet) documentation.
+This is a simple addition example running on the [Embedded Proplet](/embedded-proplet). It takes two numbers as inputs and returns their sum, executing inside WAMR on an ESP32-S3 running Zephyr RTOS. The module is written in WebAssembly Text format because WAMR on Zephyr does not support WASI (all WASI interfaces are disabled in the build configuration). For architecture details, memory constraints, and configuration options, see the [Embedded Proplet](/embedded-proplet) documentation.
 
 Before running this example you need:
 
-- A Zephyr development environment — follow the [Zephyr Guide](/docs/zephyr) for SDK, west, and toolchain installation
-- The Propeller stack running (Manager + MQTT broker) — follow the [Getting Started](/docs/getting-started) guide
+- A Zephyr development environment — follow the [Zephyr Guide](/zephyr) for SDK, west, and toolchain installation
+- The Propeller stack running (Manager + MQTT broker) — follow the [Getting Started](/getting-started) guide
 - `wat2wasm` from the [WebAssembly Binary Toolkit](https://github.com/WebAssembly/wabt)
 
 Initialize the WAMR submodule:

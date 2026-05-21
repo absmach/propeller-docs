@@ -18,7 +18,7 @@ You need the following tools installed:
 
 You also need:
 
-- The **Propeller repository** cloned locally with binaries already built. If you have not built it yet, follow the [Getting Started guide](/docs/getting-started) first.
+- The **Propeller repository** cloned locally with binaries already built. If you have not built it yet, follow the [Getting Started guide](/getting-started) first.
 - The **Propeller k8s operator repository** cloned locally:
 
   ```bash
@@ -29,10 +29,10 @@ You also need:
 
 The operator connects to a SuperMQ MQTT broker and watches five Custom Resource kinds: `Proplet`, `Task`, `PropellerJob`, `FederatedJob`, and `TrainingRound`. When you apply a manifest, the operator reconciles the desired state by dispatching WASM tasks to proplets over MQTT and recording results back into resource status fields.
 
-See the [Operator overview](/docs/k8s/operator) for a full architecture description.
+See the [Operator overview](/k8s/operator) for a full architecture description.
 
 ## Next Steps
 
-- Follow the [step-by-step example](/docs/k8s/example) to deploy the operator and run your first WASM task end-to-end.
-- Read the [Features reference](/docs/k8s/features) for the complete Custom Resource specification.
-- See the [Deployment guide](/docs/k8s/deployment) for production deployment, RBAC, and configuration options.
+- Follow the [step-by-step example](/k8s/example) to deploy the operator and run your first WASM task end-to-end.
+- Read the [Features reference](/k8s/features) for the complete Custom Resource specification.
+- See the [Deployment guide](/k8s/deployment) for production deployment, RBAC, and configuration options.

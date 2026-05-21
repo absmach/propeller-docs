@@ -3,13 +3,13 @@ title: Embedded Proplet
 description: "Run WebAssembly on microcontrollers with Propeller's Embedded Proplet. Executes Wasm workloads on ESP32-S3 and Zephyr RTOS devices using WAMR — with as little as 128 KB RAM."
 ---
 
-The Embedded Proplet brings WebAssembly execution to microcontrollers like the ESP32-S3. It is a C firmware application running on Zephyr RTOS that connects to a Propeller [Manager](/docs/manager) over MQTT and executes WebAssembly tasks using the WebAssembly Micro Runtime (WAMR). When the Manager sends a task, the Embedded Proplet decodes the WASM module, runs it locally on the device, and reports results back — enabling computation at the true edge with as little as 128 KB RAM.
+The Embedded Proplet brings WebAssembly execution to microcontrollers like the ESP32-S3. It is a C firmware application running on Zephyr RTOS that connects to a Propeller [Manager](/manager) over MQTT and executes WebAssembly tasks using the WebAssembly Micro Runtime (WAMR). When the Manager sends a task, the Embedded Proplet decodes the WASM module, runs it locally on the device, and reports results back — enabling computation at the true edge with as little as 128 KB RAM.
 
 ## Why the Embedded Proplet
 
 ### Extending to Constrained Devices
 
-The standard [Proplet](/docs/proplet) runs on Linux with Wasmtime, requiring ~100 MB RAM minimum. The Embedded Proplet targets microcontrollers with kilobytes of memory, enabling Propeller to reach sensors, actuators, and other embedded devices at the true edge.
+The standard [Proplet](/proplet) runs on Linux with Wasmtime, requiring ~100 MB RAM minimum. The Embedded Proplet targets microcontrollers with kilobytes of memory, enabling Propeller to reach sensors, actuators, and other embedded devices at the true edge.
 
 ### Native RTOS Integration
 
@@ -33,13 +33,13 @@ The Embedded Proplet uses the same MQTT messaging protocol and topic structure a
 
 ## Prerequisites
 
-Before building the Embedded Proplet, set up the development environment as described in the [Zephyr Guide](/docs/zephyr). You'll need:
+Before building the Embedded Proplet, set up the development environment as described in the [Zephyr Guide](/zephyr). You'll need:
 
 - Zephyr SDK (v0.16.0+)
 - ESP-IDF (v5.1+) for ESP32-S3
 - West build system
 - WAMR submodule initialized
-- The Propeller stack running (Manager + MQTT broker) — follow the [Getting Started](/docs/getting-started) guide
+- The Propeller stack running (Manager + MQTT broker) — follow the [Getting Started](/getting-started) guide
 
 ```bash
 cd propeller/embed-proplet
@@ -348,7 +348,7 @@ Expected response on `registry/server`:
 { "app_name": "<name>", "data": "<base64-encoded WASM>" }
 ```
 
-The `wasm_handler` decodes the base64 module and loads it into WAMR. See the [Addition (Embedded Proplet)](/docs/examples/addition-embedded) example for a concrete walkthrough.
+The `wasm_handler` decodes the base64 module and loads it into WAMR. See the [Addition (Embedded Proplet)](/examples/addition-embedded) example for a concrete walkthrough.
 
 ### Task Lifecycle
 
@@ -393,7 +393,7 @@ All three fields — `id`, `name`, and `state` — are required. A missing field
 
 ## Writing WASM Modules
 
-WAMR on Zephyr has `WAMR_BUILD_LIBC_WASI` disabled (`0` in `CMakeLists.txt`), meaning all WASI interfaces are unavailable — no file system access, no network sockets, no environment variables. This includes both WASI P1 and WASI P2. If you are used to writing WASI modules for the standard [Proplet](/docs/proplet), you will need to write modules differently for the Embedded Proplet.
+WAMR on Zephyr has `WAMR_BUILD_LIBC_WASI` disabled (`0` in `CMakeLists.txt`), meaning all WASI interfaces are unavailable — no file system access, no network sockets, no environment variables. This includes both WASI P1 and WASI P2. If you are used to writing WASI modules for the standard [Proplet](/proplet), you will need to write modules differently for the Embedded Proplet.
 
 `WAMR_BUILD_LIBC_BUILTIN` is enabled, so modules can use basic built-in math and string operations without importing them from the host.
 
@@ -447,7 +447,7 @@ Exceeding MAX_WASM_APPS prevents new tasks from starting. Exceeding MAX_MONITORE
 
 ## Running an Example
 
-See the [Addition (Embedded Proplet)](/docs/examples/addition-embedded) example for a complete walkthrough of building the firmware, deploying a WASM task, and reading the device logs.
+See the [Addition (Embedded Proplet)](/examples/addition-embedded) example for a complete walkthrough of building the firmware, deploying a WASM task, and reading the device logs.
 
 ## Troubleshooting
 
@@ -553,8 +553,8 @@ west flash
 
 | Topic                                                | Description                                                |
 | ---------------------------------------------------- | ---------------------------------------------------------- |
-| [Zephyr Guide](/docs/zephyr)                         | Development environment setup for Zephyr and WAMR          |
-| [Proplet](/docs/proplet)                             | Full-featured Proplet for Linux/containerized environments |
-| [HAL](/docs/hal)                                     | Hardware Abstraction Layer for runtime environments        |
-| [Addition Example](/docs/examples/addition-embedded) | End-to-end addition example on the Embedded Proplet        |
-| [Proxy](/docs/proxy)                                 | Binary chunking for large module delivery                  |
+| [Zephyr Guide](/zephyr)                         | Development environment setup for Zephyr and WAMR          |
+| [Proplet](/proplet)                             | Full-featured Proplet for Linux/containerized environments |
+| [HAL](/hal)                                     | Hardware Abstraction Layer for runtime environments        |
+| [Addition Example](/examples/addition-embedded) | End-to-end addition example on the Embedded Proplet        |
+| [Proxy](/proxy)                                 | Binary chunking for large module delivery                  |
