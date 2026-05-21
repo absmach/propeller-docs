@@ -1,62 +1,66 @@
-# Propeller Website
+# Propeller Docs
 
-Propeller Website is a documentation website built with [Next.js](https://nextjs.org/) and [Fumadocs](https://www.fumadocs.dev/), featuring documentation and OpenAPI reference pages.
+Documentation site for [Propeller](https://github.com/absmach/propeller), built with [Fumadocs](https://fumadocs.dev) and Next.js.
 
-## Features
+The site is served under `/docs/propeller` — visiting `/` renders the intro page.
 
-- Documentation with MDX support
-- OpenAPI/Swagger API reference documentation
-- Static site generation for optimal performance
-- Search functionality powered by Orama
-- Responsive design with dark mode support
-- SEO-optimized with sitemap and robots.txt generation
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) v20+
-- [pnpm](https://pnpm.io/) v9+
-
-### Installation
+## Development
 
 ```bash
 pnpm install
+pnpm dev
 ```
 
-### Development
-
-Run the development server:
-
-```bash
-pnpm run dev
-```
-
-Open <http://localhost:3000> with your browser to see the result.
-
-### Build
-
-Build the static site:
-
-```bash
-pnpm run build
-```
-
-The output will be generated in the `out` directory.
-
-### Preview Production Build
-
-```bash
-pnpm run start
-```
-
-### Linting
-
-```bash
-pnpm run lint
-pnpm run lint:fix  # Auto-fix issues
-```
+Open http://localhost:3000 with your browser to see the result.
 
 ## Deployment
 
-The site is configured for static export and can be deployed to GitHub Pages (via [`.github/workflows/cd.yaml`](.github/workflows/cd.yaml)) or any other static hosting provider.
+This site uses:
+
+- **Next.js static export** — `next build` outputs static files to `out/`
+- **GitHub Pages** — serves the `out/` directory via GitHub Actions
+
+### GitHub Actions (`.github/workflows/cd.yaml`)
+
+Triggers on push to `main`. The workflow:
+
+1. Builds the static site with `pnpm run build`
+2. Uploads `out/` as a Pages artifact
+3. Deploys to GitHub Pages
+4. Submits updated URLs to IndexNow
+
+### Architecture
+
+```mermaid
+flowchart LR
+  subgraph Build_and_Deploy
+    A[Git push to main] --> B[GitHub Actions trigger]
+    B --> C[pnpm run build]
+    C --> D[next build — static export]
+    D --> E[out/ static assets]
+    E --> F[GitHub Pages]
+  end
+
+  subgraph Runtime_Request_Flow
+    U[Browser request] --> F
+    F --> U
+  end
+```
+
+## Project structure
+
+| Path                               | Description                              |
+|------------------------------------|------------------------------------------|
+| `src/app/[[...slug]]/page.tsx`     | Docs page renderer (all routes)          |
+| `src/app/api/search/route.ts`      | Static search index route handler        |
+| `src/app/og/[...slug]/route.tsx`   | OG image generation for docs pages       |
+| `src/app/llms-full.txt/route.ts`   | LLM-readable full docs text              |
+| `content/docs`                     | MDX source files                         |
+| `src/lib/source.ts`                | Fumadocs source adapter                  |
+| `src/lib/layout.shared.tsx`        | Shared layout options                    |
+| `content/openapi.yaml`             | OpenAPI spec (generates API docs)        |
+
+## Learn More
+
+- [Fumadocs](https://fumadocs.dev)
+- [Next.js Documentation](https://nextjs.org/docs)
