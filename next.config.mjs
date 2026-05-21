@@ -2,6 +2,8 @@ import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
 
+const BASE_PATH = "/docs/propeller";
+
 /** @type {import('next').NextConfig} */
 const config = {
   output: "export",
@@ -9,6 +11,10 @@ const config = {
   reactStrictMode: true,
   images: {
     unoptimized: true,
+  },
+  basePath: BASE_PATH,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: BASE_PATH,
   },
 };
 
