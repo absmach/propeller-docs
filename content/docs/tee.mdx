@@ -1,0 +1,657 @@
+---
+title: Encrypted workloads
+description: "Run WebAssembly workloads inside hardware-protected Trusted Execution Environments. Supports Intel TDX, AMD SEV-SNP, and Intel SGX for confidential Cloud-Edge computing with Propeller."
+---
+
+A [Trusted Execution Environment](https://en.wikipedia.org/wiki/Trusted_execution_environment) (TEE) is a secure area inside a processor that protects code and data from unauthorized access. TEEs use hardware-based isolation to ensure that even cloud providers or system administrators cannot read your workload's data while it runs.
+
+Common TEE technologies:
+
+- **Intel TDX** — Trust Domain Extensions for virtual machines
+- **AMD SEV-SNP** — Secure Encrypted Virtualization with Secure Nested Paging
+- **Intel SGX** — Software Guard Extensions for application enclaves
+
+## Understand the flow
+
+Propeller runs WASM workloads inside TEEs by combining encrypted container images with hardware attestation.
+
+1. Proplet detects if it runs inside a TEE
+2. Manager sends an encrypted workload request
+3. Proplet retrieves attestation proof from TEE hardware
+4. Key Broker Service validates attestation and releases decryption keys
+5. Proplet decrypts the WASM image and executes it
+
+All decryption and execution happens inside the protected environment.
+
+## Prerequisites
+
+- [Trustee](https://github.com/confidential-containers/trustee) — key broker and attestation stack
+- [Attestation Agent](https://github.com/confidential-containers/guest-components/blob/main/attestation-agent/README.md) — communicates with TEE hardware and KBS
+- `docker`, `docker compose` — to run the Trustee stack
+- `cargo` — to build the `kbs-client` tool
+- `skopeo`, `wasm-to-oci` — to push images to a registry
+
+## Set up Trustee
+
+[Trustee](https://github.com/confidential-containers/trustee) is the server-side attestation and secret management stack. It consists of three components:
+
+- **KBS** (Key Broker Service) — stores encryption keys and validates attestation reports
+- **AS** (Attestation Service) — verifies TEE evidence submitted by guests
+- **RVPS** (Reference Value Provider Service) — manages reference values used to verify TEE evidence
+
+### Start with Docker Compose
+
+```bash
+git clone https://github.com/confidential-containers/trustee
+cd trustee
+openssl genpkey -algorithm ed25519 > kbs/config/private.key
+openssl pkey -in kbs/config/private.key -pubout -out kbs/config/public.pub
+docker compose up -d
+```
+
+This starts KBS on `http://localhost:8080`. The port can be changed in `docker-compose.yml`, for this usecase I have changed it to `8082`
+
+The logs will look like this:
+
+```bash
+rvps-1  | [2026-02-17T12:37:33Z INFO  rvps] CoCo RVPS:
+rvps-1  |     v0.1.0
+rvps-1  |     commit:
+rvps-1  |     buildtime: 2026-02-16 13:51:49 +00:00
+rvps-1  | [2026-02-17T12:37:33Z INFO  rvps] Listen socket: 0.0.0.0:50003
+rvps-1  | [2026-02-17T12:37:33Z WARN  reference_value_provider_service::extractors] No configuration for SWID extractor provided. Default will be used.
+keyprovider-1  | [2026-02-17T12:38:15Z INFO  coco_keyprovider] listening to socket addr: 0.0.0.0:50000
+keyprovider-1  | [2026-02-17T12:38:15Z INFO  coco_keyprovider] The encryption key will be registered to kbs: Some("http://kbs:8080")
+as-1           | 2026-02-17T12:37:34.251344Z  INFO grpc_as: Welcome to Confidential Containers Attestation Service (gRPC version)!
+as-1           |
+as-1           |  ________  ________  ________  ________  ________  ________
+as-1           | |\   ____\|\   __  \|\   ____\|\   __  \|\   __  \|\   ____\
+as-1           | \ \  \___|\ \  \|\  \ \  \___|\ \  \|\  \ \  \|\  \ \  \___|_
+as-1           |  \ \  \    \ \  \\\  \ \  \    \ \  \\\  \ \   __  \ \_____  \
+as-1           |   \ \  \____\ \  \\\  \ \  \____\ \  \\\  \ \  \ \  \|____|\  \
+kbs-1          | [2026-02-17T12:38:14Z INFO  kbs] Using config file /opt/confidential-containers/kbs/user-keys/docker-compose/kbs-config.toml
+as-1           |    \ \_______\ \_______\ \_______\ \_______\ \__\ \__\____\_\  \
+kbs-1          | [2026-02-17T12:38:14Z INFO  kbs::attestation::coco::grpc] connect to remote AS [http://as:50004] with pool size 100
+as-1           |     \|_______|\|_______|\|_______|\|_______|\|__|\|__|\_________\
+as-1           |                                                      \|_________|
+kbs-1          | [2026-02-17T12:38:14Z INFO  kbs::api_server] Starting HTTP server at [0.0.0.0:8080]
+kbs-1          | [2026-02-17T12:38:14Z INFO  actix_server::builder] starting 64 workers
+kbs-1          | [2026-02-17T12:38:14Z INFO  actix_server::server] Actix runtime found; starting in Actix runtime
+kbs-1          | [2026-02-17T12:38:14Z INFO  actix_server::server] starting service: "actix-web-service-0.0.0.0:8080", workers: 64, listening on: 0.0.0.0:8080
+as-1           |
+as-1           | version: v0.1.0
+as-1           | commit:
+as-1           | buildtime: 2026-02-16 13:54:36 +00:00
+as-1           | loglevel: attestation_service=info,grpc_as=info,warn
+as-1           |
+as-1           | 2026-02-17T12:37:34.251476Z  INFO grpc_as::grpc: Starting gRPC Attestation Service. Listening on socket: 0.0.0.0:50004
+as-1           | 2026-02-17T12:37:34.252102Z  INFO Initialize RVPS: attestation_service::rvps: connect to remote RVPS: http://rvps:50003
+as-1           | 2026-02-17T12:37:34.253758Z  WARN attestation_service::ear_token::broker: Simple Token has been deprecated in v0.16.0. Note that the `attestation_token_broker` config field `type` is now ignored and the token will always be an EAR token.
+as-1           | 2026-02-17T12:37:34.254421Z  WARN attestation_service::policy_engine::opa: Policy default_cpu already exists, so the default policy will not be written.
+as-1           | 2026-02-17T12:37:34.254588Z  WARN attestation_service::policy_engine::opa: Policy default_gpu already exists, so the default policy will not be written.
+```
+
+### Generate an encryption key
+
+This key encrypts the WASM image and is stored in KBS.
+
+```bash
+openssl rand -base64 32 | tr -d '\n' > private_key
+```
+
+### Build the KBS client
+
+The `kbs-client` tool uploads and retrieves keys from KBS.
+
+```bash
+cargo build --release
+```
+
+### Upload the key
+
+```bash
+./target/release/kbs-client \
+  --url http://localhost:8082 \
+  config \
+  --auth-private-key kbs/config/private.key \
+  set-resource \
+  --resource-file private_key \
+  --path default/key/propeller-addition
+```
+
+The response will look like this:
+
+```bash
+Set resource success
+ resource: WHVKL25KQnlobGJqa0J3T3VKSXBjaiswRlFxSXRUSFBEbXVZZnowS0F3dz0=
+```
+
+To verify the key is uploaded, use the `get-resource` command:
+
+```bash
+./target/release/kbs-client \
+  --url http://127.0.0.1:8080 \
+  get-resource --path default/key/propeller-addition
+```
+
+The response will look like this:
+
+```bash
+[2026-02-18T08:27:24Z WARN  attester] No TEE platform detected. Sample Attester will be used.
+             If you are expecting to collect evidence from inside a confidential guest,
+             either your guest is not configured correctly, or your attestation client
+             was not built with support for the platform.
+
+             Verify that your guest is a confidential guest and that your client
+             (such as kbs-client or attestation-agent) was built with the feature
+             corresponding to your platform.
+
+             Attestation will continue using the fallback sample attester.
+[2026-02-18T08:27:24Z WARN  kbs_protocol::client::rcar_client] Authenticating with KBS failed. Perform a new RCAR handshake: ErrorInformation {
+        error_type: "https://github.com/confidential-containers/kbs/errors/TokenNotFound",
+        detail: "Attestation Token not found",
+    }
+[2026-02-18T08:27:24Z WARN  kbs_protocol::client::rcar_client] Authenticating with KBS failed. Perform a new RCAR handshake: ErrorInformation {
+        error_type: "https://github.com/confidential-containers/kbs/errors/PolicyDeny",
+        detail: "Access denied by policy",
+    }
+[2026-02-18T08:27:24Z WARN  kbs_protocol::client::rcar_client] Authenticating with KBS failed. Perform a new RCAR handshake: ErrorInformation {
+        error_type: "https://github.com/confidential-containers/kbs/errors/PolicyDeny",
+        detail: "Access denied by policy",
+    }
+Error: request unauthorized
+```
+
+If you run the client outside of a TEE, the sample attester will be used. By default the KBS rejects all sample evidence. To test the KBS with sample evidence, you'll need to update the resource policy to something more permissive. This can be done with a command such as
+
+Set the resource policy to allow all:
+
+```bash
+./target/release/kbs-client \
+  --url http://127.0.0.1:8082 \
+  config \
+  --auth-private-key kbs/config/private.key \
+  set-resource-policy \
+  --policy-file kbs/sample_policies/allow_all.rego
+```
+
+The response will look like this:
+
+```bash
+Set resource policy success
+ policy: CnBhY2thZ2UgcG9saWN5CgpkZWZhdWx0IGFsbG93ID0gdHJ1ZQoK
+```
+
+```bash
+./target/release/kbs-client \
+  --url http://127.0.0.1:8080 \
+  get-resource --path default/key/propeller-addition
+```
+
+```bash
+[2026-02-18T08:27:58Z WARN  attester] No TEE platform detected. Sample Attester will be used.
+             If you are expecting to collect evidence from inside a confidential guest,
+             either your guest is not configured correctly, or your attestation client
+             was not built with support for the platform.
+
+             Verify that your guest is a confidential guest and that your client
+             (such as kbs-client or attestation-agent) was built with the feature
+             corresponding to your platform.
+
+             Attestation will continue using the fallback sample attester.
+[2026-02-18T08:27:58Z WARN  kbs_protocol::client::rcar_client] Authenticating with KBS failed. Perform a new RCAR handshake: ErrorInformation {
+        error_type: "https://github.com/confidential-containers/kbs/errors/TokenNotFound",
+        detail: "Attestation Token not found",
+    }
+WHVKL25KQnlobGJqa0J3T3VKSXBjaiswRlFxSXRUSFBEbXVZZnowS0F3dz0=
+```
+
+The path `default/key/propeller-addition` identifies this key. Use it when creating tasks.
+
+![KBS Setup](images/tee/kbs-setup.svg)
+
+## Encrypt a WASM image
+
+### Push WASM to a registry
+
+```bash
+wasm-to-oci push build/addition.wasm docker.io/rodneydav/tee-wasm-addition:latest --server "docker.io"
+```
+
+### Encrypt with the key
+
+Create an output directory for the encrypted image:
+
+```bash
+mkdir -p output
+```
+
+```bash
+docker run \
+    -v "$PWD/output:/output" \
+    docker.io/rodneydav/coco-keyprovider:latest \
+    /encrypt.sh -k "$(cat ./private_key)" \
+    -i kbs:///default/key/propeller-addition \
+    -s docker://docker.io/rodneydav/tee-wasm-addition:latest \
+    -d dir:/output
+```
+
+The output will look like this:
+
+```bash
+[2026-02-17T14:35:40Z INFO  coco_keyprovider] listening to socket addr: 127.0.0.1:50000
+Getting image source signatures
+Copying blob sha256:d80e75156699a56b611b0a20a1b01f4cc3c8baa40c2474526f338aeeec9c7047
+Copying config sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+Writing manifest to image destination
+```
+
+The files in the output directory will look like this `ls output`:
+
+```bash
+44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a  76fa8c842f7ee81acc35aa4805f6ad0da144c1f092bc0ce4ecfc4cadf820f7a1  manifest.json  version
+```
+
+### Push the encrypted image
+
+Login and push to a remote registry:
+
+```bash
+skopeo login docker.io
+skopeo copy dir:$(pwd)/output docker://rodneydav/tee-wasm-addition:encrypted
+```
+
+![Image Encryption](images/tee/image-encryption.svg)
+
+## Run a CVM with HAL
+
+Propeller provides a [Hardware Abstraction Layer (HAL)](https://github.com/absmach/propeller/tree/main/hal/ubuntu) to build and run Confidential VMs (CVMs) using QEMU. The script installs and starts all required services inside an Ubuntu VM on first boot.
+
+### Install dependencies
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  qemu-system-x86 \
+  cloud-image-utils \
+  ovmf \
+  wget
+```
+
+### Configure environment
+
+Set the required variables before running the script:
+
+| Variable             | Description                  | Example             |
+| -------------------- | ---------------------------- | ------------------- |
+| `PROPLET_DOMAIN_ID`  | Magistrala domain identifier | `my-domain-123`     |
+| `PROPLET_CLIENT_ID`  | Unique client identifier     | `proplet-worker-01` |
+| `PROPLET_CLIENT_KEY` | Authentication key           | `secret-key-here`   |
+| `PROPLET_CHANNEL_ID` | Communication channel ID     | `channel-456`       |
+
+Optional variables:
+
+| Variable               | Description                          | Default                |
+| ---------------------- | ------------------------------------ | ---------------------- |
+| `PROPLET_MQTT_ADDRESS` | MQTT broker address                  | `tcp://localhost:1883` |
+| `KBS_URL`              | Key Broker Service URL               | `http://10.0.2.2:8082` |
+| `ENABLE_CVM`           | CVM mode (`auto`/`tdx`/`sev`/`none`) | `auto`                 |
+| `RAM`                  | VM memory                            | `16384M`               |
+| `CPU`                  | CPU cores                            | `4`                    |
+| `DISK_SIZE`            | Disk size                            | `40G`                  |
+
+### Choose a CVM mode
+
+The script auto-detects Intel TDX or AMD SEV. Override with `ENABLE_CVM`:
+
+```bash
+# Auto-detect (default)
+./qemu.sh
+
+# Force Intel TDX
+ENABLE_CVM=tdx ./qemu.sh
+
+# Force AMD SEV
+ENABLE_CVM=sev ./qemu.sh
+
+# Regular VM (no confidential computing)
+ENABLE_CVM=none ./qemu.sh
+```
+
+### Build and run
+
+The script supports three targets:
+
+```bash
+# Build the CVM image (only needed once)
+./qemu.sh build
+
+# Boot an existing image
+./qemu.sh run
+
+# Build and run (default)
+./qemu.sh
+```
+
+A full example with credentials:
+
+```bash
+export PROPLET_DOMAIN_ID="a93fa93e-30d0-425e-b5d1-c93cd916dca7"
+export PROPLET_CLIENT_ID="c902e51c-5eac-4a2d-a489-660b5f7ab461"
+export PROPLET_CLIENT_KEY="75a0fefe-9713-478d-aafd-72032c2d9958"
+export PROPLET_CHANNEL_ID="54bdaf41-0009-4d3e-bd49-6d7abda7a832"
+export PROPLET_MQTT_ADDRESS="tcp://0.tcp.in.ngrok.io:10721"
+export KBS_URL="http://10.0.2.2:8082"
+./qemu.sh
+```
+
+The first boot takes 10–15 minutes while cloud-init installs and compiles:
+
+- Rust toolchain
+- Wasmtime runtime
+- Attestation Agent
+- CoCo Keyprovider
+- Proplet
+- Systemd services for all components
+
+At the end, the output looks like this:
+
+```bash
+[  797.319400] cloud-init[1084]:     Finished `release` profile [optimized] target(s) in 5m 23s
+[  797.778561] cloud-init[1084]: === Verifying installations ===
+[  797.782089] cloud-init[1084]: wasmtime: wasmtime 41.0.3 (db1c043b5 2026-02-04)
+[  797.783411] cloud-init[1084]: attestation-agent: installed
+[  797.784432] cloud-init[1084]: coco_keyprovider: installed
+[  797.785475] cloud-init[1084]: proplet: installed
+[  797.786356] cloud-init[1084]: ocicrypt_keyprovider.conf: created
+[  797.787465] cloud-init[1084]: All binaries verified successfully
+[  797.788529] cloud-init[1084]: === Enabling and starting services ===
+[  797.958679] cloud-init[1084]: Created symlink /etc/systemd/system/multi-user.target.wants/attestation-agent.service → /etc/systemd/system/attestation-agent.service.
+[  798.101517] cloud-init[1084]: Created symlink /etc/systemd/system/multi-user.target.wants/coco-keyprovider.service → /etc/systemd/system/coco-keyprovider.service.
+[  798.245947] cloud-init[1084]: Created symlink /etc/systemd/system/multi-user.target.wants/proplet.service → /etc/systemd/system/proplet.service.
+         Starting attestation-agent.service…gent for Confidential Containers...
+[  OK  ] Started attestation-agent.service … Agent for Confidential Containers.
+[  OK  ] Started coco-keyprovider.service -…ovider for Confidential Containers.
+[  OK  ] Started proplet.service - Proplet WebAssembly Workload Orchestrator.
+[  804.469574] cloud-init[1084]: === Service status ===
+[  804.481130] cloud-init[1084]: ● attestation-agent.service - Attestation Agent for Confidential Containers
+[  804.482151] cloud-init[1084]:      Loaded: loaded (/etc/systemd/system/attestation-agent.service; enabled; preset: enabled)
+[  804.482313] cloud-init[1084]:      Active: active (running) since Tue 2026-02-17 15:15:17 UTC; 6s ago
+[  804.482591] cloud-init[1084]:        Docs: https://github.com/confidential-containers/guest-components
+[  804.482853] cloud-init[1084]:     Process: 63861 ExecStartPre=/bin/mkdir -p /run/attestation-agent (code=exited, status=0/SUCCESS)
+[  804.483105] cloud-init[1084]:    Main PID: 63863 (attestation-age)
+[  804.483372] cloud-init[1084]:       Tasks: 5 (limit: 17973)
+[  804.483679] cloud-init[1084]:      Memory: 3.0M (peak: 3.7M)
+[  804.483878] cloud-init[1084]:         CPU: 18ms
+[  804.484139] cloud-init[1084]:      CGroup: /system.slice/attestation-agent.service
+[  804.484429] cloud-init[1084]:              └─63863 /usr/local/bin/attestation-agent --attestation_sock 127.0.0.1:50010
+[  804.484910] cloud-init[1084]: Feb 17 15:15:17 propeller-cvm systemd[1]: Starting attestation-agent.service - Attestation Agent for Confidential Containers...
+[  804.485150] cloud-init[1084]: Feb 17 15:15:17 propeller-cvm systemd[1]: Started attestation-agent.service - Attestation Agent for Confidential Containers.
+[  804.485406] cloud-init[1084]: Feb 17 15:15:17 propeller-cvm attestation-agent[63863]: [2026-02-17T15:15:17Z WARN  attestation_agent] No AA config file specified. Using a default
+[  804.485881] cloud-init[1084]: Feb 17 15:15:17 propeller-cvm attestation-agent[63863]: [2026-02-17T15:15:17Z WARN  attester::tpm::utils] No TPM device (/dev/tpm[0..2]) detected
+[  804.519686] cloud-init[1084]: ● coco-keyprovider.service - CoCo Keyprovider for Confidential Containers
+[  804.523172] cloud-init[1084]:      Loaded: loaded (/etc/systemd/system/coco-keyprovider.service; enabled; preset: enabled)
+[  804.525199] cloud-init[1084]:      Active: active (running) since Tue 2026-02-17 15:15:20 UTC; 4s ago
+[  804.526863] cloud-init[1084]:        Docs: https://github.com/confidential-containers/guest-components
+[  804.528624] cloud-init[1084]:    Main PID: 63870 (coco_keyprovide)
+[  804.529827] cloud-init[1084]:       Tasks: 5 (limit: 17973)
+ci-info: no authorized SSH keys fingerprints found for user propeller.
+[  804.530830] cloud-init[1084]:      Memory: 3.0M (peak: 3.8M)
+[  804.533006] cloud-init[1084]:         CPU: 10ms
+[  804.533904] cloud-init[1084]:      CGroup: /system.slice/coco-keyprovider.service
+[  804.535272] cloud-init[1084]:              └─63870 /usr/local/bin/coco_keyprovider --socket 127.0.0.1:50011 --kbs http://10.0.2.2:8082
+[  804.537349] cloud-init[1084]: Feb 17 15:15:20 propeller-cvm systemd[1]: Started coco-keyprovider.service - CoCo Keyprovider for Confidential Containers.
+[  804.539657] cloud-init[1084]: Feb 17 15:15:20 propeller-cvm coco_keyprovider[63870]: [2026-02-17T15:15:20Z INFO  coco_keyprovider] listening to socket addr: 127.0.0.1:50011
+[  804.542249] cloud-init[1084]: ● proplet.service - Proplet WebAssembly Workload Orchestrator
+[  804.543738] cloud-init[1084]:      Loaded: loaded (/etc/systemd/system/proplet.service; enabled; preset: enabled)
+[  804.545526] cloud-init[1084]:      Active: activating (auto-restart) (Result: exit-code) since Tue 2026-02-17 15:15:22 UTC; 2s ago
+[  804.547565] cloud-init[1084]:        Docs: https://github.com/absmach/propeller
+[  804.548876] cloud-init[1084]:     Process: 63877 ExecStart=/usr/local/bin/proplet (code=exited, status=1/FAILURE)
+[  804.550619] cloud-init[1084]:    Main PID: 63877 (code=exited, status=1/FAILURE)
+[  804.551923] cloud-init[1084]:         CPU: 8ms
+<14>Feb 17 15:15:24 cloud-init: #############################################################
+<14>Feb 17 15:15:24 cloud-init: -----BEGIN SSH HOST KEY FINGERPRINTS-----
+<14>Feb 17 15:15:24 cloud-init: 256 SHA256:SVawa30vDcQWyuLrEDsOXA6xDysfl+6pFe0JfTxG16M root@propeller-cvm (ECDSA)
+<14>Feb 17 15:15:24 cloud-init: 256 SHA256:mPsa8lqq7PJu4FtknYY5iOOzNzH0uPeXtWF2KGnYiuQ root@propeller-cvm (ED25519)
+<14>Feb 17 15:15:24 cloud-init: 3072 SHA256:HhX0NADWpWhI1m9GqAR2gRkJ+0Yfdregu3Uzbd0IHV8 root@propeller-cvm (RSA)
+<14>Feb 17 15:15:24 cloud-init: -----END SSH HOST KEY FINGERPRINTS-----
+<14>Feb 17 15:15:24 cloud-init: #############################################################
+-----BEGIN SSH HOST KEY KEYS-----
+ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM+vQFBzDfNeOZSQofBqzRhgjL6jU86QrWkvRMhWsKUPHOh1D0fZcrM6XY7H2F8Ep/vT2ACusJP2Ux3hwiZDzd0= root@propeller-cvm
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJrjnELXFuql69k0r2WD6cn1ziUitHQggvHS8Mww8Wj2 root@propeller-cvm
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCKSZVnGU50NIq3HVR49M9Dt0EQUlFOat5WEH9AQywdi66OheU3yTOjHhLP3hLYhFeaCH9UDQcX8PUKqpMMHaALcqgPbznLXvHlNxcqsmdfwuqRmWsiiBxzEyhSdDbqCA1kdl/j0VIqcOGAJQYm3Lat/cGpV0oZ7oI/1WED3OfgZrrHzScnn3Sw6QdjrIZXKe2gBsNfk2K0Itku0iCBjiaBxLEghn6Z66BegZZiI0Yjh1Bxr+1Vr/TfXVEa2902NM7U4UO7PGb46nzMpODcqoVgJrluBT4ZlG9gIhM0I/n+Tz3kLYEB8lvr6SVOKf4ZLozPmxt6e/xfvS5ZWxcNlcqtrBA0Vuds82ZU5Z/O+oP3NAdaYtjsIWL7z+lxyHfrLRTf2Rima7AqxprYRg9Pq8NtQlxuEYWbt074XPDWitcWd3LbRAIJJ0hTvBJ45fFWYGyEAXEsxVjTE2zpW3PoB369LhjtoIr8WiK3UGRQcC7Cw1K7V+PEpPoqfeZxzN0bHDU= root@propeller-cvm
+-----END SSH HOST KEY KEYS-----
+[  804.583963] cloud-init[1084]: ===================================================================
+[  804.585053] cloud-init[1084]: Propeller CVM Setup Complete
+[  804.585209] cloud-init[1084]: ===================================================================
+[  804.585432] cloud-init[1084]: Services started:
+[  804.585888] cloud-init[1084]:   - Attestation Agent (port 50010)
+[  804.586105] cloud-init[1084]:   - CoCo Keyprovider (port 50011)
+[  804.586347] cloud-init[1084]:   - Proplet (MQTT client)
+[  804.586566] cloud-init[1084]: Login: propeller / propeller
+[  804.587012] cloud-init[1084]: Check status:
+[  804.587279] cloud-init[1084]:   sudo systemctl status attestation-agent coco-keyprovider proplet
+[  804.587463] cloud-init[1084]: View logs:
+[  804.587884] cloud-init[1084]:   sudo journalctl -u attestation-agent -f
+[  804.588093] cloud-init[1084]:   sudo journalctl -u coco-keyprovider -f
+[  804.588330] cloud-init[1084]:   sudo journalctl -u proplet -f
+[  804.588545] cloud-init[1084]: ===================================================================
+[  OK  ] Finished cloud-final.service - Cloud-init: Final Stage.
+[  OK  ] Reached target cloud-init.target - Cloud-init target.
+```
+
+### Access the VM
+
+Press `Enter` to log in with username `propeller` and password `propeller`. SSH is also available:
+
+```bash
+ssh -p 2222 propeller@localhost
+```
+
+The VM exposes these ports on the host:
+
+| Port    | Service                            |
+| ------- | ---------------------------------- |
+| `2222`  | SSH (forwarded from guest port 22) |
+| `50010` | Attestation Agent API              |
+| `50011` | CoCo Keyprovider                   |
+
+### Check service status
+
+```bash
+sudo systemctl status attestation-agent coco-keyprovider proplet
+```
+
+```bash
+sudo journalctl -u attestation-agent -f
+sudo journalctl -u coco-keyprovider -f
+sudo journalctl -u proplet -f
+```
+
+Proplet logs on successful start:
+
+```bash
+propeller@propeller-cvm:~$ sudo journalctl -u proplet -f
+Feb 17 16:16:09 propeller-cvm systemd[1]: Started proplet.service - Proplet WebAssembly Workload Orchestrator.
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.874334Z  INFO Starting Proplet (Rust) - Instance ID: c03a17a9-008c-4d8d-9578-9c91121ca3c9
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.874451Z  INFO MQTT client created (TLS: false)
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.874516Z  INFO Using external Wasm runtime: /usr/local/bin/wasmtime
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.874582Z  INFO Starting MQTT event loop
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.901874Z  INFO Starting PropletService
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.901921Z  INFO Published discovery message
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.901926Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/control/manager/start
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.901929Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/control/manager/stop
+Feb 17 16:16:09 propeller-cvm proplet[64080]: 2026-02-17T16:16:09.901932Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/registry/server
+```
+
+## Configure the attestation agent
+
+The Attestation Agent is automatically started by the HAL script. It listens on port `50010` for keyprovider requests.
+
+To start it manually:
+
+```bash
+attestation-agent --attestation_sock "127.0.0.1:50010"
+```
+
+## Configure Proplet for TEE mode
+
+Set these environment variables before starting Proplet:
+
+```bash
+export PROPLET_DOMAIN_ID=your-domain-id
+export PROPLET_CLIENT_ID=your-client-id
+export PROPLET_CLIENT_KEY=your-client-key
+export PROPLET_CHANNEL_ID=your-channel-id
+export PROPLET_MQTT_ADDRESS=your-mqtt-address
+export PROPLET_KBS_URI=http://10.0.2.2:8082
+export PROPLET_AA_CONFIG_PATH=/etc/default/proplet.toml
+```
+
+The `PROPLET_AA_CONFIG_PATH` points to the Attestation Agent config. The default file looks like this:
+
+```toml
+[token_configs]
+[token_configs.coco_kbs]
+url = "http://10.0.2.2:8082"
+```
+
+Proplet is automatically started by the quickstart script. If you want to start it manually, use:
+
+```bash
+proplet
+```
+
+Proplet logs the detected TEE type on startup:
+
+```bash
+2026-02-18T09:06:29.093299Z  INFO Starting Proplet (Rust) - Instance ID: fc2cb466-7a1f-48b0-8a1e-9e71f46a1f55
+2026-02-18T09:06:29.094715Z  INFO MQTT client created (TLS: false)
+2026-02-18T09:06:29.095352Z  INFO Using Wasmtime runtime
+2026-02-18T09:06:29.095443Z  INFO Starting MQTT event loop
+AMD SEV Detection:
+  - AMD CPU: false
+  - /dev/sev-guest: false
+  - /dev/sev: false
+  - TSM support: true
+Intel TDX Detection:
+  - Intel CPU: true
+  - /dev/tdx_guest: true
+  - TSM support: true
+  - TDX CPU flag: true
+AMD SEV Detection:
+  - AMD CPU: false
+  - /dev/sev-guest: false
+  - /dev/sev: false
+  - TSM support: true
+Intel TDX Detection:
+  - Intel CPU: true
+  - /dev/tdx_guest: true
+  - TSM support: true
+  - TDX CPU flag: true                                                                                                                                                                                                                                            2026-02-18T09:06:29.099082Z  INFO TEE runtime initialized successfully                                                                                                                                                                                            2026-02-18T09:06:29.140149Z  INFO Starting PropletService
+2026-02-18T09:06:29.140975Z  INFO Published discovery message                                                                                                                                                                                                     2026-02-18T09:06:29.141493Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/control/manager/start
+2026-02-18T09:06:29.141498Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/control/manager/stop
+2026-02-18T09:06:29.141506Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/registry/server
+```
+
+## Deploy an encrypted workload
+
+Create a task manifest for the encrypted WASM:
+
+```json
+{
+  "name": "add",
+  "image_url": "docker.io/rodneydav/tee-wasm-addition:encrypted",
+  "kbs_resource_path": "default/key/propeller-addition",
+  "encrypted": true,
+  "cli_args": ["--invoke", "add"],
+  "inputs": [10, 20]
+}
+```
+
+Important fields:
+
+- `encrypted: true` — tells Proplet to use TEE runtime
+- `image_url` — location of the encrypted OCI image
+- `kbs_resource_path` — path to the decryption key in KBS
+- Do not include a `file` field for encrypted workloads
+
+## Verify execution
+
+Check the task result:
+
+```json
+{
+  "id": "37945482-a49f-4f2a-b719-655b590a5e63",
+  "name": "add",
+  "kind": "standard",
+  "state": 3,
+  "image_url": "docker.io/rodneydav/tee-wasm-addition:encrypted",
+  "cli_args": ["--invoke", "add"],
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": true,
+  "kbs_resource_path": "default/key/propeller-addition",
+  "proplet_id": "c902e51c-5eac-4a2d-a489-660b5f7ab461",
+  "results": "30\n",
+  "start_time": "2026-02-18T08:31:41.369404362Z",
+  "finish_time": "2026-02-18T08:31:47.293671123Z",
+  "created_at": "2026-02-18T08:31:38.015840852Z",
+  "updated_at": "2026-02-18T08:31:47.293668818Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+Proplet logs show the full decryption and execution flow:
+
+```bash
+2026-02-18T09:06:29.099082Z  INFO TEE runtime initialized successfully                                                                                                                                                                                            2026-02-18T09:06:29.140149Z  INFO Starting PropletService
+2026-02-18T09:06:29.140975Z  INFO Published discovery message                                                                                                                                                                                                     2026-02-18T09:06:29.141493Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/control/manager/start
+2026-02-18T09:06:29.141498Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/control/manager/stop
+2026-02-18T09:06:29.141506Z  INFO Subscribed to topic: m/a93fa93e-30d0-425e-b5d1-c93cd916dca7/c/54bdaf41-0009-4d3e-bd49-6d7abda7a832/registry/server
+2026-02-18T09:08:36.648370Z  INFO Received start command for task: 67c8dfa8-aaa3-40e1-8679-0f18846a8b46
+2026-02-18T09:08:36.649837Z  INFO Encrypted workload with image_url: docker.io/rodneydav/tee-wasm-addition:encrypted
+2026-02-18T09:08:36.651672Z  WARN No environment variables in start request for task 67c8dfa8-aaa3-40e1-8679-0f18846a8b46
+2026-02-18T09:08:36.651747Z  INFO Executing task 67c8dfa8-aaa3-40e1-8679-0f18846a8b46 in spawned task
+2026-02-18T09:08:36.652226Z  WARN DATA_STORE_URL not set. Dataset fetching will be skipped. Set it in .env file to enable dataset fetching.
+2026-02-18T09:08:36.656694Z  INFO Received start command for task: 67c8dfa8-aaa3-40e1-8679-0f18846a8b46
+2026-02-18T09:08:36.656865Z  WARN Task 67c8dfa8-aaa3-40e1-8679-0f18846a8b46 is already running, ignoring duplicate start command
+2026-02-18T09:08:42.901325Z  WARN Failed to parse image config (may be minimal WASM config): serde failed
+2026-02-18T09:08:44.170950Z  WARN WASM stderr:
+warning: using `--invoke` with a function that takes arguments is experimental and may break in the future
+warning: using `--invoke` with a function that returns values is experimental and may break in the future
+
+2026-02-18T09:08:44.172036Z  INFO Task 67c8dfa8-aaa3-40e1-8679-0f18846a8b46 completed successfully. Result: 30
+
+2026-02-18T09:08:44.172327Z  INFO Publishing result for task 67c8dfa8-aaa3-40e1-8679-0f18846a8b46
+2026-02-18T09:08:44.172663Z  INFO Successfully published result for task 67c8dfa8-aaa3-40e1-8679-0f18846a8b46
+```
+
+![Encrypted Task Execution](images/tee/encrypted-task-execution.svg)
+
+## Architecture
+
+### Component interaction
+
+![Architecture](images/tee/architecture.svg)
+
+### Execution flow
+
+1. Detection - Proplet checks for TEE device files at startup
+2. Task receipt - Manager publishes an encrypted task request
+3. Image pull - Proplet downloads the encrypted OCI image
+4. Attestation - Hardware generates proof of TEE environment
+5. Key retrieval - KBS validates attestation and releases key
+6. Decryption - Image layers decrypted inside the TEE
+7. Execution - WASM runs in the protected environment
+8. Results - Output published to Manager via MQTT
+
+![Attestation](images/tee/attestation.svg)
+
+### Security guarantees
+
+- Confidentiality - code and data encrypted until inside TEE
+- Integrity - attestation proves correct TEE configuration
+- Isolation - hardware prevents external access to execution
+- Verifiability - attestation reports allow remote verification

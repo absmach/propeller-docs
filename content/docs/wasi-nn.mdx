@@ -1,0 +1,349 @@
+---
+title: WASI-NN
+description: "Run ML inference inside WebAssembly with Propeller's WASI-NN support. Execute neural network models at the edge using Wasmtime's WASI-NN implementation — no GPU required."
+---
+
+**WASI-NN** (WebAssembly System Interface for Neural Networks) is a standard API that enables WebAssembly modules to perform machine learning inference. Propeller supports WASI-NN through Wasmtime's built-in implementation, allowing you to run ML models directly within your Wasm workloads.
+
+For a quick start tutorial with commands and expected outputs, see the [WASI NN Example](/docs/examples/wasi-nn).
+
+![WASI-NN on Propeller Architecture](./images/wasi-nn/proplet.svg)
+
+**How it works:**
+
+1. You submit a task to the Manager via REST API (port 7070)
+2. Manager sends the task to a Proplet via MQTT
+3. Proplet spawns wasmtime as external process with `-S nn` flag
+4. wasmtime loads the WASM module and calls wasi-nn APIs
+5. OpenVINO backend runs the actual ML inference
+6. Results flow back: wasmtime → Proplet → Manager → API
+
+## Key Concepts
+
+### What is WASI-NN?
+
+WASI-NN provides a standardized interface for WebAssembly to:
+
+- Load ML models (OpenVINO IR, ONNX, TensorFlow Lite)
+- Set input tensors
+- Run inference
+- Retrieve output tensors
+
+This enables portable ML inference across different environments without modifying your WebAssembly code.
+
+### Supported Backends
+
+Propeller's Wasmtime runtime supports these WASI-NN backends:
+
+| Backend          | Model Format                | Best For                         |
+| ---------------- | --------------------------- | -------------------------------- |
+| **OpenVINO**     | `.xml` + `.bin` (IR format) | Intel hardware, server inference |
+| **ONNX Runtime** | `.onnx`                     | Cross-platform compatibility     |
+| **WinML**        | `.onnx`                     | Windows deployments              |
+
+## Building a WASI-NN Workload
+
+### Prerequisites
+
+- Rust with `wasm32-wasip1` target
+- A pre-trained model (OpenVINO IR format for this example)
+- Wasmtime with WASI-NN support
+
+### Project Structure
+
+The WASI-NN example uses this structure:
+
+```
+wasi-nn/
+├── Cargo.toml
+├── src/
+│   └── main.rs
+└── fixture/
+    ├── model.xml      # OpenVINO model definition
+    ├── model.bin      # OpenVINO model weights
+    └── tensor.bgr     # Input tensor (BGR image data)
+```
+
+### Cargo.toml
+
+```toml
+[package]
+name = "wasi-nn-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "wasi-nn-example"
+path = "src/main.rs"
+
+[dependencies]
+wasi-nn = "0.1.0"
+
+[profile.release]
+opt-level = "s"
+strip = true
+```
+
+### Inference Code
+
+The source code is available in the [examples/wasi-nn](https://github.com/absmach/propeller/blob/main/examples/wasi-nn/src/main.rs) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/wasi-nn/src/main.rs"
+  lang="rust"
+/>
+
+### Build the Wasm Module
+
+```bash
+rustup target add wasm32-wasip1
+cargo build --target wasm32-wasip1 --release
+```
+
+The output will be at `target/wasm32-wasip1/release/wasi-nn-example.wasm`.
+
+## Running with Wasmtime
+
+WASI-NN requires Wasmtime with the `-S nn` flag to enable wasi-nn support:
+
+```bash
+wasmtime run -S nn --dir=fixture target/wasm32-wasip1/release/wasi-nn-example.wasm
+```
+
+Expected output:
+
+```
+Read graph XML, first 50 characters: <?xml version="1.0" ?>
+<net batch="1" name="...
+Read graph weights, size in bytes: 4194304
+Loaded graph into wasi-nn with ID: 0
+Created wasi-nn execution context with ID: 0
+Read input tensor, size in bytes: 602112
+Executed graph inference
+Found results, sorted top 5: [InferenceResult(281, 0.92), InferenceResult(282, 0.05), ...]
+```
+
+## Running with Propeller
+
+### Configure the Proplet
+
+For wasi-nn workloads, the proplet needs:
+
+1. External runtime enabled (wasmtime spawned as subprocess)
+2. OpenVINO libraries accessible
+3. Model files mounted
+
+Update `docker/.env`:
+
+```bash
+PROPLET_EXTERNAL_WASM_RUNTIME=wasmtime
+```
+
+Mount config and model files in `docker/compose.propeller.yaml` under the proplet service:
+
+```yaml
+proplet:
+  volumes:
+    - ./config.toml:/home/proplet/config.toml
+    - ./fixture:/home/proplet/fixture
+```
+
+### Create a Task
+
+Create task with `cli_args` for wasi-nn:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "mobilenet-inference",
+  "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"]
+}'
+```
+
+| Flag                                   | Purpose                                  |
+| -------------------------------------- | ---------------------------------------- |
+| `-S nn`                                | Enables wasi-nn support in wasmtime      |
+| `--dir=/home/proplet/fixture::fixture` | Maps container path to WASM sandbox path |
+
+The `--dir` syntax is `host_path::guest_path`. The WASM module sees files at `fixture/` while the actual files are at `/home/proplet/fixture` in the container.
+
+### Upload WASM Binary
+
+```bash
+TASK_ID="your-task-id"
+curl -X PUT "http://localhost:7070/tasks/${TASK_ID}/upload" \
+  -F "file=@target/wasm32-wasip1/release/wasi-nn-example.wasm"
+```
+
+### Start the Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks/${TASK_ID}/start"
+```
+
+### Check Results
+
+```bash
+curl "http://localhost:7070/tasks/${TASK_ID}"
+```
+
+View proplet logs:
+
+```bash
+docker compose -f docker/compose.propeller.yaml logs proplet --tail 100
+```
+
+## Model Preparation
+
+### OpenVINO IR Format
+
+OpenVINO models require two files:
+
+- **model.xml**: Model architecture definition (XML format)
+- **model.bin**: Model weights (binary format)
+
+Convert ONNX to OpenVINO IR:
+
+```bash
+# Install OpenVINO toolkit
+pip install openvino-dev
+
+# Convert ONNX to OpenVINO IR
+mo --input_model model.onnx --output_dir ./fixture
+```
+
+### Input Tensor Format
+
+The example uses BGR format with dimensions `[1, 3, 224, 224]` (NCHW):
+
+- **1**: Batch size
+- **3**: Color channels (BGR)
+- **224 × 224**: Image dimensions
+
+Prepare input data:
+
+```python
+import numpy as np
+from PIL import Image
+
+# Load and preprocess image
+img = Image.open("image.jpg").resize((224, 224))
+img_array = np.array(img)[:, :, ::-1]  # RGB to BGR
+img_array = img_array.transpose(2, 0, 1)  # HWC to CHW
+img_array = img_array.astype(np.float32).flatten()
+
+# Save as raw tensor
+img_array.tofile("fixture/tensor.bgr")
+```
+
+## Using Different Backends
+
+### OpenVINO (Default Example)
+
+```rust
+let graph = unsafe {
+    wasi_nn::load(
+        &[&xml.into_bytes(), &weights],
+        wasi_nn::GRAPH_ENCODING_OPENVINO,
+        wasi_nn::EXECUTION_TARGET_CPU,
+    )
+    .unwrap()
+};
+```
+
+### ONNX Runtime
+
+For ONNX models, load directly:
+
+```rust
+let onnx_model = fs::read("model.onnx").unwrap();
+
+let graph = unsafe {
+    wasi_nn::load(
+        &[&onnx_model],
+        wasi_nn::GRAPH_ENCODING_ONNX,
+        wasi_nn::EXECUTION_TARGET_CPU,
+    )
+    .unwrap()
+};
+```
+
+## Performance Tips
+
+### Model Optimization
+
+1. **Quantize models** to INT8 for faster inference:
+
+   ```bash
+   pot -q default -m model.xml -w model.bin --output-dir optimized/
+   ```
+
+2. **Use OpenVINO optimizations** for Intel hardware
+
+### Memory Management
+
+- Set appropriate heap limits in task configuration
+- Use streaming for large inputs/outputs
+
+## Troubleshooting
+
+### "unknown import: wasi_nn"
+
+The `-S nn` flag is missing from cli_args. Create a new task with correct cli_args (cli_args cannot be modified after creation).
+
+### Model files not found
+
+Check both volume mount (Docker) and `--dir` flag (cli_args). Verify files exist:
+
+```bash
+docker compose -f docker/compose.propeller.yaml exec proplet ls -la /home/proplet/fixture
+```
+
+### "Failed to spawn host runtime process"
+
+`PROPLET_EXTERNAL_WASM_RUNTIME` is not set. Add it to your `.env` and restart:
+
+```bash
+PROPLET_EXTERNAL_WASM_RUNTIME=wasmtime
+make stop-propeller && make start-propeller
+```
+
+### OpenVINO backend not available
+
+The proplet container needs OpenVINO libraries. The official proplet image includes OpenVINO. If running locally, ensure `LD_LIBRARY_PATH` includes the OpenVINO lib directory:
+
+```bash
+export LD_LIBRARY_PATH=/opt/intel/openvino_2025/runtime/lib/intel64:$LD_LIBRARY_PATH
+```
+
+### Model Loading Failures
+
+1. Verify model files are in the `fixture/` directory:
+
+   ```bash
+   ls -la fixture/
+   ```
+
+2. Check model format matches encoding:
+
+   ```rust
+   // OpenVINO requires .xml and .bin files
+   wasi_nn::GRAPH_ENCODING_OPENVINO
+
+   // ONNX requires .onnx files
+   wasi_nn::GRAPH_ENCODING_ONNX
+   ```
+
+### Tensor Dimension Mismatch
+
+Ensure input tensor dimensions match model expectations:
+
+```rust
+let tensor = wasi_nn::Tensor {
+    dimensions: &[1, 3, 224, 224],  // Must match model input shape
+    r#type: wasi_nn::TENSOR_TYPE_F32,
+    data: &tensor_data,
+};
+```

@@ -1,0 +1,181 @@
+---
+title: HTTP server
+description: HTTP server example
+---
+
+This WASI P2 component implements the `wasi:http/proxy` world, meaning it exports `wasi:http/incoming-handler` and proplet acts as the HTTP gateway — binding a TCP port and forwarding each incoming request to this component.
+
+## Source Code
+
+The source code is available in the [examples/http-server](https://github.com/absmach/propeller/blob/main/examples/http-server/src/lib.rs) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/http-server/src/lib.rs"
+  lang="rust"
+/>
+
+## Create Task
+
+To create a task for this example, we need to build the example to wasm and then create a task with the wasm file.
+
+```bash
+cd propeller
+make http-server
+```
+
+Now we can create a task with the wasm file:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "_start", "daemon": true, "cli_args": ["--port", "8044"]}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "29fa4d3c-3f40-4e49-8ceb-b540e5f4e473",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": ["--port", "8044"],
+  "daemon": true,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T15:24:14.699015899Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Now we need to upload the wasm file:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/29fa4d3c-3f40-4e49-8ceb-b540e5f4e473/upload" \
+-F "file=@$(pwd)/build/http-server.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "29fa4d3c-3f40-4e49-8ceb-b540e5f4e473",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": ["--port", "8044"],
+  "daemon": true,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T15:24:14.699015899Z",
+  "updated_at": "2026-02-13T15:24:41.582565713Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Now we can start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/29fa4d3c-3f40-4e49-8ceb-b540e5f4e473/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+You can query the status of the task by using the `GET` method.
+
+```bash
+curl -iX GET "http://localhost:8044"
+```
+
+Your output should look like this:
+
+```txt
+HTTP/1.1 200 OK
+transfer-encoding: chunked
+date: Fri, 13 Feb 2026 15:26:16 GMT
+
+Hello from proplet WASM HTTP server!
+```
+
+```bash
+curl -iX GET "http://localhost:8044/health"
+```
+
+Your output should look like this:
+
+```txt
+HTTP/1.1 200 OK
+transfer-encoding: chunked
+date: Fri, 13 Feb 2026 15:27:06 GMT
+
+ok
+```
+
+```bash
+curl -iX POST "http://localhost:8044/echo" -d "Hello from curl"
+```
+
+Your output should look like this:
+
+```txt
+HTTP/1.1 200 OK
+transfer-encoding: chunked
+date: Fri, 13 Feb 2026 15:27:41 GMT
+
+Hello from curl%
+```
+
+The results of the task will be something like this.
+
+```bash
+curl -X GET "http://localhost:7070/tasks/29fa4d3c-3f40-4e49-8ceb-b540e5f4e473"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "29fa4d3c-3f40-4e49-8ceb-b540e5f4e473",
+  "name": "_start",
+  "kind": "standard",
+  "state": 3,
+  "file": "...<redacted>...",
+  "cli_args": ["--port", "8044"],
+  "daemon": true,
+  "encrypted": false,
+  "proplet_id": "a95517f9-5655-4cf5-a7c8-aa00290b3895",
+  "results": "",
+  "start_time": "2026-02-13T15:25:05.791576827Z",
+  "finish_time": "2026-02-13T15:25:05.902110362Z",
+  "created_at": "2026-02-13T15:24:14.699015899Z",
+  "updated_at": "2026-02-13T15:25:05.902110322Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Invoking Using WasmTime
+
+```bash
+wasmtime serve --addr 127.0.0.1:9090 ./build/http-server.wasm
+```
+
+The results of the task will be something like this.
+
+```bash
+Serving HTTP on http://127.0.0.1:9090/
+```

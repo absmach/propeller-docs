@@ -1,0 +1,206 @@
+---
+title: Deploy Propeller on Kubernetes without the Operator
+description: Run Propeller's manager, proplet, and proxy components directly as Kubernetes Deployments without the CRD operator.
+---
+
+The [Propeller Kubernetes Operator](/docs/k8s/operator) provides a high-level control-plane abstraction using Custom Resource Definitions. If you prefer to keep the setup simpler—or if you do not have cluster-admin access to install CRDs—you can run Propeller's core components directly as standard Kubernetes Deployments.
+
+In this model, Propeller is managed through its HTTP API and CLI rather than through Kubernetes manifests.
+
+## When to use this approach
+
+- You want to run Propeller on an existing cluster without adding CRDs or cluster-scoped RBAC.
+- You are already managing workloads through Propeller's HTTP API and only want Kubernetes to handle scheduling and restarts.
+- You are deploying to a managed Kubernetes service where cluster-admin access is restricted.
+
+## Architecture
+
+The three Propeller components run as separate Deployments in a single namespace:
+
+| Component   | Role                                                          |
+| ----------- | ------------------------------------------------------------- |
+| `manager`   | Handles task dispatch and exposes the Propeller HTTP API      |
+| `proplet`   | WASM execution worker; one or more replicas                   |
+| `proxy`     | Routes WASM module fetch requests to the OCI registry or HTTP |
+
+All three connect to a SuperMQ MQTT broker for inter-component communication, exactly as in the Docker Compose setup. The manager receives task requests via HTTP, dispatches them to proplets via MQTT, and returns results through the API.
+
+## Prerequisites
+
+- A running Kubernetes cluster with `kubectl` configured.
+- A SuperMQ instance accessible from inside the cluster. You can run SuperMQ outside the cluster (e.g. as Docker containers on the host) and expose it via a `NodePort` or `LoadBalancer`, or deploy it inside the cluster.
+- SuperMQ credentials (domain ID, channel ID, client IDs and keys) provisioned with `propeller-cli provision`. See the [Getting Started guide](/docs/getting-started) for provisioning instructions.
+- The Propeller container images available in a registry your cluster can pull from.
+
+## Deploying
+
+### 1. Create a namespace
+
+```bash
+kubectl create namespace propeller
+```
+
+### 2. Store credentials as a Secret
+
+```bash
+kubectl create secret generic propeller-credentials \
+  --namespace propeller \
+  --from-literal=MANAGER_CLIENT_KEY=<manager-client-key> \
+  --from-literal=PROPLET_CLIENT_KEY=<proplet-client-key> \
+  --from-literal=PROXY_CLIENT_KEY=<proxy-client-key>
+```
+
+### 3. Apply Deployments
+
+Create a manifest file `propeller.yaml` with the three Deployments. Replace the placeholder values with your provisioned credentials and image references:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: propeller-manager
+  namespace: propeller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: propeller-manager
+  template:
+    metadata:
+      labels:
+        app: propeller-manager
+    spec:
+      containers:
+        - name: manager
+          image: ghcr.io/absmach/propeller/manager:latest
+          env:
+            - name: MANAGER_DOMAIN_ID
+              value: "<domain-id>"
+            - name: MANAGER_CHANNEL_ID
+              value: "<channel-id>"
+            - name: MANAGER_CLIENT_ID
+              value: "<manager-client-id>"
+            - name: MANAGER_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: propeller-credentials
+                  key: MANAGER_CLIENT_KEY
+            - name: MANAGER_MQTT_ADDRESS
+              value: "tcp://<mqtt-host>:1883"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: propeller-proplet
+  namespace: propeller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: propeller-proplet
+  template:
+    metadata:
+      labels:
+        app: propeller-proplet
+    spec:
+      containers:
+        - name: proplet
+          image: ghcr.io/absmach/propeller/proplet:latest
+          env:
+            - name: PROPLET_DOMAIN_ID
+              value: "<domain-id>"
+            - name: PROPLET_CHANNEL_ID
+              value: "<channel-id>"
+            - name: PROPLET_CLIENT_ID
+              value: "<proplet-client-id>"
+            - name: PROPLET_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: propeller-credentials
+                  key: PROPLET_CLIENT_KEY
+            - name: PROPLET_MQTT_ADDRESS
+              value: "tcp://<mqtt-host>:1883"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: propeller-proxy
+  namespace: propeller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: propeller-proxy
+  template:
+    metadata:
+      labels:
+        app: propeller-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: ghcr.io/absmach/propeller/proxy:latest
+          env:
+            - name: PROXY_DOMAIN_ID
+              value: "<domain-id>"
+            - name: PROXY_CHANNEL_ID
+              value: "<channel-id>"
+            - name: PROXY_CLIENT_ID
+              value: "<proplet-client-id>"
+            - name: PROXY_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: propeller-credentials
+                  key: PROXY_CLIENT_KEY
+            - name: PROXY_MQTT_ADDRESS
+              value: "tcp://<mqtt-host>:1883"
+```
+
+Apply it:
+
+```bash
+kubectl apply -f propeller.yaml
+```
+
+### 4. Expose the manager API
+
+Create a Service to expose the Propeller HTTP API:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: propeller-manager
+  namespace: propeller
+spec:
+  selector:
+    app: propeller-manager
+  ports:
+    - port: 7070
+      targetPort: 7070
+  type: ClusterIP
+```
+
+For external access during development, use `kubectl port-forward`:
+
+```bash
+kubectl port-forward -n propeller svc/propeller-manager 7070:7070
+```
+
+### 5. Submit tasks via the HTTP API
+
+With the manager accessible at `localhost:7070`, use `propeller-cli` or the HTTP API directly to create and monitor tasks. See the [API reference](/docs/api) for available endpoints.
+
+```bash
+# List registered proplets
+curl http://localhost:7070/proplets
+```
+
+## Differences from the operator
+
+| Aspect                  | Without operator                             | With operator                                    |
+| ----------------------- | -------------------------------------------- | ------------------------------------------------ |
+| Task submission         | HTTP API or `propeller-cli`                  | `kubectl apply` with Task CRs                    |
+| Proplet registration    | Automatic via MQTT alive heartbeat           | Explicit Proplet CR with `kubectl apply`         |
+| Cluster-admin required  | No                                           | Yes (to install CRDs)                            |
+| Kubernetes-native UX    | No                                           | Yes (`kubectl get tasks`, conditions, etc.)      |
+| Federated learning      | Supported via HTTP API                       | Supported via FederatedJob and TrainingRound CRs |

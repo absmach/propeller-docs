@@ -1,0 +1,148 @@
+---
+title: Compute
+description: Simple Compute Intensive Task
+---
+
+This is a compute intensive task example. A CPU-intensive function that performs meaningless math inside five nested loops, resulting in `O(n⁵)` time complexity. For this example we can use the standard proplet deployment without any additional configuration.
+
+## Source Code
+
+The source code is available in the [examples/compute](https://github.com/absmach/propeller/blob/main/examples/compute/compute.go) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/compute/compute.go"
+  lang="go"
+/>
+
+## Create Task
+
+To create a task for this example, we need to build the example to wasm and then create a task with the wasm file.
+
+```bash
+cd propeller
+make compute
+```
+
+Your output should look like this:
+
+```bash
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/compute.wasm -target wasi examples/compute/compute.go
+```
+
+Now we can create a task with the wasm file:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "compute", "inputs": [50]}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "f52feef1-32aa-4506-a13a-b674e7010d61",
+  "name": "compute",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "inputs": [50],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T11:06:42.63783147Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Now we need to upload the wasm file:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/f52feef1-32aa-4506-a13a-b674e7010d61/upload" \
+-F "file=@$(pwd)/build/compute.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "f52feef1-32aa-4506-a13a-b674e7010d61",
+  "name": "compute",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "inputs": [50],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T11:06:42.63783147Z",
+  "updated_at": "2026-02-13T11:08:48.871743865Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Now we can start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/f52feef1-32aa-4506-a13a-b674e7010d61/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The results of the task will be something like this.
+
+```bash
+curl -X GET "http://localhost:7070/tasks/f52feef1-32aa-4506-a13a-b674e7010d61"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "f52feef1-32aa-4506-a13a-b674e7010d61",
+  "name": "compute",
+  "kind": "standard",
+  "state": 3,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "inputs": [50],
+  "daemon": false,
+  "encrypted": false,
+  "proplet_id": "a95517f9-5655-4cf5-a7c8-aa00290b3895",
+  "results": "1377515305\n",
+  "start_time": "2026-02-13T11:09:20.161723391Z",
+  "finish_time": "2026-02-13T11:09:31.03520968Z",
+  "created_at": "2026-02-13T11:06:42.63783147Z",
+  "updated_at": "2026-02-13T11:09:31.03520964Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Invoking Using WasmTime
+
+```bash
+wasmtime --invoke compute ./build/compute.wasm 50
+```
+
+The results of the task will be something like this.
+
+```bash
+warning: using `--invoke` with a function that takes arguments is experimental and may break in the future
+warning: using `--invoke` with a function that returns values is experimental and may break in the future
+1377515305
+```

@@ -1,0 +1,180 @@
+---
+title: Addition (Host Runtime)
+description: Addition example using external wasmtime runtime
+---
+
+This is a simple addition example. It takes two numbers as inputs and returns their sum. For this example since we want to use the external wasmtime runtime we need to specify the runtime when starting proplet. For the proplet docker image the wasmtime runtime is already included. It is found in `/usr/local/bin/wasmtime`. To enable proplet to use this runtime we need to set the `PROPLET_EXTERNAL_WASM_RUNTIME` environment variable to `/usr/local/bin/wasmtime`.
+
+```bash
+export PROPLET_EXTERNAL_WASM_RUNTIME="/usr/local/bin/wasmtime"
+make start-propeller
+```
+
+The logs from the proplet should look like this.
+
+```bash
+2026-02-13T11:47:58.203643Z  INFO Proplet configuration: PropletConfig { log_level: "debug", instance_id: "9f428638-d8f4-4fe4-9249-4b3dcdb59f14", mqtt_address: "tcp://mqtt-adapter:1883", mqtt_timeout: 30, mqtt_qos: 2, mqtt_keep_alive: 30, mqtt_max_packet_size: 10485760, mqtt_inflight: 10, mqtt_request_channel_capacity: 128, liveliness_interval: 10, metrics_interval: 10, domain_id: "002cbbc7-0834-4ce7-be9e-d57b5fe6cd85", channel_id: "bda8692b-35fa-4d4d-88a7-dc412edfda63", client_id: "a95517f9-5655-4cf5-a7c8-aa00290b3895", client_key: "ea812299-b561-494d-80aa-0f636142f147", k8s_namespace: Some("default"), external_wasm_runtime: Some("/usr/local/bin/wasmtime"), enable_monitoring: true, tee_enabled: false, kbs_uri: None, aa_config_path: None, layer_store_path: "/tmp/proplet/layers", pull_concurrent_limit: 4 }
+2026-02-13T11:47:58.203664Z  INFO Starting Proplet (Rust) - Instance ID: 9f428638-d8f4-4fe4-9249-4b3dcdb59f14
+2026-02-13T11:47:58.203722Z  INFO MQTT client created (TLS: false)
+2026-02-13T11:47:58.203774Z  INFO Using external Wasm runtime: /usr/local/bin/wasmtime
+2026-02-13T11:47:58.203846Z  INFO Starting MQTT event loop
+2026-02-13T11:47:58.208623Z DEBUG Received MQTT packet: ConnAck(ConnAck { session_present: false, code: Success })
+2026-02-13T11:47:58.277561Z  INFO Starting PropletService
+2026-02-13T11:47:58.277597Z DEBUG Published to topic: m/002cbbc7-0834-4ce7-be9e-d57b5fe6cd85/c/bda8692b-35fa-4d4d-88a7-dc412edfda63/control/proplet/create
+2026-02-13T11:47:58.277603Z  INFO Published discovery message
+2026-02-13T11:47:58.277609Z  INFO Subscribed to topic: m/002cbbc7-0834-4ce7-be9e-d57b5fe6cd85/c/bda8692b-35fa-4d4d-88a7-dc412edfda63/control/manager/start
+2026-02-13T11:47:58.277620Z  INFO Subscribed to topic: m/002cbbc7-0834-4ce7-be9e-d57b5fe6cd85/c/bda8692b-35fa-4d4d-88a7-dc412edfda63/control/manager/stop
+2026-02-13T11:47:58.277626Z  INFO Subscribed to topic: m/002cbbc7-0834-4ce7-be9e-d57b5fe6cd85/c/bda8692b-35fa-4d4d-88a7-dc412edfda63/registry/server
+2026-02-13T11:47:58.278883Z DEBUG Published to topic: m/002cbbc7-0834-4ce7-be9e-d57b5fe6cd85/c/bda8692b-35fa-4d4d-88a7-dc412edfda63/control/proplet/alive
+2026-02-13T11:47:58.278910Z DEBUG Published liveliness update
+2026-02-13T11:47:58.280534Z DEBUG Published to topic: m/002cbbc7-0834-4ce7-be9e-d57b5fe6cd85/c/bda8692b-35fa-4d4d-88a7-dc412edfda63/control/proplet/metrics
+2026-02-13T11:47:58.280571Z DEBUG Published proplet metrics
+2026-02-13T11:47:58.281366Z DEBUG Received MQTT packet: PubAck(PubAck { pkid: 1 })
+2026-02-13T11:47:58.300338Z DEBUG Received MQTT packet: SubAck(SubAck { pkid: 2, return_codes: [Success(AtLeastOnce)] })
+2026-02-13T11:47:58.306389Z DEBUG Received MQTT packet: SubAck(SubAck { pkid: 3, return_codes: [Success(AtLeastOnce)] })
+2026-02-13T11:47:58.312443Z DEBUG Received MQTT packet: SubAck(SubAck { pkid: 4, return_codes: [Success(AtLeastOnce)] })
+2026-02-13T11:47:58.312704Z DEBUG Received MQTT packet: PubAck(PubAck { pkid: 5 })
+2026-02-13T11:47:58.312774Z DEBUG Received MQTT packet: PubAck(PubAck { pkid: 6 })
+```
+
+## Source Code
+
+The source code is available in the [examples/addition](https://github.com/absmach/propeller/blob/main/examples/addition/addition.go) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/addition/addition.go"
+  lang="go"
+/>
+
+## Create Task
+
+To create a task for this example, we need to build the example to wasm and then create a task with the wasm file.
+
+```bash
+cd propeller
+make addition
+```
+
+Your output should look like this:
+
+```bash
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/addition.wasm -target wasi examples/addition/addition.go
+```
+
+Now we can create a task with the wasm file:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "add", "cli_args": ["--invoke", "add"], "inputs": [10, 20]}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "dc5e4109-5677-4fc0-b12a-6f7dcf216be7",
+  "name": "add",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": ["--invoke", "add"],
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T12:41:28.911748133Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Now we need to upload the wasm file:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/dc5e4109-5677-4fc0-b12a-6f7dcf216be7/upload" \
+-F "file=@$(pwd)/build/addition.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "dc5e4109-5677-4fc0-b12a-6f7dcf216be7",
+  "name": "add",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": ["--invoke", "add"],
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T12:41:28.911748133Z",
+  "updated_at": "2026-02-13T12:42:01.174016764Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Now we can start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/dc5e4109-5677-4fc0-b12a-6f7dcf216be7/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The results of the task will be something like this.
+
+```bash
+curl -X GET "http://localhost:7070/tasks/dc5e4109-5677-4fc0-b12a-6f7dcf216be7"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "dc5e4109-5677-4fc0-b12a-6f7dcf216be7",
+  "name": "add",
+  "kind": "standard",
+  "state": 3,
+  "file": "...<redacted>...",
+  "cli_args": ["--invoke", "add"],
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": false,
+  "proplet_id": "a95517f9-5655-4cf5-a7c8-aa00290b3895",
+  "results": "30",
+  "start_time": "2026-02-13T12:42:24.021570599Z",
+  "finish_time": "2026-02-13T12:42:24.157970897Z",
+  "created_at": "2026-02-13T12:41:28.911748133Z",
+  "updated_at": "2026-02-13T12:42:24.157970797Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Invoking Using WasmTime
+
+```bash
+wasmtime --invoke add ./build/addition.wasm 10 20
+```
+
+The results of the task will be something like this.
+
+```bash
+warning: using `--invoke` with a function that takes arguments is experimental and may break in the future
+warning: using `--invoke` with a function that returns values is experimental and may break in the future
+30
+```

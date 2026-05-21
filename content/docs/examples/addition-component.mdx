@@ -1,0 +1,230 @@
+---
+title: Addition (WASM Component)
+description: Addition example using the WASM Component Model with an external wasmtime runtime
+---
+
+This example demonstrates running a **WASM Component Model** binary on propeller. Unlike the module mode example which passes arguments via `--invoke` CLI flags, component mode uses WAVE-encoded `inputs` — the proplet calls the exported function by name, constructing the wasmtime invocation internally.
+
+The task `name` must exactly match the exported function name in the WIT interface. The proplet uses the task name to determine which component export to call. If they don't match, the proplet looks for a non-existent export and the task fails.
+
+This example requires the external wasmtime runtime. Set the `PROPLET_EXTERNAL_WASM_RUNTIME` environment variable before starting proplet:
+
+```bash
+export PROPLET_EXTERNAL_WASM_RUNTIME="/usr/local/bin/wasmtime"
+make start-propeller
+```
+
+The proplet logs should confirm the external runtime is in use:
+
+```bash
+2026-03-24T10:06:48.432355Z  INFO Starting Proplet (Rust) - Client ID: ab606a2f-8dde-4246-965e-cdf568d0b1d7
+2026-03-24T10:06:48.432825Z  INFO MQTT client created (TLS: false)
+2026-03-24T10:06:48.433370Z  INFO Starting MQTT event loop
+2026-03-24T10:06:48.434037Z  INFO Using external Wasm runtime: wasmtime
+2026-03-24T10:06:48.454048Z DEBUG Received MQTT packet: ConnAck(ConnAck { session_present: true, code: Success })
+2026-03-24T10:06:48.542809Z  INFO Starting PropletService
+2026-03-24T10:06:48.550090Z DEBUG Published to topic: m/ea972377-722e-4936-8f2a-2e0fde0fcd0d/c/5903b703-fbdc-4a0e-94d1-fafd0fbc8048/control/proplet/create
+2026-03-24T10:06:48.550132Z  INFO Published discovery message
+2026-03-24T10:06:48.550164Z  INFO Subscribed to topic: m/ea972377-722e-4936-8f2a-2e0fde0fcd0d/c/5903b703-fbdc-4a0e-94d1-fafd0fbc8048/control/manager/start
+2026-03-24T10:06:48.550201Z  INFO Subscribed to topic: m/ea972377-722e-4936-8f2a-2e0fde0fcd0d/c/5903b703-fbdc-4a0e-94d1-fafd0fbc8048/control/manager/stop
+2026-03-24T10:06:48.550224Z  INFO Subscribed to topic: m/ea972377-722e-4936-8f2a-2e0fde0fcd0d/c/5903b703-fbdc-4a0e-94d1-fafd0fbc8048/registry/server
+2026-03-24T10:06:48.553268Z DEBUG Published to topic: m/ea972377-722e-4936-8f2a-2e0fde0fcd0d/c/5903b703-fbdc-4a0e-94d1-fafd0fbc8048/control/proplet/alive
+2026-03-24T10:06:48.553322Z DEBUG Published liveliness update
+2026-03-24T10:06:48.559778Z DEBUG Published to topic: m/ea972377-722e-4936-8f2a-2e0fde0fcd0d/c/5903b703-fbdc-4a0e-94d1-fafd0fbc8048/control/proplet/metrics
+2026-03-24T10:06:48.559830Z DEBUG Published proplet metrics
+2026-03-24T10:06:48.571194Z DEBUG Received MQTT packet: PubAck(PubAck { pkid: 1 })
+2026-03-24T10:06:48.593042Z DEBUG Received MQTT packet: SubAck(SubAck { pkid: 2, return_codes: [Success(AtLeastOnce)] })
+2026-03-24T10:06:48.608689Z DEBUG Received MQTT packet: SubAck(SubAck { pkid: 3, return_codes: [Success(AtLeastOnce)] })
+2026-03-24T10:06:48.617953Z DEBUG Received MQTT packet: SubAck(SubAck { pkid: 4, return_codes: [Success(AtLeastOnce)] })
+2026-03-24T10:06:48.640170Z DEBUG Received MQTT packet: PubAck(PubAck { pkid: 5 })
+2026-03-24T10:06:48.653908Z DEBUG Received MQTT packet: PubAck(PubAck { pkid: 6 })
+```
+
+## Source Code
+
+The source code is available in the [examples/add-component](https://github.com/absmach/propeller/blob/main/examples/add-component) directory.
+
+The WIT interface defines a single exported function:
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/add-component/wit/world.wit"
+  lang="wit"
+/>
+
+The Rust implementation:
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/add-component/src/lib.rs"
+  lang="rust"
+/>
+
+## Build the Component
+
+You need the following tools installed:
+
+- [Rust](https://rustup.rs/) with the `wasm32-wasip2` target: `rustup target add wasm32-wasip2`
+- [wasm-tools](https://github.com/bytecodealliance/wasm-tools) v0.200 or later
+
+```bash
+cd propeller/examples/add-component
+cargo build --target wasm32-wasip2 --release
+```
+
+Your output should look like this:
+
+```bash
+   Compiling add-component v0.1.0
+    Finished `release` profile [optimized] target(s) in 2.37s
+```
+
+The `wasm32-wasip2` target produces a WASM Component Model binary directly — no additional `wasm-tools component new` step is needed.
+
+## Create Task
+
+The task `name` must exactly match the WIT export function name — the proplet uses it to construct the wasmtime invocation (`--invoke "add(1, 2)"`). The `inputs` array contains the arguments, WAVE-encoded as strings.
+
+```bash
+curl -X POST "http://localhost:7070/tasks" -H "Content-Type: application/json" -d '{"name": "add", "inputs": ["1", "2"]}'
+```
+
+Your output should look like this:
+
+```json
+{
+    "id": "ab375ffe-05c4-4d26-8dd1-498108708f7d",
+    "name": "add",
+    "kind": "standard",
+    "state": 0,
+    "cli_args": null,
+    "inputs": [
+        "1",
+        "2"
+    ],
+    "daemon": false,
+    "encrypted": false,
+    "start_time": "0001-01-01T00:00:00Z",
+    "finish_time": "0001-01-01T00:00:00Z",
+    "created_at": "2026-03-24T12:00:24.758955481Z",
+    "updated_at": "0001-01-01T00:00:00Z",
+    "next_run": "0001-01-01T00:00:00Z",
+    "priority": 50
+}
+```
+
+## Upload Wasm
+
+Upload the component binary using the task ID from the previous step:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/ab375ffe-05c4-4d26-8dd1-498108708f7d/upload" -F "file=@target/wasm32-wasip2/release/add_component.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+    "id": "ab375ffe-05c4-4d26-8dd1-498108708f7d",
+    "name": "add",
+    "kind": "standard",
+    "state": 0,
+    "file": "...<redacted>...",
+    "cli_args": null,
+    "inputs": [
+        "1",
+        "2"
+    ],
+    "daemon": false,
+    "encrypted": false,
+    "start_time": "0001-01-01T00:00:00Z",
+    "finish_time": "0001-01-01T00:00:00Z",
+    "created_at": "2026-03-24T12:00:24.758955481Z",
+    "updated_at": "2026-03-24T12:00:29.473743792Z",
+    "next_run": "0001-01-01T00:00:00Z",
+    "priority": 50
+}
+```
+
+## Start Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks/ab375ffe-05c4-4d26-8dd1-498108708f7d/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The proplet logs will show the task being dispatched to the external wasmtime runtime:
+
+```bash
+2026-03-24T12:00:34.873498Z  INFO Received start command for task: ab375ffe-05c4-4d26-8dd1-498108708f7d
+2026-03-24T12:00:34.884664Z  INFO Starting Host runtime app: task_id=ab375ffe-05c4-4d26-8dd1-498108708f7d, function=add, daemon=false, wasm_size=12559
+2026-03-24T12:00:34.885742Z  INFO Setting 1 environment variables for task ab375ffe-05c4-4d26-8dd1-498108708f7d
+2026-03-24T12:00:34.887482Z  INFO Running in synchronous mode, waiting for task: ab375ffe-05c4-4d26-8dd1-498108708f7d
+2026-03-24T12:00:34.989209Z  INFO Process completed for task: ab375ffe-05c4-4d26-8dd1-498108708f7d
+2026-03-24T12:00:34.989617Z DEBUG Cleaned up temporary file: "/tmp/proplet_ab375ffe-05c4-4d26-8dd1-498108708f7d.wasm"
+2026-03-24T12:00:34.989729Z  INFO Task ab375ffe-05c4-4d26-8dd1-498108708f7d completed successfully. Result: 3
+2026-03-24T12:00:34.989755Z  INFO Publishing result for task ab375ffe-05c4-4d26-8dd1-498108708f7d
+2026-03-24T12:00:34.989817Z  INFO Successfully published result for task ab375ffe-05c4-4d26-8dd1-498108708f7d
+```
+
+## Get Results
+
+```bash
+curl -X GET "http://localhost:7070/tasks/ab375ffe-05c4-4d26-8dd1-498108708f7d"
+```
+
+Your output should look like this:
+
+```json
+{
+    "id": "ab375ffe-05c4-4d26-8dd1-498108708f7d",
+    "name": "add",
+    "kind": "standard",
+    "state": 3,
+    "file": "...<redacted>...",
+    "cli_args": null,
+    "inputs": [
+        "1",
+        "2"
+    ],
+    "daemon": false,
+    "encrypted": false,
+    "proplet_id": "ab606a2f-8dde-4246-965e-cdf568d0b1d7",
+    "results": "3\n",
+    "start_time": "2026-03-24T12:00:34.870381026Z",
+    "finish_time": "2026-03-24T12:00:35.026898367Z",
+    "created_at": "2026-03-24T12:00:24.758955481Z",
+    "updated_at": "2026-03-24T12:00:35.026898016Z",
+    "next_run": "0001-01-01T00:00:00Z",
+    "priority": 50
+}
+```
+
+State `3` means the task completed successfully. The `results` field shows `"3\n"` — the return value of `add(1, 2)`.
+
+## How It Differs from Module Mode
+
+|                     | Module mode                                          | Component mode                       |
+| ------------------- | ---------------------------------------------------- | ------------------------------------ |
+| Binary format       | Core WASM module                                     | WASM Component Model                 |
+| Function invocation | `cli_args: ["--invoke", "add"]` + `inputs: [10, 20]` | `name: "add"` + `inputs: ["1", "2"]` |
+| Argument encoding   | Passed as CLI positional args                        | WAVE-encoded typed values            |
+| WIT interface       | Not required                                         | Required                             |
+| Build target        | `wasm32-wasip1` (tinygo / emcc)                      | `wasm32-wasip2` (cargo)              |
+
+## Invoking Directly with wasmtime
+
+You can also test the component binary directly without propeller:
+
+```bash
+wasmtime run --invoke "add(1, 2)" target/wasm32-wasip2/release/add_component.wasm
+```
+
+Your output should look like this:
+
+```bash
+3
+```

@@ -1,0 +1,270 @@
+---
+title: WASI HTTP
+description: WASI HTTP example
+---
+
+This WASI HTTP example uses the Rust `sample-wasi-http-rust` component. It implements a complete WASI HTTP server that handles `GET`, `POST`, and header inspection using the `wasi:http/proxy` world.
+
+## Source Code
+
+The source code is available in the [Propeller examples](https://github.com/absmach/propeller/tree/main/examples) directory. The `sample-wasi-http-rust` example is a Git submodule from [bytecodealliance/sample-wasi-http-rust](https://github.com/bytecodealliance/sample-wasi-http-rust/tree/343b716e4c74ce548088d8033f4beaffd21d21d8).
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/bytecodealliance/sample-wasi-http-rust/343b716e4c74ce548088d8033f4beaffd21d21d8/src/lib.rs"
+  lang="rust"
+/>
+
+## Build Wasm
+
+Initialize the Git submodule and build the example:
+
+```bash
+cd propeller
+git submodule update --init --remote
+cd examples/sample-wasi-http-rust
+```
+
+Install the required Rust target and dependencies:
+
+```bash
+rustup target add wasm32-wasip2
+cargo install wkg
+wkg wit fetch
+```
+
+Build the example:
+
+```bash
+cargo build --target wasm32-wasip2
+```
+
+Your output should look like this:
+
+```bash
+Compiling sample-wasi-http-rust v0.0.0 (/home/user/propeller/examples/sample-wasi-http-rust)
+ Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.65s
+```
+
+## Docker Setup
+
+The wasi-http example requires specific proplet configuration. Before running, configure your `docker/.env` file:
+
+```bash
+PROPLET_EXTERNAL_WASM_RUNTIME=""
+PROPLET_HTTP_ENABLED=true
+PROPLET_HTTP_PROXY_PORT=8081
+```
+
+These settings are required because:
+
+- **`PROPLET_EXTERNAL_WASM_RUNTIME=""`** — Must be empty. When set to `wasmtime`, the proplet spawns `wasmtime run`, which cannot serve a `wasi:http/proxy` component. The internal WasmtimeRuntime (used when unset) handles HTTP proxy components natively.
+- **`PROPLET_HTTP_ENABLED=true`** — Enables the HTTP proxy capability, which is disabled by default.
+- **`PROPLET_HTTP_PROXY_PORT=8081`** — Sets the HTTP proxy port to match the exposed container port.
+
+Then restart the proplet to apply the changes:
+
+```bash
+docker compose -f docker/compose.propeller.yaml --env-file docker/.env up -d proplet
+```
+
+You should see the following in the proplet startup logs, confirming the correct configuration:
+
+```
+Using Wasmtime runtime
+http_enabled: true, http_proxy_port: 8081
+```
+
+## Create Task
+
+Create a daemon task for the HTTP server:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "_start", "daemon": true}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "62fc5c37-da87-4d01-846d-713f885f3447",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "daemon": true,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-03T10:55:48.013225031Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Upload the compiled wasm file (replace task ID with yours):
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/62fc5c37-da87-4d01-846d-713f885f3447/upload" \
+-F "file=@$(pwd)/target/wasm32-wasip2/debug/sample_wasi_http_rust.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "62fc5c37-da87-4d01-846d-713f885f3447",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "daemon": true,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-03T10:55:48.013225031Z",
+  "updated_at": "2026-03-03T10:56:07.314125682Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Start the HTTP server task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/62fc5c37-da87-4d01-846d-713f885f3447/start"
+```
+
+Your output should look like this:
+
+```json
+{"started":true}
+```
+
+## Query Task Status
+
+Query the task status:
+
+```bash
+curl -X GET "http://localhost:7070/tasks/62fc5c37-da87-4d01-846d-713f885f3447"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "62fc5c37-da87-4d01-846d-713f885f3447",
+  "name": "_start",
+  "kind": "standard",
+  "state": 2,
+  "cli_args": null,
+  "daemon": true,
+  "encrypted": false,
+  "proplet_id": "d66600de-8827-4096-bc6f-ce1b5a0b2482",
+  "results": "",
+  "start_time": "2026-03-03T10:56:15.959761675Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-03T10:55:48.013225031Z",
+  "updated_at": "2026-03-03T10:56:15.959761909Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+The `"state": 2` indicates the task is **Running**. For daemon tasks like this HTTP server, state 2 is the expected state — the task keeps running indefinitely to serve HTTP requests. Task states are: 0 (Pending), 1 (Scheduled), 2 (Running), 3 (Completed), 4 (Failed), 5 (Skipped), 6 (Interrupted).
+
+## Test Endpoints
+
+Test the HTTP endpoints on the proplet's HTTP port (8081):
+
+```bash
+curl http://localhost:8081/
+```
+
+Your output should look like this:
+
+```
+Hello, wasi:http/proxy world!
+```
+
+Test the wait endpoint:
+
+```bash
+curl http://localhost:8081/wait
+```
+
+Your output should look like this:
+
+```
+slept for 1000 millis
+```
+
+Test the echo endpoint:
+
+```bash
+curl http://localhost:8081/echo -d 'hello from propeller'
+```
+
+Your output should look like this:
+
+```
+hello from propeller
+```
+
+Test the headers endpoint:
+
+```bash
+curl -v http://localhost:8081/echo-headers -H 'X-Test: 123' -H 'X-Foo: bar'
+```
+
+The request headers are echoed back as response headers:
+
+```
+< HTTP/1.1 200 OK
+< x-foo: bar
+< user-agent: curl/8.5.0
+< accept: */*
+< x-test: 123
+```
+
+## Running Standalone with WasmTime
+
+You can also run the component standalone using wasmtime (without Propeller):
+
+```bash
+wasmtime serve -Scli -Shttp target/wasm32-wasip2/debug/sample_wasi_http_rust.wasm
+```
+
+Your output should look like this:
+
+```bash
+Serving HTTP on http://0.0.0.0:8080/
+```
+
+Test the endpoints:
+
+```bash
+# Root endpoint
+curl http://localhost:8080/
+
+# Wait endpoint (sleeps for ~1 second)
+curl http://localhost:8080/wait
+
+# Echo endpoint (returns the request body)
+curl http://localhost:8080/echo -d 'hello from propeller'
+
+# Echo headers endpoint (returns request headers as response headers)
+curl -v http://localhost:8080/echo-headers -H 'X-Test: 123' -H 'X-Foo: bar'
+```
+
+The output should be the same as shown in the [Test Endpoints](#test-endpoints) section above.
+
+> **When you are done:**
+> Go back to the terminal running `wasmtime serve` and press `Ctrl+C` to stop the server.

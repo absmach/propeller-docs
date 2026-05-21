@@ -1,0 +1,12 @@
+{
+  "title": "k8s",
+  "pages": [
+    "operator.mdx",
+    "getting-started.mdx",
+    "features.mdx",
+    "example.mdx",
+    "deployment.mdx",
+    "deploy-without-operator.mdx",
+    "coco-k8s-setup.mdx"
+  ]
+}

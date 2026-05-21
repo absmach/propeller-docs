@@ -1,0 +1,200 @@
+---
+title: Elastic Hal Example
+description: Elastic Hal example
+---
+
+This is a simple example using the [Elastic Hal](https://github.com/elasticproject-eu/wasmhal). This example validates that, the proplet runtime correctly provides HAL functions to WASM modules, TEE-specific hardware features are accessible through a portable WASI-compatible interface, Workloads can leverage hardware security features (cryptography, attestation, secure time) without direct hardware access. It serves as both a test suite and reference implementation for building TEE-aware WebAssembly applications that work across different confidential computing platforms (AMD SEV, Intel TDX) through a unified API.
+
+To run this example, we need to set the `PROPLET_EXTERNAL_WASM_RUNTIME` environment variable to `""` so that the proplet runtime uses the default WASM runtime. We also need to set the `PROPLET_HAL_ENABLED` environment variable to `true` to enable the HAL.
+
+```bash
+export PROPLET_EXTERNAL_WASM_RUNTIME=""
+export PROPLET_HAL_ENABLED=true
+```
+
+## Source Code
+
+The source code is available in the [examples/hal-test](https://github.com/absmach/propeller/blob/main/examples/hal-test/src/main.rs) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/hal-test/src/main.rs"
+  lang="rust"
+/>
+
+## Create Task
+
+To create a task for this example, we need to build the example to wasm and then create a task with the wasm file.
+
+```bash
+cd propeller
+make hal-test
+```
+
+Your output should look like this:
+
+```bash
+cd examples/hal-test && cargo build --release
+    Finished `release` profile [optimized] target(s) in 0.01s
+cp examples/hal-test/target/wasm32-wasip1/release/hal-test.wasm build/hal-test.wasm
+```
+
+Now we can create a task with the wasm file:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "hal-test"}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "4cc77929-d492-4485-8e85-577fc8e43f93",
+  "name": "hal-test",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-12T10:36:26.665685718Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Now we need to upload the wasm file:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/4cc77929-d492-4485-8e85-577fc8e43f93/upload" \
+-F "file=@$(pwd)/build/hal-test.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "4cc77929-d492-4485-8e85-577fc8e43f93",
+  "name": "hal-test",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-12T10:36:26.665685718Z",
+  "updated_at": "2026-03-12T10:37:14.358542834Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Now we can start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/4cc77929-d492-4485-8e85-577fc8e43f93/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The results of the task will be something like this.
+
+```bash
+curl -X GET "http://localhost:7070/tasks/4cc77929-d492-4485-8e85-577fc8e43f93"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "4cc77929-d492-4485-8e85-577fc8e43f93",
+  "name": "hal-test",
+  "kind": "standard",
+  "state": 3,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "proplet_id": "83a56492-5a89-4852-beee-a3ba95eca876",
+  "results": "",
+  "start_time": "2026-03-12T10:38:34.987495548Z",
+  "finish_time": "2026-03-12T10:38:35.174812125Z",
+  "created_at": "2026-03-12T10:36:26.665685718Z",
+  "updated_at": "2026-03-12T10:38:35.174812065Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+The logs from proplet would be something like this.
+
+```bash
+2026-03-12T10:38:35.135286Z  INFO Starting Wasmtime runtime app: task_id=4cc77929-d492-4485-8e85-577fc8e43f93, function=hal-test, daemon=false, wasm_size=73560, is_component=false, is_proxy=false
+2026-03-12T10:38:35.135290Z  INFO Compiling WASM core module for task: 4cc77929-d492-4485-8e85-577fc8e43f93
+2026-03-12T10:38:35.160988Z  INFO Module compiled successfully for task: 4cc77929-d492-4485-8e85-577fc8e43f93
+AMD SEV Detection:
+  - AMD CPU: true
+  - /dev/sev-guest: false
+  - /dev/sev: false
+  - TSM support: false
+Intel TDX Detection:
+  - Intel CPU: false
+  - /dev/tdx_guest: false
+  - TSM support: false
+  - TDX CPU flag: false
+AMD SEV Detection:
+  - AMD CPU: true
+  - /dev/sev-guest: false
+  - /dev/sev: false
+  - TSM support: false
+Intel TDX Detection:
+  - Intel CPU: false
+  - /dev/tdx_guest: false
+  - TSM support: false
+  - TDX CPU flag: false
+2026-03-12T10:38:35.165299Z  INFO Running in synchronous mode for task: 4cc77929-d492-4485-8e85-577fc8e43f93
+2026-03-12T10:38:35.165355Z  INFO No _initialize function found, skipping initialization for task: 4cc77929-d492-4485-8e85-577fc8e43f93
+2026-03-12T10:38:35.165379Z  INFO WASM module exports for task 4cc77929-d492-4485-8e85-577fc8e43f93: requested='hal-test', available=["memory", "_start", "__main_void", "run_export"]
+2026-03-12T10:38:35.165387Z  INFO Function 'hal-test' not found, using fallback '_start'
+2026-03-12T10:38:35.165390Z  INFO Calling function 'hal-test' with 0 params, expects 0 results
+platform-info: {"platform_type":"None","version":"0.0.0","attestation_support":false}
+AMD SEV Detection:
+  - AMD CPU: true
+  - /dev/sev-guest: false
+  - /dev/sev: false
+  - TSM support: false
+Intel TDX Detection:
+  - Intel CPU: false
+  - /dev/tdx_guest: false
+  - TSM support: false
+  - TDX CPU flag: false
+list-capabilities: [{"feature_name":"random","supported":true,"version":"1.0"},{"feature_name":"crypto","supported":true,"version":"1.0"},{"feature_name":"attestation","supported":true,"version":"1.0"},{"feature_name":"secure-storage","supported":true,"version":"1.0"},{"feature_name":"gpu-compute","supported":false,"version":"1.0"}]
+random(32): 8887fb92b56f95bf8d2b6bca8e2fd0151baec2ffa8fb496c4200aa0196fc10ae
+system-time: 1773311915s 168307845ns
+sha256("proplet-hal-test")=0990559c9a4bf35af9dcc68221ac1642c8dec9c760a38fe8c2a93fe713761ebd
+generate-keypair: ok (json len=162)
+2026-03-12T10:38:35.168350Z  INFO Function 'hal-test' executed successfully
+2026-03-12T10:38:35.168356Z  INFO Task 4cc77929-d492-4485-8e85-577fc8e43f93 completed successfully, result size: 0 bytes
+2026-03-12T10:38:35.169863Z DEBUG Stopping monitoring for task 4cc77929-d492-4485-8e85-577fc8e43f93
+2026-03-12T10:38:35.169901Z  INFO Task 4cc77929-d492-4485-8e85-577fc8e43f93 completed successfully. Result:
+2026-03-12T10:38:35.169910Z  INFO Publishing result for task 4cc77929-d492-4485-8e85-577fc8e43f93
+2026-03-12T10:38:35.169923Z DEBUG Published to topic: m/7da99541-b61a-4e91-992d-cdf3b7018fe6/c/b5393f7a-c7b1-4b2a-ac18-65964c7672a8/control/proplet/results
+2026-03-12T10:38:35.169927Z  INFO Successfully published result for task 4cc77929-d492-4485-8e85-577fc8e43f93
+```
+
+## Invoking Using WasmTime
+
+Since the default wasmtime doesn't have the exposed hal test function, there is no need of running it on wasmtime.

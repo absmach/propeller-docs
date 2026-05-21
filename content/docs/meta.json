@@ -1,0 +1,31 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "architecture.mdx",
+    "---Getting Started---",
+    "getting-started.mdx",
+    "examples",
+    "---Components---",
+    "manager.mdx",
+    "proplet.mdx",
+    "embedded-proplet.mdx",
+    "proxy.mdx",
+    "---Features---",
+    "fml",
+    "hal.mdx",
+    "proplet-sdf.mdx",
+    "task-scheduling.mdx",
+    "monitoring.mdx",
+    "wasi-nn.mdx",
+    "tee.mdx",
+    "reference.mdx",
+    "---Kubernetes---",
+    "k8s",
+    "---Resources---",
+    "api",
+    "developer-guide.mdx",
+    "zephyr.mdx",
+    "vs-kubeedge.mdx"
+  ]
+}

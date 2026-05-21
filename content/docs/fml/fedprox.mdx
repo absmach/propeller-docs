@@ -1,0 +1,125 @@
+---
+title: FedProx Algorithm
+description: Implementing the FedProx federated learning algorithm in Propeller
+---
+
+FedProx adds a proximal term to limit how far local updates can deviate from the global model. This helps handle heterogeneous data distributions across proplets.
+
+## Overview
+
+FedProx modifies the local training objective by adding a regularization term that penalizes deviations from the global model. This allows for more stable convergence when proplets have non-IID (non-identically distributed) data.
+
+## WASM Client Modification
+
+Modify `examples/fl-demo/client-wasm/fl-client.go` to add the proximal term during training:
+
+```go
+// Add proximal term during training
+mu := 0.01  // proximal coefficient
+
+for j := 0; j < len(weights) && j < len(x); j++ {
+    // Standard gradient
+    gradient := lr * err * x[j]
+    // Proximal term: penalize deviation from global weights
+    proximal := mu * (weights[j] - globalWeights[j])
+    weights[j] -= gradient + proximal
+}
+```
+
+## Key Changes
+
+| Component   | Change Required                          |
+| ----------- | ---------------------------------------- |
+| WASM Client | Add proximal term to weight updates      |
+| Aggregator  | No changes needed (uses standard FedAvg) |
+
+## Hyperparameters
+
+| Parameter | Description                                              | Typical Value |
+| --------- | -------------------------------------------------------- | ------------- |
+| `mu`      | Proximal coefficient controlling regularization strength | 0.001 - 0.1   |
+
+Higher values of `mu` keep local updates closer to the global model, while lower values allow more local adaptation.
+
+## Deploy to Propeller
+
+### Prerequisites
+
+Complete the [Federated Learning](/docs/fml/example) example first. All services (Magistrala, Manager, Proplets, Proxy, FL demo stack) must be running and provisioned before proceeding.
+
+### Step 1: Modify and Build the WASM Client
+
+Apply the proximal term modification to `examples/fl-demo/client-wasm/fl-client.go`, then rebuild:
+
+```bash
+cd examples/fl-demo/client-wasm
+GOOS=wasip2 GOARCH=wasm go build -o fl-client.wasm fl-client.go
+```
+
+### Step 2: Push Updated WASM to GHCR
+
+```bash
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" \
+  ghcr.io/oras-project/oras:v1.3.0 \
+  push ghcr.io/YOUR_GITHUB_USERNAME/fl-client-wasm:latest \
+  fl-client.wasm:application/wasm
+cd ../../..
+```
+
+### Step 3: Trigger an FL Experiment
+
+Export proplet client IDs from `docker/.env`, then submit the experiment. Pass `mu` as a hyperparameter so the WASM client can apply the correct proximal coefficient:
+
+```bash
+export PROPLET_CLIENT_ID=$(grep '^PROPLET_CLIENT_ID=' docker/.env | grep -v '=""' | tail -1 | cut -d '=' -f2 | tr -d '"')
+export PROPLET_2_CLIENT_ID=$(grep '^PROPLET_2_CLIENT_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
+export PROPLET_3_CLIENT_ID=$(grep '^PROPLET_3_CLIENT_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
+
+curl -s -X POST http://localhost:7070/fl/experiments \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"experiment_id\": \"fedprox-$(date +%s)\",
+    \"round_id\": \"r-$(date +%s)\",
+    \"model_ref\": \"fl/models/global_model_v0\",
+    \"participants\": [\"$PROPLET_CLIENT_ID\", \"$PROPLET_2_CLIENT_ID\", \"$PROPLET_3_CLIENT_ID\"],
+    \"hyperparams\": {\"epochs\": 1, \"lr\": 0.01, \"batch_size\": 16, \"mu\": 0.01},
+    \"k_of_n\": 2,
+    \"timeout_s\": 120,
+    \"task_wasm_image\": \"ghcr.io/YOUR_GITHUB_USERNAME/fl-client-wasm:latest\"
+  }" | jq .
+```
+
+Expected response:
+
+```json
+{
+  "experiment_id": "fedprox-1709309984",
+  "round_id": "r-1709309984",
+  "status": "configured"
+}
+```
+
+### Step 4: Verify FedProx Training
+
+Check proplet logs to confirm the WASM client ran and submitted updates:
+
+```bash
+docker logs propeller-proplet 2>&1 | grep -E "completed|update|round" | tail -10
+```
+
+Check that the new model version was stored after aggregation:
+
+```bash
+curl -s http://localhost:8084/models | jq .
+```
+
+The proximal term keeps local updates closer to the global model, so weights will converge more conservatively than standard FedAvg — especially visible when proplets have heterogeneous data.
+
+## Use Cases
+
+- Non-IID data distributions across proplets
+- Systems with varying compute capabilities (allows partial work)
+- Environments requiring stable convergence guarantees

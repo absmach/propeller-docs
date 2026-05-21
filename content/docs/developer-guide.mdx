@@ -1,0 +1,623 @@
+---
+title: Developer's Guide
+description: "Contribute to Propeller by Abstract Machines. Covers forking the Go/Rust codebase, building all components, running tests, and submitting pull requests to the open-source repo."
+---
+
+## Getting Propeller
+
+Propeller source can be found in the [official Propeller GitHub repository](https://github.com/absmach/propeller). You should fork this repository in order to make changes to the project. The forked version of the repository should be cloned using the following:
+
+```bash
+git clone https://github.com/your-github-username/propeller.git $SOMEPATH/propeller
+cd $SOMEPATH/propeller
+git remote add upstream https://github.com/absmach/propeller.git
+```
+
+## Building Propeller
+
+### Prerequisites
+
+To build Propeller, you will need the following:
+
+- [A Go compiler (Go 1.26.0)](https://go.dev/doc/install)
+- [Rust](https://rustup.rs/) (required for `make proplet` and `make all`)
+- [Make](https://www.gnu.org/software/make/manual/make.html)
+- [Docker](https://docs.docker.com/) (required for `make start-magistrala` and Docker image builds)
+- [Wasmtime](https://wasmtime.dev/) (required to test compiled Wasm examples locally)
+- [TinyGo](https://tinygo.org/getting-started/install/) (required for Wasm example builds)
+- [Mockery](https://vektra.github.io/mockery/latest/installation/) (required for `make test` and `make test-all`)
+
+### Downloading Pre-built Binaries
+
+Instead of building from source, you can download pre-built binaries from the [GitHub Releases](https://github.com/absmach/propeller/releases) page.
+
+#### Docker Images
+
+Propeller provides pre-built Docker images via GitHub Container Registry:
+
+```bash
+# Pull all services
+docker pull ghcr.io/absmach/propeller/manager:latest
+docker pull ghcr.io/absmach/propeller/cli:latest
+docker pull ghcr.io/absmach/propeller/proxy:latest
+docker pull ghcr.io/absmach/propeller/proplet:latest
+
+# For WASI-NN support (amd64 only)
+docker pull ghcr.io/absmach/propeller/proplet:wasi-nn
+```
+
+#### GitHub Releases
+
+Binaries for all services are available in the GitHub Releases:
+
+- **Go services** (manager, cli, proxy): Available for linux/amd64, linux/arm64, linux/riscv64
+- **Proplet** (Rust): Available for linux/amd64, linux/arm64
+
+Download the appropriate binary for your platform from the [releases page](https://github.com/absmach/propeller/releases).
+
+### Building
+
+Use the GNU Make tool to build all Propeller services:
+
+```bash
+make all
+```
+
+This will build all Go services (manager, cli, proxy), Rust proplet, and WASM examples for your platform.
+
+**Note**: This requires both Go and Rust toolchains to be installed.
+
+To build only the Go services without Rust and WASM dependencies:
+
+```bash
+make manager cli proxy
+```
+
+This is useful for testing the core services without a full development environment setup.
+
+To build Propeller for other platforms, use the following:
+
+| OS      | Architecture | Command                              |
+| ------- | ------------ | ------------------------------------ |
+| Linux   | amd64        | `GOOS=linux GOARCH=amd64 make all`   |
+| Linux   | arm64        | `GOOS=linux GOARCH=arm64 make all`   |
+| Windows | amd64        | `GOOS=windows GOARCH=amd64 make all` |
+| Darwin  | amd64        | `GOOS=darwin GOARCH=amd64 make all`  |
+
+#### Cross-compiling
+
+To cross-compile for other architectures on your local machine, you need to install the appropriate cross-compilation toolchain.
+
+##### Installing Cross-compilation Toolchains
+
+On Debian/Ubuntu, install the required toolchains:
+
+```bash
+# For ARM64 (aarch64)
+sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+# For RISC-V 64-bit
+sudo apt-get install -y gcc-riscv64-linux-gnu libc6-dev-riscv64-cross
+
+# For ARMv7 (32-bit)
+sudo apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
+```
+
+On macOS with Homebrew:
+
+```bash
+# For ARM64
+brew install aarch64-unknown-linux-gnu
+
+# For RISC-V
+brew install riscv64-unknown-linux-gnu
+```
+
+##### Building for ARM on Linux
+
+Once the toolchains are installed, you can cross-compile:
+
+```bash
+# Build for ARM64
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 make all
+
+# Build for RISC-V 64-bit
+GOOS=linux GOARCH=riscv64 CGO_ENABLED=0 make all
+
+# Build for ARMv7 (32-bit ARM)
+GOOS=linux GOARCH=arm CGO_ENABLED=0 make all
+```
+
+##### Building Proplet (Rust) for ARM
+
+For the Rust-based proplet, use the following:
+
+```bash
+# Install the target
+rustup target add aarch64-unknown-linux-gnu
+
+# Set the linker for cross-compilation
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+
+# Build
+cd proplet
+cargo build --release --target aarch64-unknown-linux-gnu
+```
+
+For RISC-V:
+
+```bash
+rustup target add riscv64gc-unknown-linux-gnu
+export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
+cd proplet
+cargo build --release --target riscv64gc-unknown-linux-gnu
+```
+
+##### Building for ARM on macOS
+
+Building for ARM on macOS (Apple Silicon) is straightforward since the native compiler supports ARM64:
+
+```bash
+# ARM64 (native)
+GOOS=darwin GOARCH=arm64 make all
+
+# x86_64 (Intel macs)
+GOOS=darwin GOARCH=amd64 make all
+```
+
+Note: Cross-compiling from Intel macOS to ARM64 requires macOS SDK and is not directly supported. Consider using GitHub Actions for cross-platform builds.
+
+#### Building an individual service
+
+You can build individual services using the following:
+
+```bash
+make <service>
+```
+
+For example, to build the `manager` service, use the following:
+
+```bash
+make manager
+```
+
+The built binaries will be located in the `build` directory.
+
+The Rust proplet is built separately (requires Rust installed). Use:
+
+```bash
+make proplet
+```
+
+This runs `cargo build --release` inside the `proplet` directory and copies the resulting binary to `build/proplet`.
+
+For more information on the proplet, see the [Proplet Documentation](proplet.mdx).
+
+### Building examples
+
+Available WASM examples can be built using:
+
+```bash
+make <example>
+```
+
+Available examples include: `addition`, `compute`, `hello-world`, `http-client`, `http-server`, and `filesystem`.
+
+For example, to build the `addition` example:
+
+```bash
+make addition
+```
+
+This compiles the example to WebAssembly format. The compiled `.wasm` file is located in the `build` directory.
+
+To test the compiled Wasm example locally with Wasmtime (requires Wasmtime installed):
+
+```bash
+wasmtime --invoke add ./build/addition.wasm 1 2
+```
+
+Expected output:
+
+```bash
+warning: using `--invoke` with a function that takes arguments is experimental and may break in the future
+warning: using `--invoke` with a function that returns values is experimental and may break in the future
+3
+```
+
+Some examples require specific configuration or environment variables when running under Propeller:
+
+- **http-client/http-server**: Require `PROPLET_HTTP_ENABLED=true` configuration
+- **filesystem**: Requires `PROPLET_DIRS=/tmp` or your desired directory mount
+
+These variables are configured when running the proplet service, not during the build.
+
+## Installing
+
+Once you have built the Go services, you can install them using:
+
+```bash
+export GOBIN=~/go/bin
+export PATH=$GOBIN:$PATH
+make install
+```
+
+Example output:
+
+```bash
+cp build/cli /home/jeff/go/bin/propeller-cli
+cp build/manager /home/jeff/go/bin/propeller-manager
+cp build/proxy /home/jeff/go/bin/propeller-proxy
+```
+
+The `make install` target copies binaries from the `build` directory to `$GOBIN` with a `propeller-` prefix. The `$GOBIN` variable **must** be set before running `make install`, or the command will fail with a permission error. If `$GOBIN` is not set, it defaults to `$HOME/go/bin`.
+
+After installation, ensure `$GOBIN` is in your `PATH`:
+
+```bash
+export PATH=$GOBIN:$PATH
+```
+
+This installs:
+
+- `$GOBIN/propeller-cli` - Command-line interface (17 MB)
+- `$GOBIN/propeller-manager` - Task orchestrator service (25 MB)
+- `$GOBIN/propeller-proxy` - Wasm module proxy service (7 MB)
+
+## Testing
+
+The project uses [mockery](https://vektra.github.io/mockery/latest/installation/) to generate mock interfaces for testing. The `make test` target automatically runs `mockery --config .mockery.yaml` to generate mocks before running tests.
+
+**Important**: The project uses mockery v3. Install it with:
+
+```bash
+go install github.com/vektra/mockery/v3@latest
+```
+
+The project uses `pkgname: mocks` and generates individual mock files for each interface.
+
+To run the Go service tests:
+
+```bash
+make test
+```
+
+Example output:
+
+```bash
+Generating mocks...
+mockery --config .mockery.yaml
+
+ok      github.com/absmach/propeller/manager    0.218s
+PASS
+```
+
+This target runs `go test -v ./manager` for the manager service.
+
+To run all tests, including the Rust proplet test suite:
+
+```bash
+make test-all
+```
+
+This runs Go tests with `go test -v ./...` and Rust tests with `cargo test --release`.
+
+## Linter
+
+Propeller uses [golangci-lint](https://golangci-lint.run/) to lint the code. Install golangci-lint:
+
+```bash
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+Then run the linter:
+
+```bash
+make lint
+```
+
+This lints all Go code and runs `cargo fmt --all -- --check`, `cargo clippy -- -D warnings`, and `cargo check --release` on the Rust proplet code.
+
+The linting process can take 2-3 minutes or longer depending on system resources. This is normal behavior. The linter performs comprehensive code quality checks across the entire codebase.
+
+## Magistrala
+
+### Starting Magistrala
+
+To start Magistrala (the message broker infrastructure for Propeller), use:
+
+```bash
+make start-magistrala
+```
+
+This runs `docker compose -f docker/compose.yaml --env-file docker/.env up -d` and starts all required Magistrala services.
+
+Example output:
+
+```bash
+docker compose -f docker/compose.yaml --env-file docker/.env up -d
+[+] up 44/44
+ ✔ Network magistrala-base-net          Created                                                                                      0.1s
+ ✔ Container magistrala-re-db           Started                                                                                      2.6s
+ ✔ Container magistrala-clients-db      Started                                                                                      5.8s
+ ✔ Container magistrala-clients-redis   Started                                                                                      3.1s
+ ✔ Container magistrala-fluxmq-auth     Started                                                                                      5.2s
+ ✔ Container magistrala-ui-backend-db   Healthy                                                                                     10.1s
+ ✔ Container magistrala-alarms-db       Started                                                                                      2.7s
+ ✔ Container magistrala-spicedb-db      Started                                                                                      3.5s
+ ✔ Container magistrala-openbao         Healthy                                                                                      8.9s
+ ✔ Container magistrala-pdf             Started                                                                                      3.9s
+ ✔ Container magistrala-auth-redis      Started                                                                                      5.6s
+ ✔ Container magistrala-channels-db     Started                                                                                      2.9s
+ ✔ Container magistrala-certs-db        Started                                                                                      3.9s
+ ✔ Container magistrala-domains-redis   Started                                                                                      3.2s
+ ✔ Container magistrala-reports-db      Started                                                                                      4.2s
+ ✔ Container magistrala-seaweedfs-s3    Started                                                                                      6.1s
+ ✔ Container magistrala-domains-db      Started                                                                                      3.1s
+ ✔ Container magistrala-groups-db       Started                                                                                      5.3s
+ ✔ Container magistrala-channels-redis  Started                                                                                      2.8s
+ ✔ Container magistrala-journal-db      Started                                                                                      3.9s
+ ✔ Container magistrala-auth-db         Started                                                                                      5.0s
+ ✔ Container magistrala-ui              Started                                                                                      3.3s
+ ✔ Container magistrala-users-db        Started                                                                                      3.6s
+ ✔ Container magistrala-jaeger          Started                                                                                      3.9s
+ ✔ Container magistrala-fluxmq-node1    Started                                                                                      6.0s
+ ✔ Container magistrala-seaweedfs-init  Started                                                                                      6.3s
+ ✔ Container magistrala-ui-backend      Started                                                                                     10.2s
+ ✔ Container magistrala-fluxmq-node2    Started                                                                                      6.2s
+ ✔ Container magistrala-fluxmq-node3    Started                                                                                      6.2s
+ ✔ Container magistrala-spicedb-migrate Started                                                                                      5.3s
+ ✔ Container magistrala-nginx           Started                                                                                      6.3s
+ ✔ Container magistrala-certs           Started                                                                                      9.0s
+ ✔ Container magistrala-spicedb         Started                                                                                      5.7s
+ ✔ Container magistrala-reports         Started                                                                                      8.6s
+ ✔ Container magistrala-re              Started                                                                                      7.6s
+ ✔ Container magistrala-notifications   Started                                                                                      7.1s
+ ✔ Container magistrala-alarms          Started                                                                                      8.4s
+ ✔ Container magistrala-domains         Started                                                                                      8.5s
+ ✔ Container magistrala-auth            Started                                                                                      8.7s
+ ✔ Container magistrala-journal         Started                                                                                      9.2s
+ ✔ Container magistrala-users           Started                                                                                      9.2s
+ ✔ Container magistrala-groups          Started                                                                                      9.1s
+ ✔ Container magistrala-clients         Started                                                                                     11.2s
+ ✔ Container magistrala-channels        Started                                                                                     11.3s
+```
+
+- Docker must be installed and running
+- No other services should be bound to the ports specified in `docker/.env` (typically 1883 for MQTT, 5672 for RabbitMQ, etc.)
+
+### Provisioning Propeller
+
+After Magistrala is running, provision Propeller resources:
+
+```bash
+propeller-cli provision
+```
+
+This interactive command:
+
+1. Creates Magistrala domain, channel, and user credentials
+2. Generates a `config.toml` file with all necessary configuration
+3. Sets up clients for manager, proplet, and proxy services
+
+The generated `config.toml` contains Magistrala credentials (domain_id, channel_id, client_id, client_key) that are required for all services to communicate.
+
+### Using config.toml with Docker Compose
+
+Copy the generated config to the docker folder:
+
+```bash
+cp config.toml docker
+```
+
+The volume mounts for `config.toml` are already configured in `docker/compose.propeller.yaml`. This allows you to use a single `config.toml` instead of setting environment variables.
+
+### Configuring Docker Containers with config.toml
+
+The `docker/compose.propeller.yaml` file already includes volume mounts for the generated `config.toml` in each service:
+
+For the manager service:
+
+```yaml
+volumes:
+  - ./config.toml:/config.toml
+```
+
+For the proplet service:
+
+```yaml
+volumes:
+  - ./config.toml:/home/proplet/config.toml
+```
+
+For the proxy service:
+
+```yaml
+volumes:
+  - ./config.toml:/config.toml
+```
+
+After copying the config file, start the Propeller services:
+
+```bash
+make stop-propeller
+make start-propeller
+```
+
+### Verifying Service Connectivity
+
+Once services are running, verify they connected to MQTT:
+
+**Manager logs** (healthy state):
+
+```
+{"time":"2026-02-11T16:57:43.883167345Z","level":"INFO","msg":"Subscribe to MQTT topic completed successfully","duration":"60.157736ms"}
+{"time":"2026-02-11T16:57:43.883519119Z","level":"INFO","msg":"manager service http server listening at manager:7070 without TLS"}
+```
+
+**Proplet logs** (healthy state):
+
+```
+2026-02-11T17:34:32.841840Z  INFO Starting Proplet (Rust) - Instance ID: f34cddff-2855-4e3f-9b55-9d83b982b315
+2026-02-11T17:34:32.877439Z DEBUG Published to topic: m/fcf50e58-a080-4179-a260-e91cdf8fc1c2/c/8259a673-ab09-4b97-8c09-e1f9e60c7c2c/control/proplet/create
+2026-02-11T17:34:32.877443Z  INFO Published discovery message
+2026-02-11T17:34:32.877463Z  INFO Subscribed to topic: m/fcf50e58-a080-4179-a260-e91cdf8fc1c2/c/8259a673-ab09-4b97-8c09-e1f9e60c7c2c/control/manager/start
+2026-02-11T17:34:32.877467Z  INFO Subscribed to topic: m/fcf50e58-a080-4179-a260-e91cdf8fc1c2/c/8259a673-ab09-4b97-8c09-e1f9e60c7c2c/control/manager/stop
+```
+
+### Stopping Magistrala
+
+Magistrala can be stopped using the following:
+
+```bash
+make stop-magistrala
+```
+
+## CI/CD
+
+### GitHub Actions Workflows
+
+Propeller uses GitHub Actions for continuous integration and deployment. The main workflows are located in `.github/workflows/`.
+
+#### Build Workflow (`build.yml`)
+
+The build workflow builds all Propeller services for multiple platforms:
+
+- **Go services** (manager, cli, proxy): Built for linux/amd64, linux/arm64, linux/riscv64
+- **Proplet** (Rust): Built for linux/amd64, linux/arm64, linux/riscv64
+
+##### Go Services Build
+
+The Go services are built using the following matrix:
+
+| OS    | Architecture | Service |
+| ----- | ------------ | ------- |
+| linux | amd64        | manager |
+| linux | arm64        | manager |
+| linux | riscv64      | manager |
+| linux | amd64        | cli     |
+| linux | arm64        | cli     |
+| linux | riscv64      | cli     |
+| linux | amd64        | proxy   |
+| linux | arm64        | proxy   |
+| linux | riscv64      | proxy   |
+
+The build uses `CGO_ENABLED=0` for static binaries and cross-compiles using GCC cross-compilers installed via apt.
+
+##### Proplet (Rust) Build
+
+The proplet is built using Cargo with the following targets:
+
+| Architecture | Rust Target                 |
+| ------------ | --------------------------- |
+| amd64        | x86_64-unknown-linux-gnu    |
+| arm64        | aarch64-unknown-linux-gnu   |
+| riscv64      | riscv64gc-unknown-linux-gnu |
+
+Cross-compilation for arm64 and riscv64 requires installing the appropriate GCC cross-compilers:
+
+```bash
+# For arm64
+sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+# For riscv64
+sudo apt-get install -y gcc-riscv64-linux-gnu libc6-dev-riscv64-cross
+```
+
+The linker is set via environment variables:
+
+```bash
+CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
+```
+
+##### Platform Limitations
+
+- **macOS/Windows builds**: Not supported in CI because:
+  - `loopdev` crate (from guest-components) requires Linux kernel headers (`linux/loop.h`)
+  - Cannot cross-compile from Linux to macOS/Windows due to platform-specific dependencies
+
+- **FreeBSD/NetBSD/OpenBSD**: Not supported because:
+  - Cannot cross-compile from Linux due to `aws-lc-sys` using different pthreads API
+
+### Running Propeller Binaries Directly
+
+For development and debugging, you can run Propeller services directly on your host instead of in Docker containers. This allows easier access to logs, debuggers, and faster iteration.
+
+**Prerequisites**: Magistrala must still be running (via `make start-magistrala`), and you must have a valid `config.toml` in your working directory.
+
+First, stop the Docker-based Propeller services:
+
+```bash
+docker stop propeller-manager propeller-proxy propeller-proplet
+```
+
+#### Starting the Manager
+
+In a terminal, run:
+
+```bash
+propeller-manager
+```
+
+Expected output:
+
+```json
+{"time":"2026-02-13T12:12:38.938209887+03:00","level":"INFO","msg":"MQTT connection established"}
+{"time":"2026-02-13T12:12:38.938257698+03:00","level":"WARN","msg":"MANAGER_COORDINATOR_URL not configured - FL features will not be available"}
+{"time":"2026-02-13T12:12:38.964151961+03:00","level":"INFO","msg":"Subscribe to MQTT topic completed successfully","duration":"25.777171ms"}
+{"time":"2026-02-13T12:12:38.964414628+03:00","level":"INFO","msg":"cron scheduler started","check_interval":60000000000}
+{"time":"2026-02-13T12:12:38.964522773+03:00","level":"INFO","msg":"manager service http server listening at localhost:7070 without TLS"}
+```
+
+The manager exposes an HTTP API on `localhost:7070`.
+
+#### Starting the Proplet
+
+In another terminal:
+
+```bash
+propeller-proplet
+```
+
+Expected output:
+
+```
+2026-02-13T09:13:11.246621Z  INFO Starting Proplet (Rust) - Instance ID: 67b2bcb2-9c56-4c57-b163-085d6ec2c313
+2026-02-13T09:13:11.249067Z  INFO MQTT client created (TLS: false)
+2026-02-13T09:13:11.249145Z  INFO Using Wasmtime runtime
+2026-02-13T09:13:11.249230Z  INFO Starting MQTT event loop
+2026-02-13T09:13:11.739449Z  INFO Starting PropletService
+2026-02-13T09:13:11.739491Z  INFO Published discovery message
+2026-02-13T09:13:11.739499Z  INFO Subscribed to topic: m/.../control/manager/start
+2026-02-13T09:13:11.739507Z  INFO Subscribed to topic: m/.../control/manager/stop
+2026-02-13T09:13:11.739517Z  INFO Subscribed to topic: m/.../registry/server
+```
+
+The proplet automatically registers itself with the manager.
+
+#### Starting the Proxy
+
+The proxy pulls WASM modules from OCI registries. Configure it with environment variables:
+
+```bash
+export PROXY_REGISTRY_URL="docker.io"
+export PROXY_AUTHENTICATE="TRUE"
+export PROXY_REGISTRY_USERNAME=""   # set if registry requires auth
+export PROXY_REGISTRY_PASSWORD=""   # set if registry requires auth
+
+propeller-proxy
+```
+
+Expected output:
+
+```json
+{"time":"2026-02-13T12:14:14.683354969+03:00","level":"INFO","msg":"MQTT connection established"}
+{"time":"2026-02-13T12:14:14.683506536+03:00","level":"INFO","msg":"successfully initialized MQTT and HTTP config"}
+{"time":"2026-02-13T12:14:14.683571649+03:00","level":"INFO","msg":"starting proxy service"}
+{"time":"2026-02-13T12:14:14.705055456+03:00","level":"INFO","msg":"successfully subscribed to topic"}
+```
+
+### Postman Collection
+
+A Postman collection for the Propeller API is available at [`public/postman_collection.json`](../postman_collection.json). Import this into Postman to quickly test all API endpoints.

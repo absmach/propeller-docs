@@ -1,0 +1,144 @@
+---
+title: TEE
+description: Running Addition Example in TEE
+---
+
+This is a Trusted Execution Environment (TEE) example. It runs the addition example inside a secure enclave, protecting code and data from the host OS.
+
+For a comprehensive guide on TEE concepts, Trustee setup, and encrypted workload configuration, see the [Encrypted Workloads](/docs/tee) documentation.
+
+TEE mode is **auto-detected** by the proplet — no environment variable is needed to enable it. When running inside a Confidential VM (Intel TDX or AMD SEV), the proplet automatically detects the TEE environment and enables encrypted workload support.
+
+However, you must configure the Key Broker Service URI so the proplet can retrieve decryption keys:
+
+```bash
+# Required when running in a TEE
+export PROPLET_KBS_URI="http://kbs.example.com:8082"
+
+# Optional: Attestation Agent config path
+export PROPLET_AA_CONFIG_PATH="/etc/default/proplet.toml"
+```
+
+If using the [HAL script](/docs/hal), set `KBS_URL` instead (it gets translated to `PROPLET_KBS_URI` inside the VM).
+
+## Source Code
+
+The source code is the same as the [addition example](https://github.com/absmach/propeller/blob/main/examples/addition/addition.go).
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/addition/addition.go"
+  lang="go"
+/>
+
+## Create Task
+
+To create a task for this example, we need to build the example to wasm and then create a task with encryption enabled.
+
+```bash
+cd propeller
+make addition
+```
+
+Now we can create a task with TEE encryption:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "add", "inputs": [10, 20], "encrypted": true}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "8a3f4e12-9c56-4b78-a901-2d34e5f67890",
+  "name": "add",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": true,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T16:00:00.000000000Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Now we need to upload the wasm file:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/8a3f4e12-9c56-4b78-a901-2d34e5f67890/upload" \
+-F "file=@$(pwd)/build/addition.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "8a3f4e12-9c56-4b78-a901-2d34e5f67890",
+  "name": "add",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": true,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T16:00:00.000000000Z",
+  "updated_at": "2026-02-13T16:01:00.000000000Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Now we can start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/8a3f4e12-9c56-4b78-a901-2d34e5f67890/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The results of the task will be something like this.
+
+```bash
+curl -X GET "http://localhost:7070/tasks/8a3f4e12-9c56-4b78-a901-2d34e5f67890"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "8a3f4e12-9c56-4b78-a901-2d34e5f67890",
+  "name": "add",
+  "kind": "standard",
+  "state": 3,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": true,
+  "proplet_id": "a95517f9-5655-4cf5-a7c8-aa00290b3895",
+  "results": "30",
+  "start_time": "2026-02-13T16:01:05.000000000Z",
+  "finish_time": "2026-02-13T16:01:05.100000000Z",
+  "created_at": "2026-02-13T16:00:00.000000000Z",
+  "updated_at": "2026-02-13T16:01:05.100000000Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```

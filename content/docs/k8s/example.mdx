@@ -1,0 +1,891 @@
+---
+title: Running a WASM Task via the Propeller Kubernetes Operator
+description: Propeller Kubernetes Operator example
+---
+
+This is a Propeller Kubernetes Operator example. It provisions [SuperMQ](https://docs.supermq.absmach.eu/), deploys the operator, registers an external proplet, and runs a WebAssembly addition task.
+
+For a complete reference of the operator's architecture, Custom Resource Definitions, configuration options, and MQTT communication patterns, see the [Propeller Kubernetes Operator documentation](/docs/k8s/operator).
+
+## Source Code
+
+The source code is available in the [propeller-k8s-operator](https://github.com/absmach/propeller-k8s-operator) repository.
+
+## Prerequisites
+
+You need the following tools installed before proceeding:
+
+- **Go 1.24 or later** — required to build and run the operator from source.
+
+  ```bash
+  go version
+  ```
+
+  Your output should look like this:
+
+  ```bash
+  go version go1.25.7 linux/amd64
+  ```
+
+- **Docker** — runs the SuperMQ stack and proplet containers.
+
+  ```bash
+  docker version --format '{{.Server.Version}}'
+  ```
+
+  Your output should look like this:
+
+  ```bash
+  27.5.1
+  ```
+
+- **k3d** — creates a lightweight local Kubernetes cluster.
+
+  ```bash
+  k3d version
+  ```
+
+  Your output should look like this:
+
+  ```bash
+  k3d version v5.8.3
+  k3s version v1.31.5-k3s1 (default)
+  ```
+
+- **kubectl** — manages Kubernetes resources.
+
+  ```bash
+  kubectl version --client --short
+  ```
+
+  Your output should look like this:
+
+  ```bash
+  Client Version: v1.32.1
+  ```
+
+- **make** — runs the operator build targets.
+
+- **mosquitto-clients** — used to verify MQTT connectivity (`mosquitto_pub`, `mosquitto_sub`).
+
+You also need:
+
+- The **Propeller repository** cloned locally with binaries already built. If you have not built it yet, follow the [Getting Started guide](/docs/getting-started) first.
+- The **Propeller k8s operator repository** cloned locally:
+
+  ```bash
+  git clone https://github.com/absmach/propeller-k8s-operator.git
+  cd propeller-k8s-operator
+  ```
+
+This guide uses `propeller/` and `propeller-k8s-operator/` to refer to these directories. Adjust the paths if you cloned them elsewhere.
+
+
+## Step 1 — Create a Kubernetes Cluster
+
+Create a local single-node cluster with k3d:
+
+```bash
+k3d cluster create k3s-default --wait
+```
+
+Your output should look like this:
+
+```bash
+INFO[0000] Created image volume k3d-k3s-default-images
+INFO[0000] Starting new tools node...
+INFO[0001] Creating node 'k3d-k3s-default-server-0'
+INFO[0004] Pulling image 'docker.io/rancher/k3s:v1.31.5-k3s1'
+INFO[0005] Pulling image 'ghcr.io/k3d-io/k3d-tools:5.8.3'
+INFO[0081] Starting node 'k3d-k3s-default-tools'
+INFO[0082] Creating LoadBalancer 'k3d-k3s-default-serverlb'
+INFO[0086] Pulling image 'ghcr.io/k3d-io/k3d-proxy:5.8.3'
+INFO[0115] Using the k3d-tools node to gather environment information
+INFO[0116] HostIP: using network gateway 172.18.0.1 address
+INFO[0116] Starting cluster 'k3s-default'
+INFO[0116] Starting servers...
+INFO[0116] Starting node 'k3d-k3s-default-server-0'
+INFO[0127] All agents already running.
+INFO[0127] Starting helpers...
+INFO[0127] Starting node 'k3d-k3s-default-serverlb'
+INFO[0134] Injecting records for hostAliases (incl. host.k3d.internal) and for 2 network members into CoreDNS configmap...
+INFO[0136] Cluster 'k3s-default' created successfully!
+INFO[0136] You can now use it like this:
+kubectl cluster-info
+```
+
+Verify the cluster is reachable:
+
+```bash
+kubectl cluster-info
+```
+
+Your output should look like this:
+
+```bash
+Kubernetes control plane is running at https://0.0.0.0:34963
+CoreDNS is running at https://0.0.0.0:34963/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://0.0.0.0:34963/api/v1/namespaces/kube-system/services/https:metrics-server:https/proxy
+```
+
+> The port (`34963` above) is assigned randomly by k3d and will differ on your machine.
+
+Verify the node is Ready:
+
+```bash
+kubectl get nodes
+```
+
+Your output should look like this:
+
+```bash
+NAME                       STATUS   ROLES                  AGE   VERSION
+k3d-k3s-default-server-0   Ready    control-plane,master   13s   v1.31.5+k3s1
+```
+
+
+## Step 2 — Install Custom Resource Definitions
+
+Move into the operator directory and install the CRDs into the cluster:
+
+```bash
+cd propeller-k8s-operator
+make install
+```
+
+Your output should look like this:
+
+```bash
+./bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+Downloading sigs.k8s.io/kustomize/kustomize/v5@v5.6.0
+go: downloading sigs.k8s.io/kustomize/kustomize/v5 v5.6.0
+...
+./bin/kustomize build config/crd | kubectl apply -f -
+customresourcedefinition.apiextensions.k8s.io/federatedjobs.propeller.propeller.abstractmachines.fr created
+customresourcedefinition.apiextensions.k8s.io/propellerjobs.propeller.propeller.abstractmachines.fr created
+customresourcedefinition.apiextensions.k8s.io/proplets.propeller.propeller.abstractmachines.fr created
+customresourcedefinition.apiextensions.k8s.io/tasks.propeller.propeller.abstractmachines.fr created
+customresourcedefinition.apiextensions.k8s.io/trainingrounds.propeller.propeller.abstractmachines.fr created
+```
+
+All five CRDs are now registered with the Kubernetes API server. See the [CRD reference](/docs/k8s/operator#custom-resource-definitions) for details on each resource type.
+
+
+## Step 3 — Create a Workloads Namespace
+
+Create a namespace for workload resources (Proplets and Tasks). The operator's own namespace (`propeller-k8s-operator-system`) is created automatically by `make deploy` in Step 8:
+
+```bash
+kubectl create namespace propeller-workloads
+```
+
+Your output should look like this:
+
+```bash
+namespace/propeller-workloads created
+```
+
+
+## Step 4 — Start the Propeller Stack (SuperMQ + Proplet)
+
+The operator communicates with proplets over MQTT via the Magistrala broker stack. Start the full Propeller Docker stack (broker services + Propeller services) from the propeller repository:
+
+```bash
+cd propeller
+make start-all
+```
+
+Your output should look like this:
+
+```bash
+ Container magistrala-spicedb-db Started
+ Container magistrala-auth-redis Started
+ Container magistrala-users-db Started
+ Container magistrala-channels-db Started
+ Container magistrala-clients-db Started
+ Container magistrala-fluxmq-node1 Started
+ Container magistrala-fluxmq-node2 Started
+ Container magistrala-fluxmq-node3 Started
+ Container magistrala-fluxmq-auth Started
+ Container magistrala-nginx Started
+ Container magistrala-users Started
+ Container magistrala-channels Started
+ Container magistrala-clients Started
+ Container magistrala-auth Started
+ Container magistrala-domains Started
+ Container propeller-manager Starting
+ Container propeller-proxy Starting
+ Container propeller-proplet Starting
+ Container propeller-proplet Started
+ Container propeller-proxy Started
+ Container propeller-manager Started
+```
+
+Confirm the containers are running:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "magistrala|propeller"
+```
+
+Your output should look like this:
+
+```bash
+propeller-proplet          Up 15 seconds (healthy)
+propeller-proxy            Up 15 seconds
+propeller-manager          Up 15 seconds
+magistrala-nginx           Up 37 seconds
+magistrala-clients         Up 35 seconds
+magistrala-channels        Up 35 seconds
+magistrala-users           Up 33 seconds
+magistrala-auth            Up 30 seconds
+magistrala-domains         Up 28 seconds
+magistrala-fluxmq-node1    Up 37 seconds
+magistrala-fluxmq-node2    Up 37 seconds
+magistrala-fluxmq-node3    Up 37 seconds
+magistrala-fluxmq-auth     Up 37 seconds
+magistrala-spicedb         Up 37 seconds
+magistrala-users-db        Up 37 seconds
+magistrala-channels-db     Up 37 seconds
+magistrala-clients-db      Up 37 seconds
+magistrala-auth-db         Up 37 seconds
+magistrala-auth-redis      Up 37 seconds
+magistrala-jaeger          Up 37 seconds
+```
+
+> The propeller-manager, propeller-proplet, and propeller-proxy containers start but will fail to connect until you provision credentials. That is expected at this stage.
+
+
+## Step 5 — Provision SuperMQ Credentials
+
+The operator and proplet need SuperMQ credentials—a domain, channel, and two client IDs with keys—to authenticate on MQTT. Use `propeller-cli provision` to create all these resources through the SuperMQ HTTP API and write the result directly to `docker/config.toml`.
+
+### 5.1 — Build propeller-cli
+
+If you have not built `propeller-cli` yet, build it from the propeller repository:
+
+```bash
+cd propeller
+make cli
+```
+
+Your output should look like this:
+
+```bash
+go build -o build/propeller-cli ./cli/cmd
+```
+
+The binary is placed at `propeller/build/propeller-cli`.
+
+### 5.2 — Run the provision wizard
+
+Run the provision wizard, writing the output directly to the docker directory:
+
+```bash
+./build/propeller-cli provision -f docker/config.toml
+```
+
+The CLI opens an interactive form. Fill in your admin credentials and press Enter to accept the suggested defaults for the optional fields:
+
+```
+? Username: admin
+? Password: ••••••••
+? Domain name (leave blank to generate): propeller-test
+? Domain route (leave blank to generate): propeller-test
+? Domain permission: admin
+? Manager client name (leave blank to generate): propeller-manager
+? Number of proplets: 1
+? Channel name (leave blank to generate): propeller-channel
+```
+
+After completing the form, the CLI provisions all resources and writes `docker/config.toml`. Confirm the file was created:
+
+```bash
+cat docker/config.toml
+```
+
+Your output should look like this:
+
+```toml
+# SuperMQ Configuration
+
+[manager]
+domain_id = "3053156a-1994-4776-9e18-8c5d8883647c"
+client_id = "0a96e62c-da03-45eb-9699-b7d8dfa843c9"
+client_key = "8bd64edf-6cec-4cd8-aebd-a8e9695c8d90"
+channel_id = "c19ded40-eeec-448e-86e9-42f490c766a4"
+
+[proplet]
+domain_id = "3053156a-1994-4776-9e18-8c5d8883647c"
+client_id = "b64502f0-25bc-4926-8fbc-ad508f75d96c"
+client_key = "3c905d3c-845b-4b9e-8c51-7ab9a2403163"
+channel_id = "c19ded40-eeec-448e-86e9-42f490c766a4"
+
+[proxy]
+domain_id = "3053156a-1994-4776-9e18-8c5d8883647c"
+client_id = "b64502f0-25bc-4926-8fbc-ad508f75d96c"
+client_key = "3c905d3c-845b-4b9e-8c51-7ab9a2403163"
+channel_id = "c19ded40-eeec-448e-86e9-42f490c766a4"
+```
+
+> The UUIDs shown are from an example run—yours will differ.
+
+### 5.3 — Export credentials as shell variables
+
+Later steps reference these credentials. Export them from `docker/config.toml`:
+
+```bash
+DOMAIN_ID=$(grep 'domain_id' docker/config.toml | head -1 | sed 's/.*= "\(.*\)"/\1/')
+CHAN_ID=$(grep 'channel_id' docker/config.toml | head -1 | sed 's/.*= "\(.*\)"/\1/')
+MGR_ID=$(awk '/^\[manager\]/,/^\[proplet\]/' docker/config.toml | grep 'client_id' | sed 's/.*= "\(.*\)"/\1/')
+MGR_KEY=$(awk '/^\[manager\]/,/^\[proplet\]/' docker/config.toml | grep 'client_key' | sed 's/.*= "\(.*\)"/\1/')
+PROP_ID=$(awk '/^\[proplet\]/,/^\[proxy\]/' docker/config.toml | grep 'client_id' | sed 's/.*= "\(.*\)"/\1/')
+PROP_KEY=$(awk '/^\[proplet\]/,/^\[proxy\]/' docker/config.toml | grep 'client_key' | sed 's/.*= "\(.*\)"/\1/')
+echo "DOMAIN_ID: $DOMAIN_ID"
+echo "CHAN_ID:    $CHAN_ID"
+echo "MGR_ID:    $MGR_ID"
+echo "PROP_ID:   $PROP_ID"
+```
+
+Your output should look like this:
+
+```bash
+DOMAIN_ID: 3053156a-1994-4776-9e18-8c5d8883647c
+CHAN_ID:    c19ded40-eeec-448e-86e9-42f490c766a4
+MGR_ID:    0a96e62c-da03-45eb-9699-b7d8dfa843c9
+PROP_ID:   b64502f0-25bc-4926-8fbc-ad508f75d96c
+```
+
+
+## Step 6 — Update docker/.env and Restart Propeller Containers
+
+The Docker containers read credentials from environment variables in `docker/.env`. Update those values to match the new credentials you just provisioned.
+
+Open `docker/.env` and update the following six lines. Find each one by searching for the variable name and replace the old UUID with your new one:
+
+```bash
+MANAGER_DOMAIN_ID=3053156a-1994-4776-9e18-8c5d8883647c
+MANAGER_CHANNEL_ID=c19ded40-eeec-448e-86e9-42f490c766a4
+MANAGER_CLIENT_ID=0a96e62c-da03-45eb-9699-b7d8dfa843c9
+MANAGER_CLIENT_KEY=8bd64edf-6cec-4cd8-aebd-a8e9695c8d90
+
+PROPLET_DOMAIN_ID=3053156a-1994-4776-9e18-8c5d8883647c
+PROPLET_CHANNEL_ID=c19ded40-eeec-448e-86e9-42f490c766a4
+PROPLET_CLIENT_ID=b64502f0-25bc-4926-8fbc-ad508f75d96c
+PROPLET_CLIENT_KEY=3c905d3c-845b-4b9e-8c51-7ab9a2403163
+
+PROXY_DOMAIN_ID=3053156a-1994-4776-9e18-8c5d8883647c
+PROXY_CHANNEL_ID=c19ded40-eeec-448e-86e9-42f490c766a4
+PROXY_CLIENT_ID=b64502f0-25bc-4926-8fbc-ad508f75d96c
+PROXY_CLIENT_KEY=3c905d3c-845b-4b9e-8c51-7ab9a2403163
+```
+
+> Replace all UUIDs above with the values from `docker/config.toml`. The UUIDs shown here are from the example provisioning run—yours will be different.
+
+Recreate only the propeller containers (not Magistrala) to pick up the new env values:
+
+```bash
+docker compose -f docker/compose.propeller.yaml \
+  --env-file docker/.env \
+  up -d --force-recreate manager proplet proxy
+```
+
+Your output should look like this:
+
+```bash
+ Container propeller-manager Recreated
+ Container propeller-proplet Recreated
+ Container propeller-proxy Recreated
+ Container propeller-manager Starting
+ Container propeller-proplet Starting
+ Container propeller-proxy Starting
+ Container propeller-proplet Started
+ Container propeller-manager Started
+ Container propeller-proxy Started
+```
+
+Wait a few seconds for the proplet to connect, then check its logs:
+
+```bash
+docker logs propeller-proplet 2>&1 | grep -E "INFO|WARN" | tail -10
+```
+
+Your output should look like this:
+
+```bash
+ INFO Starting Proplet (Rust) - Instance ID: dd8fdbc0-148d-46a2-9df6-ed7b3ec80184
+ INFO MQTT client created (TLS: false)
+ INFO Using Wasmtime runtime
+ INFO Starting MQTT event loop
+ INFO Starting PropletService
+ INFO Published discovery message
+ INFO Subscribed to topic: m/3053156a-1994-4776-9e18-8c5d8883647c/c/c19ded40-eeec-448e-86e9-42f490c766a4/control/manager/start
+ INFO Subscribed to topic: m/3053156a-1994-4776-9e18-8c5d8883647c/c/c19ded40-eeec-448e-86e9-42f490c766a4/control/manager/stop
+ INFO Subscribed to topic: m/3053156a-1994-4776-9e18-8c5d8883647c/c/c19ded40-eeec-448e-86e9-42f490c766a4/registry/server
+ INFO Successfully re-subscribed to topics after reconnection
+```
+
+The proplet is subscribed to your new domain and channel. Note the `Instance ID` in the first line—this is a randomly generated UUID created at startup. It is distinct from the `client_id`.
+
+### Verify MQTT Connectivity
+
+Confirm the manager credentials can publish on MQTT. The MQTT client ID must match the SuperMQ client ID:
+
+```bash
+mosquitto_pub -h localhost -p 1883 \
+  -i "$MGR_ID" -u "$MGR_ID" -P "$MGR_KEY" \
+  -t "m/${DOMAIN_ID}/c/${CHAN_ID}/test" \
+  -m '{"test":"hello"}' && echo "MQTT OK"
+```
+
+Your output should look like this:
+
+```bash
+MQTT OK
+```
+
+Confirm the alive payload the proplet sends. Subscribe to the liveness topic and capture one message:
+
+```bash
+timeout 15 mosquitto_sub -h localhost -p 1883 \
+  -i "listener-$$" -u "$PROP_ID" -P "$PROP_KEY" \
+  -t "m/${DOMAIN_ID}/c/${CHAN_ID}/control/proplet/alive" \
+  -C 1
+```
+
+Your output should look like this:
+
+```json
+{"proplet_id":"b64502f0-25bc-4926-8fbc-ad508f75d96c","status":"alive","namespace":"default"}
+```
+
+The `proplet_id` field in alive messages is the proplet's `client_id`. The operator matches this value against the `spec.connectionConfig.clientId` field in `Proplet` CRs to identify which Proplet a message belongs to.
+
+
+## Step 7 — Stop the Docker Propeller Manager
+
+The k8s operator will act as the manager. Stop the Docker manager container so it does not compete for the same MQTT subscriptions:
+
+```bash
+docker stop propeller-manager
+```
+
+Your output should look like this:
+
+```bash
+propeller-manager
+```
+
+The proplet and proxy containers can stay running—only the manager is being replaced by the operator.
+
+
+## Step 8 — Deploy the Operator
+
+The operator runs as a pod inside the k3d cluster. Deploying it requires four steps: configure credentials, build a Docker image, load it into k3d, and apply the manifests.
+
+> **Local development workflow:** This example builds the operator image locally and imports it directly into k3d, avoiding the need for a container registry. This is the fastest workflow for local development and testing. For production deployments, you would typically push the image to a registry and let Kubernetes pull it normally.
+
+### 8.1 — Configure credentials in manager.yaml
+
+Open `config/manager/manager.yaml` and replace the placeholder values in the `args` list with the credentials provisioned in Step 5. Because the operator runs **inside** k3d, the MQTT address must use `host.k3d.internal` (the DNS name k3d injects for the host machine's Docker network gateway) rather than `localhost`:
+
+```yaml
+args:
+  - --leader-elect
+  - --health-probe-bind-address=:8081
+  - --mqtt-address=tcp://host.k3d.internal:1883
+  - --mqtt-qos=2
+  - --mqtt-timeout=30s
+  - --domain-id=3053156a-1994-4776-9e18-8c5d8883647c
+  - --channel-id=c19ded40-eeec-448e-86e9-42f490c766a4
+  - --client-id=0a96e62c-da03-45eb-9699-b7d8dfa843c9
+  - --client-key=8bd64edf-6cec-4cd8-aebd-a8e9695c8d90
+```
+
+Also add `imagePullPolicy: Never` immediately after the `image:` line so k3d uses the locally-loaded image without trying to pull it from a registry:
+
+```yaml
+image: controller:latest
+imagePullPolicy: Never
+```
+
+> Replace all UUIDs above with the values from `docker/config.toml` (written in Step 5).
+
+> **Registry-based images:** If you push the image to a container registry instead of importing it locally, omit the `imagePullPolicy: Never` line (or set it to `IfNotPresent`). If your registry requires authentication, create an image pull secret and reference it in the Deployment:
+>
+> ```bash
+> kubectl create secret docker-registry regcred \
+>   --docker-server=<registry> \
+>   --docker-username=<user> \
+>   --docker-password=<password> \
+>   -n propeller-k8s-operator-system
+> ```
+>
+> Then add `imagePullSecrets: [{name: regcred}]` to the pod spec in `config/manager/manager.yaml` before deploying.
+
+### 8.2 — Build the Docker image
+
+```bash
+cd propeller-k8s-operator
+make docker-build IMG=propeller-k8s-operator:latest
+```
+
+Your output should look like this:
+
+```bash
+docker build -t propeller-k8s-operator:latest .
+...
+#16 [builder 9/9] RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager cmd/main.go
+#16 DONE 706.7s
+...
+#18 naming to docker.io/library/propeller-k8s-operator:latest done
+```
+
+### 8.3 — Load the image into k3d
+
+k3d nodes run their own containerd instance and cannot access images from the host Docker daemon directly. You must import the image explicitly so it is available in the cluster's containerd store:
+
+```bash
+k3d image import propeller-k8s-operator:latest -c k3s-default
+```
+
+Your output should look like this:
+
+```bash
+INFO[0000] Importing image(s) into cluster 'k3s-default'
+INFO[0001] Saving 1 image(s) from runtime...
+INFO[0005] Importing images into nodes...
+INFO[0013] Successfully imported image(s)
+INFO[0015] Successfully imported 1 image(s) into 1 cluster(s)
+```
+
+> **Skip this step if using a registry.** If you pushed the image to a registry accessible from inside the cluster, skip 8.2 and 8.3 entirely and pass the registry image reference directly to `make deploy` in 8.4.
+
+### 8.4 — Deploy with make deploy
+
+```bash
+make deploy IMG=propeller-k8s-operator:latest
+```
+
+Your output should look like this:
+
+```bash
+./bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+cd config/manager && ./bin/kustomize edit set image controller=propeller-k8s-operator:latest
+./bin/kustomize build config/default | kubectl apply -f -
+namespace/propeller-k8s-operator-system created
+customresourcedefinition.apiextensions.k8s.io/federatedjobs.propeller.propeller.abstractmachines.fr unchanged
+customresourcedefinition.apiextensions.k8s.io/propellerjobs.propeller.propeller.abstractmachines.fr unchanged
+customresourcedefinition.apiextensions.k8s.io/proplets.propeller.propeller.abstractmachines.fr unchanged
+customresourcedefinition.apiextensions.k8s.io/tasks.propeller.propeller.abstractmachines.fr unchanged
+customresourcedefinition.apiextensions.k8s.io/trainingrounds.propeller.propeller.abstractmachines.fr unchanged
+serviceaccount/propeller-k8s-operator-controller-manager created
+...
+deployment.apps/propeller-k8s-operator-controller-manager created
+```
+
+Wait for the operator pod to become ready:
+
+```bash
+kubectl get pods -n propeller-k8s-operator-system
+```
+
+Your output should look like this:
+
+```bash
+NAME                                                         READY   STATUS    RESTARTS   AGE
+propeller-k8s-operator-controller-manager-5485b6db9d-kvz8d   1/1     Running   0          24s
+```
+
+Check the operator logs to confirm it started and connected to MQTT:
+
+```bash
+kubectl logs -n propeller-k8s-operator-system \
+  deployment/propeller-k8s-operator-controller-manager | head -30
+```
+
+Your output should look like this:
+
+```bash
+2026-03-04T15:19:49Z	INFO	mqtt	MQTT connection lost
+2026-03-04T15:19:49Z	INFO	setup	starting manager
+2026-03-04T15:19:49Z	INFO	controller-runtime.metrics	Starting metrics server
+2026-03-04T15:19:49Z	INFO	Starting Controller	{"controller": "proplet", ...}
+2026-03-04T15:19:49Z	INFO	Starting workers	{"controller": "proplet", ..., "worker count": 1}
+2026-03-04T15:19:49Z	INFO	Starting Controller	{"controller": "task", ...}
+2026-03-04T15:19:49Z	INFO	Starting workers	{"controller": "task", ..., "worker count": 1}
+...
+```
+
+> The first log line says `MQTT connection lost`. This is a mislabeled log in the operator source—it fires from the `SetOnConnectHandler` callback and actually means the MQTT connection was **established**. All five controllers start successfully.
+
+
+## Step 9 — Create an External Proplet
+
+Register the running docker proplet as an external Proplet CRD. The `spec.connectionConfig.clientId` must match the `proplet_id` the proplet sends in alive messages (verified in step 6 to be the proplet's `client_id`). See the [Proplet spec reference](/docs/k8s/features#proplet-spec-reference) for all available fields.
+
+```bash
+kubectl apply -n propeller-workloads -f - <<'EOF'
+apiVersion: propeller.propeller.abstractmachines.fr/v1
+kind: Proplet
+metadata:
+  name: docker-proplet
+spec:
+  type: external
+  external:
+    deviceType: docker-container
+    capabilities:
+      - wasm
+      - wasmtime
+  connectionConfig:
+    mqttAddress: "tcp://localhost:1883"
+    domainId: "3053156a-1994-4776-9e18-8c5d8883647c"
+    channelId: "c19ded40-eeec-448e-86e9-42f490c766a4"
+    clientId: "b64502f0-25bc-4926-8fbc-ad508f75d96c"
+    clientKey: "3c905d3c-845b-4b9e-8c51-7ab9a2403163"
+    mqttQos: 2
+    mqttTimeout: 30s
+EOF
+```
+
+Your output should look like this:
+
+```bash
+proplet.propeller.propeller.abstractmachines.fr/docker-proplet created
+```
+
+> Replace `domainId`, `channelId`, `clientId`, and `clientKey` with your provisioned values.
+
+The proplet publishes an alive heartbeat every 10 seconds. Wait up to 15 seconds, then check the Proplet status:
+
+```bash
+kubectl get proplets -n propeller-workloads
+```
+
+Your output should look like this:
+
+```bash
+NAME               TYPE       PHASE     READY   TASKS   REPLICAS   LAST SEEN   AGE
+docker-proplet     external   Running   True    0                  28s         3m57s
+```
+
+Inspect the full status:
+
+```bash
+kubectl describe proplet docker-proplet -n propeller-workloads
+```
+
+Your output should look like this:
+
+```bash
+Name:         docker-proplet
+Namespace:    propeller-workloads
+...
+Spec:
+  Connection Config:
+    Channel Id:    c19ded40-eeec-448e-86e9-42f490c766a4
+    Client Id:     b64502f0-25bc-4926-8fbc-ad508f75d96c
+    Client Key:    3c905d3c-845b-4b9e-8c51-7ab9a2403163
+    Domain Id:     3053156a-1994-4776-9e18-8c5d8883647c
+    Mqtt Address:  tcp://localhost:1883
+    Mqtt Qos:      2
+    Mqtt Timeout:  30s
+  External:
+    Capabilities:
+      wasm
+      wasmtime
+    Device Type:  docker-container
+  Type:           external
+Status:
+  Available Resources:
+  Conditions:
+    Last Transition Time:  2026-03-04T11:25:42Z
+    Message:               External proplet is ready and connected
+    Reason:                PropletReady
+    Status:                True
+    Type:                  Ready
+    Last Transition Time:  2026-03-04T11:25:42Z
+    Message:               Proplet last seen 28.418580987s ago
+    Reason:                PropletOnline
+    Status:                True
+    Type:                  Connected
+  Last Seen:               2026-03-04T11:25:42Z
+  Phase:                   Running
+  Task Count:              0
+Events:                    <none>
+```
+
+Both `Ready` and `Connected` conditions are `True`. The `Last Seen` timestamp updates with every heartbeat.
+
+### Proplet Spec Reference
+
+The table below lists common fields. For the complete specification, see the [features documentation](/docs/k8s/features#proplet-spec-reference).
+
+| Field                            | Type                 | Required       | Description                                         |
+| -------------------------------- | -------------------- | -------------- | --------------------------------------------------- |
+| `type`                           | `k8s` \              | `external`     | Yes                                                 |
+| `k8s.image`                      | string               | Yes (k8s only) | Container image for the proplet pod                 |
+| `k8s.replicas`                   | int                  | No             | Number of pod replicas (default: 1)                 |
+| `external.deviceType`            | string               | No             | Device label for scheduling (e.g. `raspberry-pi-4`) |
+| `external.capabilities`          | []string             | No             | Capabilities advertised for task matching           |
+| `connectionConfig.mqttAddress`   | string               | Yes            | Broker URL (e.g. `tcp://mqtt:1883`)                 |
+| `connectionConfig.domainId`      | string               | Yes            | SuperMQ domain ID                                   |
+| `connectionConfig.channelId`     | string               | Yes            | SuperMQ channel ID                                  |
+| `connectionConfig.clientId`      | string               | Yes            | SuperMQ client credential ID                        |
+| `connectionConfig.clientKey`     | string               | No*            | SuperMQ client secret (inline)                      |
+
+### Proplet Status Reference
+
+| Field                     | Description                                  |
+| ------------------------- | -------------------------------------------- |
+| `phase`                   | `Initializing`, `Running`, or `Offline`      |
+| `conditions[Ready]`       | True when proplet is ready to accept tasks   |
+| `conditions[Connected]`   | True when MQTT heartbeat is current          |
+| `lastSeen`                | Timestamp of most recent alive heartbeat     |
+| `taskCount`               | Total tasks executed since registration      |
+
+
+## Step 10 — Run a Task
+
+Create a Task that targets the docker proplet. This uses the addition WASM module (the same binary used in the [addition example](/docs/examples/addition))—a minimal module that exports a `main` function taking two integers and returning their sum. See the [Task spec reference](/docs/k8s/features#task-spec-reference) for all available fields.
+
+```bash
+kubectl apply -n propeller-workloads -f - <<'EOF'
+apiVersion: propeller.propeller.abstractmachines.fr/v1
+kind: Task
+metadata:
+  name: addition-wasm
+spec:
+  name: addition-wasm
+  functionName: main
+  file: "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"
+  inputs:
+    - 10
+    - 32
+  propletSelector:
+    propletId: "docker-proplet"
+  daemon: false
+EOF
+```
+
+Your output should look like this:
+
+```bash
+task.propeller.propeller.abstractmachines.fr/addition-wasm created
+```
+
+Check task status:
+
+```bash
+kubectl get tasks -n propeller-workloads
+```
+
+Your output should look like this:
+
+```bash
+NAME            PHASE       MODE   PROPLET            START TIME   FINISH TIME   PREFERRED TYPE   AGE
+addition-wasm   completed          docker-proplet     13s          13s           any              13s
+```
+
+The task went from `pending` to `completed` in under 13 seconds.
+
+
+## Step 11 — Verify the Result
+
+Inspect the full task status to confirm the WASM module executed and the result was returned:
+
+```bash
+kubectl describe task addition-wasm -n propeller-workloads
+```
+
+Your output should look like this:
+
+```bash
+Name:         addition-wasm
+Namespace:    propeller-workloads
+...
+Spec:
+  Daemon:         false
+  File:           AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL
+  Function Name:  main
+  Inputs:
+    10
+    32
+  Kind:                    standard
+  Name:                    addition-wasm
+  Preferred Proplet Type:  any
+  Priority:                50
+  Proplet Selector:
+    Proplet Id:  docker-proplet
+Status:
+  Assigned Proplet:  docker-proplet
+  Conditions:
+    Last Transition Time:  2026-03-04T11:26:19Z
+    Message:               External task is running
+    Reason:                Running
+    Status:                True
+    Type:                  Started
+  Finished At:             2026-03-04T11:26:19Z
+  Phase:                   completed
+  Results:                 42
+  Started At:              2026-03-04T11:26:19Z
+  Updated At:              2026-03-04T11:26:19Z
+Events:                    <none>
+```
+
+`status.results` is `42` — the WASM module computed `10 + 32 = 42` correctly.
+
+Extract just the result with jsonpath:
+
+```bash
+kubectl get task addition-wasm -n propeller-workloads \
+  -o jsonpath='{.status.results}'
+```
+
+Your output should look like this:
+
+```bash
+42
+```
+
+Confirm in the proplet logs that execution actually happened on the docker container:
+
+```bash
+docker logs propeller-proplet 2>&1 | grep -E "42|result|Result|task" | tail -10
+```
+
+Your output should look like this:
+
+```bash
+ INFO Task 3732d66f-eb2b-471f-bace-024fa3f878e4 completed successfully. Result: 42
+ INFO Publishing result for task 3732d66f-eb2b-471f-bace-024fa3f878e4
+ DEBUG Published to topic: m/3053156a-1994-4776-9e18-8c5d8883647c/c/c19ded40-eeec-448e-86e9-42f490c766a4/control/proplet/results
+ INFO Successfully published result for task 3732d66f-eb2b-471f-bace-024fa3f878e4
+```
+
+The proplet executed the WASM binary with Wasmtime, published the result to `control/proplet/results`, and the operator received it and stored it in `status.results`.
+
+### Task Spec Reference
+
+The table below lists common fields. For the complete specification, see the [features documentation](/docs/k8s/features#task-spec-reference).
+
+| Field                                | Type                | Required   | Description                                                            |
+| ------------------------------------ | ------------------- | ---------- | ---------------------------------------------------------------------- |
+| `name`                               | string              | Yes        | Task name                                                              |
+| `functionName`                       | string              | No         | Exported WASM function to invoke; defaults to the task name if omitted |
+| `file`                               | bytes               | No         | WASM binary encoded as a base64 string in YAML                         |
+| `imageUrl`                           | string              | No         | OCI image reference for the WASM module                                |
+| `inputs`                             | []string            | No         | Inputs passed to the function; numeric values are accepted             |
+| `propletSelector.propletId`          | string              | No         | Target a specific Proplet by name                                      |
+| `propletSelector.matchCapabilities`  | []string            | No         | Target Proplets with all listed capabilities                           |
+| `daemon`                             | bool                | No         | If true, task runs indefinitely (default: false)                       |
+
+### Task Status Reference
+
+| Field             | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `phase`           | `pending`, `scheduled`, `running`, `completed`, `failed`, `skipped`, or `interrupted`  |
+| `assignedProplet` | Name of the Proplet executing this task                                                |
+| `startedAt`       | When execution began                                                                   |
+| `finishedAt`      | When execution ended                                                                   |
+| `results`         | Return value from the WASM function                                                    |
+| `error`           | Error message when `phase` is `failed`                                                 |

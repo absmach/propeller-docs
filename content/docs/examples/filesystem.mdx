@@ -1,0 +1,189 @@
+---
+title: Filesystem
+description: Filesystem example
+---
+
+This is a simple filesystem example. This WASI P1 module writes a file to a preopened directory, reads it back, and prints the result to stdout — verifying that the guest has read/write access to the host filesystem. For this example we need to enable preopened directories in the guest's configuration. To do this, we need to set the `PROPLET_DIRS` environment variable to `/tmp` in the guest's configuration.
+
+```bash
+export PROPLET_DIRS="/tmp"
+```
+
+## Source Code
+
+The source code is available in the [examples/filesystem](https://github.com/absmach/propeller/blob/main/examples/filesystem/src/main.rs) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/filesystem/src/main.rs"
+  lang="rust"
+/>
+
+## Create Task
+
+To create a task for this example, we need to build the example to wasm and then create a task with the wasm file.
+
+```bash
+cd propeller
+make filesystem
+```
+
+Now we can create a task with the wasm file:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "_start"}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "9fa47dfa-d96a-4fb5-a3e5-07aa9abdb841",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T12:41:28.911748133Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+Now we need to upload the wasm file:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/9fa47dfa-d96a-4fb5-a3e5-07aa9abdb841/upload" \
+-F "file=@$(pwd)/build/filesystem.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "9fa47dfa-d96a-4fb5-a3e5-07aa9abdb841",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T13:56:34.479984121Z",
+  "updated_at": "2026-02-13T13:56:50.205271293Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+Now we can start the task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/9fa47dfa-d96a-4fb5-a3e5-07aa9abdb841/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The results of the task will be something like this.
+
+```bash
+curl -X GET "http://localhost:7070/tasks/9fa47dfa-d96a-4fb5-a3e5-07aa9abdb841"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "9fa47dfa-d96a-4fb5-a3e5-07aa9abdb841",
+  "name": "_start",
+  "kind": "standard",
+  "state": 3,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "proplet_id": "a95517f9-5655-4cf5-a7c8-aa00290b3895",
+  "results": "",
+  "start_time": "2026-02-13T13:56:55.42199427Z",
+  "finish_time": "2026-02-13T13:56:55.574175392Z",
+  "created_at": "2026-02-13T13:56:34.479984121Z",
+  "updated_at": "2026-02-13T13:56:55.574175341Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Invoking Using WasmTime
+
+```bash
+wasmtime --dir /tmp ./build/filesystem.wasm
+```
+
+The results of the task will be something like this.
+
+```bash
+Writing 88 bytes to /tmp/proplet-fs-test-1770991174.txt
+Write OK
+Read back 88 bytes:
+Proplet filesystem test
+Timestamp: 1770991174
+Path: /tmp/proplet-fs-test-1770991174.txt
+Round-trip verification OK
+Append OK
+Listing /tmp:
+  .ICE-unix
+  .X1-lock
+  .X11-unix
+  .XIM-unix
+  .fbdffd3bf7dbbafd-00000000.so
+  .font-unix
+  .org.chromium.Chromium.STgQkz
+  gopls-tempmod259847075
+  juju-wakatime-cli-config-mutex
+  node-compile-cache
+  org.chromium.Chromium.xjwT6F
+  proc-macro-srv12d4b-0
+  proc-macro-srv1dace-0
+  proc-macro-srv1dacf-0
+  proc-macro-srv1f152-0
+  proc-macro-srv1f153-0
+  proc-macro-srv1f154-0
+  proc-macro-srv27fb4-0
+  proc-macro-srv27fb5-0
+  proc-macro-srv27fb6-0
+  proc-macro-srv27fb7-0
+  proc-macro-srv2bddc-0
+  proc-macro-srv2bddd-0
+  proc-macro-srv2bdde-0
+  proc-macro-srv2bddf-0
+  proc-macro-srv2bde0-0
+  proplet-fs-test-1770991174.txt
+  proplet_c8b06138-6542-49dc-9633-f382c4a965db.wasm
+  scoped_dir71lcW5
+  scoped_dir8W0hZm
+  sddm-:0-mkdKqV
+  sddm-auth-907d5f22-aa44-47f1-a045-c2e8ff71056d
+  systemd-private-2d3804d1b11b4918b1f3c0d3c7c1c5c8-bluetooth.service-0O7EFY
+  systemd-private-2d3804d1b11b4918b1f3c0d3c7c1c5c8-dbus-broker.service-RkfelQ
+  systemd-private-2d3804d1b11b4918b1f3c0d3c7c1c5c8-iio-sensor-proxy.service-vUI7Xx
+  systemd-private-2d3804d1b11b4918b1f3c0d3c7c1c5c8-polkit.service-hZZn8R
+  systemd-private-2d3804d1b11b4918b1f3c0d3c7c1c5c8-systemd-logind.service-mEtxyF
+  systemd-private-2d3804d1b11b4918b1f3c0d3c7c1c5c8-upower.service-51AZUz
+Delete OK
+All filesystem operations succeeded
+```

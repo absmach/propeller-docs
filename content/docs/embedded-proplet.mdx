@@ -1,0 +1,560 @@
+---
+title: Embedded Proplet
+description: "Run WebAssembly on microcontrollers with Propeller's Embedded Proplet. Executes Wasm workloads on ESP32-S3 and Zephyr RTOS devices using WAMR — with as little as 128 KB RAM."
+---
+
+The Embedded Proplet brings WebAssembly execution to microcontrollers like the ESP32-S3. It is a C firmware application running on Zephyr RTOS that connects to a Propeller [Manager](/docs/manager) over MQTT and executes WebAssembly tasks using the WebAssembly Micro Runtime (WAMR). When the Manager sends a task, the Embedded Proplet decodes the WASM module, runs it locally on the device, and reports results back — enabling computation at the true edge with as little as 128 KB RAM.
+
+## Why the Embedded Proplet
+
+### Extending to Constrained Devices
+
+The standard [Proplet](/docs/proplet) runs on Linux with Wasmtime, requiring ~100 MB RAM minimum. The Embedded Proplet targets microcontrollers with kilobytes of memory, enabling Propeller to reach sensors, actuators, and other embedded devices at the true edge.
+
+### Native RTOS Integration
+
+Built on Zephyr RTOS, the Embedded Proplet integrates with hardware-level features like WiFi drivers, interrupt handling, and real-time scheduling. This is essential for devices that interact directly with physical hardware.
+
+### Same Protocol, Different Runtime
+
+The Embedded Proplet uses the same MQTT messaging protocol and topic structure as the standard Proplet. The Manager sees it as just another Proplet—it publishes discovery messages, receives tasks, and reports results identically.
+
+### Differences from Standard Proplet
+
+| Feature          | Standard Proplet          | Embedded Proplet        |
+| ---------------- | ------------------------- | ----------------------- |
+| Runtime          | Wasmtime                  | WAMR                    |
+| OS               | Linux                     | Zephyr RTOS             |
+| Min RAM          | ~100 MB                   | 128 KB                  |
+| WASI support     | Supported                 | Not supported           |
+| Module format    | Go / Rust / TinyGo + WASI | WAT / bare WASM         |
+| I/O types        | File, network, env vars   | Integer values (i32)    |
+| Concurrent tasks | Unlimited                 | 10 running, 4 monitored |
+
+## Prerequisites
+
+Before building the Embedded Proplet, set up the development environment as described in the [Zephyr Guide](/docs/zephyr). You'll need:
+
+- Zephyr SDK (v0.16.0+)
+- ESP-IDF (v5.1+) for ESP32-S3
+- West build system
+- WAMR submodule initialized
+- The Propeller stack running (Manager + MQTT broker) — follow the [Getting Started](/docs/getting-started) guide
+
+```bash
+cd propeller/embed-proplet
+git submodule update --init --recursive
+```
+
+## Building and Flashing
+
+### Configure Device Identity
+
+Edit `src/main.c` with your device settings:
+
+```c
+#define WIFI_SSID "<YOUR_WIFI_SSID>"
+#define WIFI_PSK "<YOUR_WIFI_PSK>"
+#define PROPLET_ID "<YOUR_PROPLET_ID>"
+#define DOMAIN_ID "<YOUR_DOMAIN_ID>"
+#define CHANNEL_ID "<YOUR_CHANNEL_ID>"
+```
+
+Set the MQTT broker address and port in `src/mqtt_client.c` to the host running your Propeller stack:
+
+```c
+#define MQTT_BROKER_HOSTNAME "10.42.0.1" /* Replace with your broker's IP */
+#define MQTT_BROKER_PORT 1883
+```
+
+The WiFi driver connects on **2.4 GHz only** (`WIFI_FREQ_BAND_2_4_GHZ` in `wifi_manager.c`). 5 GHz networks are not supported.
+
+### Build for ESP32-S3
+
+```bash
+cd embed-proplet
+west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
+```
+
+Expected build output:
+
+```
+-- west build: generating a build system
+-- Zephyr version: 4.0.99 (/path/to/zephyrproject/zephyr)
+-- Board: esp32s3_devkitc, qualifiers: esp32s3/procpu
+-- ZEPHYR_TOOLCHAIN_VARIANT: zephyr
+-- Found toolchain: zephyr 0.17.0 (/path/to/zephyr-sdk-0.17.0)
+-- Configuring done
+-- Build files have been written to: /path/to/propeller/embed-proplet/build
+[1/1041] Building C object CMakeFiles/app.dir/src/cJSON.c.obj
+[2/1041] Building C object CMakeFiles/app.dir/src/main.c.obj
+[3/1041] Building C object CMakeFiles/app.dir/src/mqtt_client.c.obj
+[4/1041] Building C object CMakeFiles/app.dir/src/task_monitor.c.obj
+[5/1041] Building C object CMakeFiles/app.dir/src/wasm_handler.c.obj
+[6/1041] Building C object CMakeFiles/app.dir/src/wifi_manager.c.obj
+...
+[1041/1041] Linking CXX executable zephyr/zephyr.elf
+
+Memory region         Used Size  Region Size  %age Used
+   iram0_0_seg:       72676 B       527 KB     13.45%
+   dram0_0_seg:      258888 B       318 KB     79.30%
+       IDT_LIST:          0 GB         2 KB      0.00%
+```
+
+The firmware image (`zephyr.bin`) is approximately 640 KB.
+
+### Flash the Device
+
+```bash
+west flash
+```
+
+### Monitor Output
+
+```bash
+west espressif monitor
+```
+
+Expected startup sequence:
+
+```
+[00:00:00.001,000] <inf> main: Starting Proplet...
+[00:00:00.045,000] <inf> wifi_manager: Attempting to connect to Wi-Fi...
+[00:00:02.317,000] <inf> wifi_manager: Connected to Wi-Fi
+[00:00:02.318,000] <inf> wifi_manager: Successfully connected to Wi-Fi
+[00:00:02.319,000] <inf> task_monitor: Task monitor initialized (max tasks: 4)
+[00:00:02.320,000] <inf> mqtt_client: Attempting to connect to the MQTT broker...
+[00:00:02.890,000] <inf> mqtt_client: MQTT connection accepted by broker
+[00:00:02.891,000] <inf> mqtt_client: MQTT client connected successfully
+[00:00:02.892,000] <inf> mqtt_client: Subscribing to topics for channel ID: <channel_id>
+[00:00:02.950,000] <inf> mqtt_client: Subscribed successfully
+[00:00:02.951,000] <inf> mqtt_client: Successfully subscribed to topics for channel ID: <channel_id>
+[00:00:02.952,000] <inf> mqtt_client: Discovery published successfully to topic: m/<domain_id>/c/<channel_id>/control/proplet/create
+[00:00:02.953,000] <inf> mqtt_client: QoS 1 Message published successfully
+```
+
+## Architecture
+
+The Embedded Proplet consists of several C modules that handle different responsibilities.
+
+### Source Components
+
+| File             | Purpose                                               |
+| ---------------- | ----------------------------------------------------- |
+| `main.c`         | Entry point, WiFi/MQTT initialization, heartbeat loop |
+| `wifi_manager.c` | WiFi connection management                            |
+| `mqtt_client.c`  | MQTT protocol, discovery, subscriptions               |
+| `wasm_handler.c` | WAMR module loading and execution                     |
+| `task_monitor.c` | Task state tracking and metrics                       |
+| `cJSON.c`        | JSON parsing for MQTT payloads                        |
+
+### WAMR Integration
+
+The CMake configuration sets up WAMR for the Zephyr/Xtensa target:
+
+```cmake
+set(WAMR_BUILD_PLATFORM "zephyr")
+set(WAMR_BUILD_TARGET "XTENSA")
+set(WAMR_BUILD_INTERP 1)          # interpreter mode enabled
+set(WAMR_BUILD_AOT 1)             # AOT mode enabled
+set(WAMR_BUILD_LIBC_BUILTIN 1)    # built-in libc (basic math/string)
+set(WAMR_BUILD_LIBC_WASI 0)       # WASI disabled
+set(WAMR_BUILD_GLOBAL_HEAP_POOL 1)
+set(WAMR_BUILD_GLOBAL_HEAP_SIZE 40960)  # 40 KB
+```
+
+WAMR supports both interpreter and AOT modes. AOT-compiled modules are more compact and faster but require pre-compilation for the target architecture. `WAMR_BUILD_LIBC_WASI` is explicitly disabled because WASI file, socket, and lock support is not yet available on the Zephyr platform.
+
+### Memory Budget
+
+The ESP32-S3 has 520 KB SRAM. Typical allocation:
+
+| Subsystem       | Memory  |
+| --------------- | ------- |
+| Zephyr kernel   | ~100 KB |
+| WiFi/MQTT stack | ~150 KB |
+| Logging buffers | ~20 KB  |
+| WAMR + modules  | ~40 KB  |
+| User heap       | ~210 KB |
+
+Memory limits from `CMakeLists.txt`:
+
+- Global WAMR heap: 40 KB
+- Per-module stack: 16 KB
+- Per-module heap: 16 KB
+
+## Configuration
+
+### Zephyr Configuration (`prj.conf`)
+
+Key settings in the project configuration:
+
+```ini
+# Networking
+CONFIG_NETWORKING=y
+CONFIG_NET_TCP=y
+CONFIG_NET_UDP=y
+CONFIG_NET_SOCKETS=y
+CONFIG_NET_DHCPV4=y
+
+# WiFi
+CONFIG_WIFI=y
+CONFIG_WIFI_NM=y
+
+# MQTT
+CONFIG_MQTT_LIB=y
+CONFIG_MQTT_KEEPALIVE=30
+CONFIG_MQTT_CLEAN_SESSION=n
+# CONFIG_MQTT_LIB_TLS=y  # Uncomment to enable TLS
+
+# HTTP client (used for registry/model fetching)
+CONFIG_HTTP_CLIENT=y
+CONFIG_HTTP_CLIENT_BUFFER_SIZE=4096
+
+# Memory
+CONFIG_HEAP_MEM_POOL_SIZE=65536
+CONFIG_MAIN_STACK_SIZE=8192
+
+# Logging
+CONFIG_LOG=y
+CONFIG_LOG_DEFAULT_LEVEL=3
+
+# Metrics (CPU load, heap stats, thread monitoring)
+CONFIG_SYS_HEAP_RUNTIME_STATS=y
+CONFIG_THREAD_MONITOR=y
+CONFIG_CPU_LOAD=y
+```
+
+`CONFIG_MQTT_CLEAN_SESSION=n` preserves broker subscriptions across reconnections. `CONFIG_MQTT_KEEPALIVE=30` sets the keepalive to 30 seconds. `CONFIG_WIFI_ESP32` is board-specific and belongs in the board overlay file, not here.
+
+### Board-Specific Configuration
+
+Create `boards/esp32s3_devkitc_procpu.conf` for board-specific overrides:
+
+```ini
+CONFIG_WIFI_ESP32=y
+CONFIG_ESP32_WIFI_STA_RECONNECT=y
+CONFIG_ESP32_WIFI_STA_AUTO_DHCPV4=y
+CONFIG_ESP32_WIFI_AP_STA_MODE=n
+CONFIG_ESP32_WIFI_DEBUG_PRINT=y
+```
+
+### Runtime Constants
+
+In `src/main.c`:
+
+```c
+#define PROPLET_LIVELINESS_INTERVAL_MS 10000   // Heartbeat frequency
+#define PROPLET_METRICS_INTERVAL_MS 30000      // System metrics frequency
+#define PROPLET_TASK_METRICS_INTERVAL_MS 10000 // Task metrics frequency
+```
+
+## MQTT Communication
+
+The Embedded Proplet connects to the broker on port `1883` (no TLS by default). It uses the namespace `"embedded"` in all metrics payloads to identify itself to the Manager.
+
+The `PROPLET_ID` defined in `src/main.c` is used as both the MQTT **client ID** and **username** when connecting to the broker. This value must match the Magistrala client ID registered with the broker, otherwise the connection will be rejected.
+
+### MQTT Topics
+
+| Direction | Topic                                                 | Purpose                              |
+| --------- | ----------------------------------------------------- | ------------------------------------ |
+| Publish   | `m/<domain>/c/<channel>/control/proplet/create`       | Discovery on startup                 |
+| Publish   | `m/<domain>/c/<channel>/control/proplet/alive`        | Periodic alive heartbeat             |
+| Publish   | `m/<domain>/c/<channel>/control/proplet/metrics`      | System metrics (CPU, memory, uptime) |
+| Publish   | `m/<domain>/c/<channel>/control/proplet/task_metrics` | Per-task execution metrics           |
+| Publish   | `m/<domain>/c/<channel>/control/proplet/results`      | Task execution results               |
+| Publish   | `m/<domain>/c/<channel>/registry/proplet`             | Request a WASM module from registry  |
+| Subscribe | `m/<domain>/c/<channel>/control/manager/start`        | Receive task start command           |
+| Subscribe | `m/<domain>/c/<channel>/control/manager/stop`         | Receive task stop command            |
+| Subscribe | `m/<domain>/c/<channel>/registry/server`              | Receive WASM module from registry    |
+
+### Discovery
+
+On startup, the Embedded Proplet publishes a discovery message to register with the Manager:
+
+```c
+publish_discovery(domain_id, PROPLET_ID, channel_id);
+```
+
+The Manager receives this and adds the Proplet to its fleet.
+
+### Heartbeats
+
+The main loop publishes periodic messages:
+
+- **Alive messages** (every 10s): Indicate the Proplet is operational
+- **System metrics** (every 30s): CPU load, heap usage, uptime, thread count
+- **Task metrics** (every 10s): Per-task CPU/memory aggregates for active tasks
+
+The alive message payload:
+
+```json
+{ "status": "alive", "proplet_id": "<proplet_id>", "namespace": "embedded" }
+```
+
+### Disconnect Detection (Will Message)
+
+The Embedded Proplet registers an MQTT will message at connect time. If the proplet disconnects unexpectedly, the broker automatically publishes to the alive topic:
+
+```json
+{ "status": "offline", "proplet_id": "<proplet_id>", "namespace": "embedded" }
+```
+
+This allows the Manager to detect unplanned disconnections without waiting for a missed heartbeat.
+
+### Federated Learning Tasks
+
+A task is treated as a Federated Machine Learning (FML) task when the start command's `env` object contains a `ROUND_ID` field. For FML tasks, the proplet automatically fetches the model and dataset over HTTP before executing the WASM module.
+
+#### Environment Variables
+
+| Variable             | Required | Default                        | Description                                                     |
+| -------------------- | -------- | ------------------------------ | --------------------------------------------------------------- |
+| `ROUND_ID`           | Yes      | —                              | Marks the task as FML; identifies the training round            |
+| `MODEL_URI`          | No       | —                              | MQTT topic to subscribe for model data (fallback if HTTP fails) |
+| `HYPERPARAMS`        | No       | —                              | Hyperparameter string passed to the WASM module                 |
+| `COORDINATOR_URL`    | No       | `http://coordinator-http:8080` | FL coordinator service URL                                      |
+| `MODEL_REGISTRY_URL` | No       | `http://model-registry:8081`   | Model registry base URL                                         |
+| `DATA_STORE_URL`     | No       | `http://local-data-store:8083` | Dataset store base URL                                          |
+
+#### FML Data Fetch Flow
+
+1. **Model**: HTTP GET `<MODEL_REGISTRY_URL>/models/<version>` (version extracted from `MODEL_URI`). If HTTP fails, subscribes to `MODEL_URI` as an MQTT topic and waits for model data to arrive over MQTT.
+2. **Dataset**: HTTP GET `<DATA_STORE_URL>/datasets/<proplet_id>`.
+
+Both model and dataset responses are stored in memory (4 KB limit each). They are accessible inside the WASM module via the `get_model_data()` and `get_dataset_data()` host functions.
+
+Only `http://` URLs are supported for FML data fetching — HTTPS is not available on this platform.
+
+### WASM Reception
+
+The Embedded Proplet receives WASM modules in two ways:
+
+- **Inline in the start command**: For small modules, the base64-encoded WASM is embedded directly in the `control/manager/start` payload via the `file` field. Limited to 1024 bytes of base64 (~750 bytes decoded).
+- **Via registry pull**: If the start payload contains an `image_url`, the proplet publishes a fetch request to `registry/proplet` and waits for the response on `registry/server`.
+
+#### Registry Payloads
+
+Fetch request published to `registry/proplet`:
+
+```json
+{ "app_name": "<image_url value>" }
+```
+
+Expected response on `registry/server`:
+
+```json
+{ "app_name": "<name>", "data": "<base64-encoded WASM>" }
+```
+
+The `wasm_handler` decodes the base64 module and loads it into WAMR. See the [Addition (Embedded Proplet)](/docs/examples/addition-embedded) example for a concrete walkthrough.
+
+### Task Lifecycle
+
+When a task is started from the Manager:
+
+1. **Receive**: The Manager publishes to `m/<domain_id>/c/<channel_id>/control/manager/start` with a JSON payload
+2. **Load**: `wasm_handler` decodes the base64 module, initializes a WAMR runtime instance, and loads the module
+3. **Execute**: The runtime looks up the exported `main` function and calls it with the task inputs as i32 arguments
+4. **Report**: The result is published as a string to `m/<domain_id>/c/<channel_id>/control/proplet/results`
+5. **Monitor**: `task_monitor` records CPU/memory samples and publishes task metrics every 10 seconds
+
+#### Start Command Payload
+
+```json
+{
+  "id": "<task-id>",
+  "name": "<task-name>",
+  "file": "<base64-encoded WASM>",
+  "image_url": "<registry image URL>",
+  "inputs": [1, 2, 3],
+  "env": {
+    "ROUND_ID": "<round-id>"
+  }
+}
+```
+
+`id` and `name` are required. Either `file` (inline WASM) or `image_url` (registry fetch) must be present. See [Inline WASM size limit](#module-size-and-concurrency). `inputs` is optional. `env` is only needed for FML tasks — see [Federated Learning Tasks](#federated-learning-tasks).
+
+#### Stop Command Payload
+
+The Manager publishes to `m/<domain_id>/c/<channel_id>/control/manager/stop` with:
+
+```json
+{
+  "id": "<task-id>",
+  "name": "<task-name>",
+  "state": "<task-state>"
+}
+```
+
+All three fields — `id`, `name`, and `state` — are required. A missing field causes the stop command to be silently ignored.
+
+## Writing WASM Modules
+
+WAMR on Zephyr has `WAMR_BUILD_LIBC_WASI` disabled (`0` in `CMakeLists.txt`), meaning all WASI interfaces are unavailable — no file system access, no network sockets, no environment variables. This includes both WASI P1 and WASI P2. If you are used to writing WASI modules for the standard [Proplet](/docs/proplet), you will need to write modules differently for the Embedded Proplet.
+
+`WAMR_BUILD_LIBC_BUILTIN` is enabled, so modules can use basic built-in math and string operations without importing them from the host.
+
+### Function Signature
+
+The Embedded Proplet looks up and calls a function named `main` in the loaded module. The signature must accept one i32 argument per input value and return one i32 result:
+
+```wasm
+(func (export "main") (param i32 i32) (result i32)
+  local.get 0
+  local.get 1
+  i32.add)
+```
+
+- **Inputs**: Each element of the task's `inputs` array is passed as an i32 argument to `main`. Maximum 16 inputs (`MAX_INPUTS` in `mqtt_client.h`); additional inputs are silently truncated
+- **Output**: The i32 return value is published as a string to the results MQTT topic
+- **Encoding**: Modules are base64-encoded in the task payload and decoded on-device before loading
+
+### Native Host Functions
+
+The runtime registers three host functions that WASM modules can import from the `"env"` module:
+
+| Function           | Signature         | Returns                                     |
+| ------------------ | ----------------- | ------------------------------------------- |
+| `get_proplet_id`   | `() → (i32, i32)` | Pointer and length of the proplet ID string |
+| `get_model_data`   | `() → (i32, i32)` | Pointer and length of fetched model data    |
+| `get_dataset_data` | `() → (i32, i32)` | Pointer and length of fetched dataset data  |
+
+These are primarily used by federated learning tasks that need access to model weights or dataset payloads fetched at runtime.
+
+### Module Size and Concurrency
+
+Keep modules within the WAMR global heap limit (40 KB by default). Each module instance gets a 16 KB stack and 16 KB heap.
+
+**Inline WASM size limit**: When delivering a module via the `file` field in the start command, the base64-encoded string is capped at `MAX_BASE64_LEN = 1024` bytes (`mqtt_client.h`), which corresponds to approximately 750 bytes of decoded WASM binary. Modules larger than this must be delivered via `image_url` using the registry pull path.
+
+Two separate limits govern concurrent execution:
+
+- **MAX_WASM_APPS = 10** (`wasm_handler.c`): Maximum WASM app slots that can be loaded and running simultaneously
+- **MAX_MONITORED_TASKS = 4** (`task_monitor.h`): Maximum tasks that can be tracked with CPU/memory metrics at once
+
+Exceeding MAX_WASM_APPS prevents new tasks from starting. Exceeding MAX_MONITORED_TASKS allows tasks to run but without metrics tracking.
+
+### Supported Module Formats
+
+| Format        | How to produce                   | Notes                              |
+| ------------- | -------------------------------- | ---------------------------------- |
+| WAT           | `wat2wasm` from WABT             | Easiest for simple numeric modules |
+| WASM (AOT)    | WAMR `wamrc` for Xtensa target   | More compact and faster at runtime |
+| WASM (interp) | Any compiler targeting bare WASM | No WASI imports allowed            |
+
+## Running an Example
+
+See the [Addition (Embedded Proplet)](/docs/examples/addition-embedded) example for a complete walkthrough of building the firmware, deploying a WASM task, and reading the device logs.
+
+## Troubleshooting
+
+### CMake Threads Support Error
+
+**Error:** `CMakeLists.txt:XX Could not find Threads`
+
+**Solution:** Add to `prj.conf`:
+
+```ini
+CONFIG_PTHREAD_IPC=y
+CONFIG_POSIX_API=y
+```
+
+### MQTT Connection Failures
+
+**Symptom:** `MQTT connect failed` in logs
+
+**Debug steps:**
+
+1. Verify WiFi connected: look for `Successfully connected to Wi-Fi` log
+2. Check configuration matches Magistrala broker settings
+3. Enable debug logging:
+   ```ini
+   CONFIG_MQTT_LOG_LEVEL_DBG=y
+   CONFIG_NET_LOG=y
+   ```
+
+### Out of Memory
+
+**Symptom:** WASM module fails to load with memory errors
+
+**Solutions:**
+
+1. Use AOT compilation for smaller module size
+2. Increase `WAMR_BUILD_GLOBAL_HEAP_SIZE` in `CMakeLists.txt`
+3. Reduce heap for other subsystems in `prj.conf`
+
+### Configuration Not Taking Effect
+
+**Symptom:** Settings in `prj.conf` are ignored
+
+**Solution:** Clean rebuild:
+
+```bash
+rm -rf build
+west build -b esp32s3_devkitc/esp32s3/procpu -p auto .
+```
+
+Check for conflicts with board-specific `*.conf` files.
+
+## Porting to Other Hardware
+
+WAMR supports multiple architectures. To port the Embedded Proplet:
+
+### 1. Update CMakeLists.txt
+
+```cmake
+# For ARM Cortex-M (nRF52840, STM32F4):
+set(BOARD nrf52840dk_nrf52840)
+set(WAMR_BUILD_TARGET "THUMB")
+
+# For RISC-V (ESP32-C3):
+set(BOARD esp32c3_devkitm)
+set(WAMR_BUILD_TARGET "RISCV32")
+```
+
+### 2. Create Board Configuration
+
+Add `boards/<board_name>.conf` with board-specific settings.
+
+### 3. Adjust Memory Settings
+
+Different boards have different RAM. Scale `HEAP_MEM_POOL_SIZE` and `WAMR_BUILD_GLOBAL_HEAP_SIZE` accordingly.
+
+### 4. Build and Flash
+
+```bash
+rm -rf build
+west build -b <board_name> -p auto .
+west flash
+```
+
+### Supported Architectures
+
+| Architecture | WAMR Target | Example Boards    |
+| ------------ | ----------- | ----------------- |
+| Xtensa       | `XTENSA`    | ESP32, ESP32-S3   |
+| ARM Cortex-M | `THUMB`     | nRF52840, STM32F4 |
+| RISC-V 32    | `RISCV32`   | ESP32-C3          |
+| RISC-V 64    | `RISCV64`   | SiFive            |
+
+### Hardware Requirements
+
+| Requirement    | Minimum                      |
+| -------------- | ---------------------------- |
+| RAM            | 128 KB                       |
+| Flash          | 512 KB                       |
+| Networking     | WiFi, Ethernet, or BLE       |
+| Zephyr support | Board in Zephyr's board list |
+
+## Related Documentation
+
+| Topic                                                | Description                                                |
+| ---------------------------------------------------- | ---------------------------------------------------------- |
+| [Zephyr Guide](/docs/zephyr)                         | Development environment setup for Zephyr and WAMR          |
+| [Proplet](/docs/proplet)                             | Full-featured Proplet for Linux/containerized environments |
+| [HAL](/docs/hal)                                     | Hardware Abstraction Layer for runtime environments        |
+| [Addition Example](/docs/examples/addition-embedded) | End-to-end addition example on the Embedded Proplet        |
+| [Proxy](/docs/proxy)                                 | Binary chunking for large module delivery                  |

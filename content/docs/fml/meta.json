@@ -1,0 +1,10 @@
+{
+  "title": "Federated Machine Learning",
+  "pages": [
+    "federated-learning.mdx",
+    "---Examples---",
+    "example.mdx",
+    "fedprox.mdx",
+    "byzantine-robust.mdx"
+  ]
+}

@@ -1,0 +1,775 @@
+openapi: 3.0.0
+info:
+  title: Propeller
+  version: 1.0.0
+  description: ""
+servers:
+  - url: http://localhost:7070
+paths:
+  /proplets/{PROPLET_ID}:
+    get:
+      summary: Get Proplet
+      responses:
+        "200":
+          description: Proplet details
+      tags:
+        - Manager
+        - Proplets
+    delete:
+      summary: Delete Proplet
+      description: Remove a proplet record
+      responses:
+        "204":
+          description: Proplet deleted
+      tags:
+        - Manager
+        - Proplets
+    parameters:
+      - name: PROPLET_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /proplets/{PROPLET_ID}/sdf:
+    get:
+      summary: Get Proplet SDF Description
+      description: >
+        Returns a Semantic Definition Format (SDF) document describing the
+        proplet's properties, actions, events, and data schemas. The document
+        schema version is `1.0` and increments when the shape changes in a
+        breaking way.
+      responses:
+        "200":
+          description: SDF document for the proplet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  info:
+                    type: object
+                    properties:
+                      title:   { type: string }
+                      version: { type: string }
+                      license: { type: string }
+                  sdfThing:
+                    type: object
+                    description: Top-level Thing affordances keyed by thing name
+        "404":
+          description: Proplet not found
+      tags:
+        - Manager
+        - Proplets
+    parameters:
+      - name: PROPLET_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /proplets/{PROPLET_ID}/metrics:
+    get:
+      summary: Get Proplet Metrics
+      description: Get stored metrics for a proplet
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Proplet metrics
+      tags:
+        - Manager
+        - Proplets
+    parameters:
+      - name: PROPLET_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /proplets:
+    get:
+      summary: List Proplets
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: "1000"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+          description: >
+            Filter proplets by liveness status. `active` returns proplets with a
+            recent heartbeat; `inactive` returns proplets whose heartbeat has
+            expired. Omit to return all proplets.
+      responses:
+        "200":
+          description: List of proplets
+        "400":
+          description: Invalid status value
+      tags:
+        - Manager
+        - Proplets
+  /tasks:
+    post:
+      summary: Create Task
+      responses:
+        "201":
+          description: Task created
+      tags:
+        - Manager
+        - Task
+        - Embedded
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Human-readable task name
+                kind:
+                  type: string
+                  enum: [standard, federated]
+                  description: Task kind (standard or federated)
+                image_url:
+                  type: string
+                  description: >
+                    URL for the Wasm binary. Accepts two forms:
+                    (1) OCI registry reference (e.g. `docker.io/myorg/app:v1`) — proplet fetches via the registry proxy;
+                    (2) plain HTTP/HTTPS URL (e.g. `https://releases.example.com/app.wasm`) — proplet fetches directly (max 100 MB).
+                    The scheme (`http://` or `https://`) is used to detect which path to take.
+                file:
+                  type: string
+                  format: byte
+                  description: Base64-encoded Wasm binary (alternative to image_url)
+                cli_args:
+                  type: array
+                  items:
+                    type: string
+                  description: Command-line arguments passed to the Wasm module
+                inputs:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: number
+                  description: Input values passed to the Wasm module (strings or numbers; numbers are coerced to strings)
+                env:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: Environment variables for the Wasm module
+                daemon:
+                  type: boolean
+                  description: If true, task runs continuously until stopped
+                encrypted:
+                  type: boolean
+                  description: If true, the Wasm binary is encrypted (requires KBS)
+                kbs_resource_path:
+                  type: string
+                  description: KBS resource path for encrypted binaries (TEE only)
+                proplet_id:
+                  type: string
+                  description: Target proplet ID; mutually exclusive with `broadcast`
+                broadcast:
+                  type: boolean
+                  description: If true, task runs on all proplets simultaneously; mutually exclusive with `proplet_id`
+                depends_on:
+                  type: array
+                  items:
+                    type: string
+                  description: List of task IDs this task depends on
+                run_if:
+                  type: string
+                  enum: [success, failure]
+                  description: Run condition based on dependency status
+                monitoring_profile:
+                  type: object
+                  description: CPU/memory usage monitoring configuration
+                mode:
+                  type: string
+                  enum: [infer, train]
+                  description: Task mode for FL tasks
+                priority:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Dispatch priority (0-100, default 50)
+                schedule:
+                  type: string
+                  description: Cron expression for scheduled tasks
+                timezone:
+                  type: string
+                  description: Timezone for scheduled tasks (default UTC)
+                is_recurring:
+                  type: boolean
+                  description: If true, task re-runs according to schedule
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: Arbitrary key-value metadata attached to the task (max 1 MB serialized)
+            example:
+              name: main
+              file: AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL
+              inputs:
+                - 10
+                - 20
+    get:
+      summary: List Tasks
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: "1000"
+        - name: "metadata[<key>]"
+          in: query
+          schema:
+            type: string
+          description: >
+            Filter tasks by metadata key-value pair. Repeat for multiple filters
+            (all must match). Key must contain only alphanumerics, `.`, `_`,
+            or `-`. Example: `metadata[env]=production&metadata[team]=ops`
+      responses:
+        "200":
+          description: List of tasks
+      tags:
+        - Manager
+        - Task
+  /tasks/{TASK_ID}:
+    get:
+      summary: Get Task
+      responses:
+        "200":
+          description: Task details
+      tags:
+        - Manager
+        - Task
+        - Embedded
+    parameters:
+      - name: TASK_ID
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      summary: Update Task
+      description: Update a task (e.g. set file as base64-encoded Wasm)
+      responses:
+        "200":
+          description: Task updated
+      tags:
+        - Manager
+        - Task
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                file:
+                  type: string
+                  description: Base64-encoded Wasm binary
+                inputs:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: number
+                  description: Input values passed to the Wasm module (strings or numbers; numbers are coerced to strings)
+                proplet_id:
+                  type: string
+                  description: Target proplet ID; mutually exclusive with `broadcast`
+                broadcast:
+                  type: boolean
+                  description: If true, task runs on all proplets simultaneously; mutually exclusive with `proplet_id`
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: Arbitrary key-value metadata attached to the task (max 1 MB serialized)
+            example:
+              name: add
+              inputs:
+                - 10
+                - 20
+    delete:
+      summary: Delete Task
+      responses:
+        "204":
+          description: Task deleted
+      tags:
+        - Manager
+        - Task
+  /tasks/{TASK_ID}/start:
+    post:
+      summary: Start Task
+      responses:
+        "200":
+          description: Task started
+      tags:
+        - Manager
+        - Task
+        - Embedded
+    parameters:
+      - name: TASK_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /tasks/{TASK_ID}/upload:
+    put:
+      summary: Upload Wasm File
+      description: Upload a .wasm file directly (max 100 MB)
+      responses:
+        "200":
+          description: File uploaded
+      tags:
+        - Manager
+        - Task
+        - Host Runtime
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The .wasm file to upload
+    parameters:
+      - name: TASK_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /tasks/{TASK_ID}/stop:
+    post:
+      summary: Stop Task
+      responses:
+        "200":
+          description: Task stopped
+      tags:
+        - Manager
+        - Task
+    parameters:
+      - name: TASK_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /tasks/{TASK_ID}/metrics:
+    get:
+      summary: Get Task Metrics
+      description: Get stored process metrics for a task
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task metrics
+      tags:
+        - Manager
+        - Task
+    parameters:
+      - name: TASK_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /tasks/{TASK_ID}/results:
+    get:
+      summary: Get Task Results
+      description: Get stored execution results for a task
+      responses:
+        "200":
+          description: Task execution results
+      tags:
+        - Manager
+        - Task
+    parameters:
+      - name: TASK_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /jobs:
+    post:
+      summary: Create Job
+      responses:
+        "201":
+          description: Job created
+      tags:
+        - Manager
+        - Jobs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                execution_mode:
+                  type: string
+                  enum: [parallel, sequential, configurable]
+                tasks:
+                  type: array
+                  items:
+                    type: object
+            example:
+              name: batch-process
+              execution_mode: sequential
+              tasks:
+                - name: step-1
+                  image_url: docker.io/myorg/step1:v1
+                - name: step-2
+                  image_url: docker.io/myorg/step2:v1
+    get:
+      summary: List Jobs
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: "100"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+          description: >
+            Filter jobs by state. `pending` — not yet started; `running` —
+            actively executing (includes scheduled tasks); `completed` — all
+            tasks finished or skipped; `failed` — at least one task failed or
+            was interrupted. Omit to return all jobs.
+      responses:
+        "200":
+          description: List of jobs
+        "400":
+          description: Invalid status value
+      tags:
+        - Manager
+        - Jobs
+  /jobs/{JOB_ID}:
+    get:
+      summary: Get Job
+      responses:
+        "200":
+          description: Job details
+      tags:
+        - Manager
+        - Jobs
+    parameters:
+      - name: JOB_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /jobs/{JOB_ID}/start:
+    post:
+      summary: Start Job
+      responses:
+        "200":
+          description: Job started
+      tags:
+        - Manager
+        - Jobs
+    parameters:
+      - name: JOB_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /jobs/{JOB_ID}/stop:
+    post:
+      summary: Stop Job
+      responses:
+        "200":
+          description: Job stopped
+      tags:
+        - Manager
+        - Jobs
+    parameters:
+      - name: JOB_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /workflows:
+    post:
+      summary: Create Workflow
+      description: Create a workflow with tasks that have depends_on and run_if fields
+      responses:
+        "201":
+          description: Workflow created
+      tags:
+        - Manager
+        - Workflows
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tasks:
+                  type: array
+                  items:
+                    type: object
+            example:
+              tasks:
+                - name: fetch-data
+                  image_url: docker.io/myorg/fetch:v1
+                - name: process
+                  image_url: docker.io/myorg/process:v1
+                  depends_on:
+                    - "<fetch-data-task-id>"
+                  run_if: success
+  /fl/experiments:
+    post:
+      summary: Configure FL Experiment
+      description: Configure a new federated learning experiment
+      responses:
+        "201":
+          description: Experiment configured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  experiment_id:
+                    type: string
+                  round_id:
+                    type: string
+                  status:
+                    type: string
+      tags:
+        - Manager
+        - Federated Learning
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                experiment_id:
+                  type: string
+                  description: Unique experiment identifier
+                round_id:
+                  type: string
+                  description: Round identifier
+                model_ref:
+                  type: string
+                  description: Reference to the model
+                participants:
+                  type: array
+                  items:
+                    type: string
+                  description: List of participant proplet IDs
+                hyperparams:
+                  type: object
+                  description: Hyperparameters for the experiment
+                k_of_n:
+                  type: integer
+                  description: Minimum updates required (k out of n participants)
+                timeout_s:
+                  type: integer
+                  description: Timeout in seconds for each round
+                task_wasm_image:
+                  type: string
+                  description: OCI image URL for the FL task Wasm binary
+            example:
+              experiment_id: exp-001
+              round_id: round-1
+              model_ref: model-v1
+              participants:
+                - proplet-1
+                - proplet-2
+              hyperparams:
+                learning_rate: 0.01
+                epochs: 5
+              k_of_n: 2
+              timeout_s: 300
+  /fl/task:
+    get:
+      summary: Get FL Task
+      description: Get the federated learning task for the current round
+      parameters:
+        - name: round_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: proplet_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: FL task details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    properties:
+                      round_id:
+                        type: string
+                      model_ref:
+                        type: string
+                      config:
+                        type: object
+                      hyperparams:
+                        type: object
+      tags:
+        - Manager
+        - Federated Learning
+  /fl/update:
+    post:
+      summary: Submit FL Update (JSON)
+      description: Submit a model update in JSON format
+      responses:
+        "200":
+          description: Update submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+      tags:
+        - Manager
+        - Federated Learning
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                round_id:
+                  type: string
+                proplet_id:
+                  type: string
+                base_model_uri:
+                  type: string
+                  description: URI of the base model used for training
+                num_samples:
+                  type: integer
+                  description: Number of samples used in local training
+                update:
+                  type: object
+                  description: Model weight updates from local training
+                metrics:
+                  type: object
+                  description: Training metrics
+  /fl/update_cbor:
+    post:
+      summary: Submit FL Update (CBOR)
+      description: Submit a model update in CBOR format
+      responses:
+        "200":
+          description: Update submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+      tags:
+        - Manager
+        - Federated Learning
+      requestBody:
+        description: CBOR-encoded model update payload
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: CBOR or CBOR-seq encoded model update
+  /fl/rounds/{ROUND_ID}/complete:
+    get:
+      summary: Get Round Completion Status
+      description: Check if a federated learning round is complete
+      responses:
+        "200":
+          description: Round completion status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: object
+                    properties:
+                      round_id:
+                        type: string
+                      completed:
+                        type: boolean
+                      num_updates:
+                        type: integer
+                      k_of_n:
+                        type: integer
+                      model_version:
+                        type: integer
+      tags:
+        - Manager
+        - Federated Learning
+    parameters:
+      - name: ROUND_ID
+        in: path
+        required: true
+        schema:
+          type: string
+  /health:
+    get:
+      summary: Health Check
+      description: Returns manager instance ID and health status
+      responses:
+        "200":
+          description: Health status
+      tags:
+        - System
+  /metrics:
+    get:
+      summary: Prometheus Metrics
+      description: Exposes Prometheus-compatible metrics endpoint
+      responses:
+        "200":
+          description: Prometheus metrics
+      tags:
+        - System

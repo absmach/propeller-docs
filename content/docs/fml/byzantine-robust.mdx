@@ -1,0 +1,195 @@
+---
+title: Byzantine-Robust Aggregation
+description: Implementing Byzantine-robust aggregation for secure federated learning in Propeller
+---
+
+Byzantine-robust aggregation protects against malicious or faulty proplets that may submit corrupted model updates. Instead of weighted averaging, this approach uses median aggregation to filter out outliers.
+
+## Overview
+
+In standard FedAvg, a single malicious proplet can significantly skew the global model. Byzantine-robust aggregation uses statistical methods (median, trimmed mean) to ensure that outlier updates don't corrupt the aggregated model.
+
+## Aggregator Modification
+
+Modify `examples/fl-demo/aggregator/main.go` to use median aggregation:
+
+```go
+import "sort"
+
+// Median aggregation instead of weighted average
+func medianAggregate(updates []Update) []float64 {
+    if len(updates) == 0 {
+        return nil
+    }
+
+    numWeights := len(updates[0].Update["w"].([]interface{}))
+    result := make([]float64, numWeights)
+
+    for j := 0; j < numWeights; j++ {
+        values := make([]float64, len(updates))
+        for i, u := range updates {
+            w := u.Update["w"].([]interface{})
+            values[i] = w[j].(float64)
+        }
+        sort.Float64s(values)
+        result[j] = values[len(values)/2]  // median
+    }
+
+    return result
+}
+```
+
+## Alternative: Trimmed Mean
+
+For a less aggressive approach, use trimmed mean which removes the top and bottom percentiles before averaging:
+
+```go
+func trimmedMeanAggregate(updates []Update, trimPercent float64) []float64 {
+    if len(updates) == 0 {
+        return nil
+    }
+
+    numWeights := len(updates[0].Update["w"].([]interface{}))
+    result := make([]float64, numWeights)
+    trimCount := int(float64(len(updates)) * trimPercent)
+
+    for j := 0; j < numWeights; j++ {
+        values := make([]float64, len(updates))
+        for i, u := range updates {
+            w := u.Update["w"].([]interface{})
+            values[i] = w[j].(float64)
+        }
+        sort.Float64s(values)
+
+        // Remove top and bottom trimCount values
+        trimmedValues := values[trimCount : len(values)-trimCount]
+
+        // Average remaining values
+        sum := 0.0
+        for _, v := range trimmedValues {
+            sum += v
+        }
+        result[j] = sum / float64(len(trimmedValues))
+    }
+
+    return result
+}
+```
+
+## Key Changes
+
+| Component   | Change Required                            |
+| ----------- | ------------------------------------------ |
+| WASM Client | No changes needed                          |
+| Aggregator  | Replace FedAvg with median or trimmed mean |
+
+## Usage in aggregateHandler
+
+Replace the aggregation logic in `aggregateHandler`:
+
+```go
+func aggregateHandler(w http.ResponseWriter, r *http.Request) {
+    var req AggregateRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+        return
+    }
+
+    // Use median aggregation instead of weighted average
+    aggregatedW := medianAggregate(req.Updates)
+
+    // Aggregate bias separately
+    biasValues := make([]float64, len(req.Updates))
+    for i, u := range req.Updates {
+        biasValues[i] = u.Update["b"].(float64)
+    }
+    sort.Float64s(biasValues)
+    aggregatedB := biasValues[len(biasValues)/2]
+
+    model := AggregatedModel{
+        W: aggregatedW,
+        B: aggregatedB,
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(model)
+}
+```
+
+## Deploy to Propeller
+
+### Prerequisites
+
+Complete the [Federated Learning](/docs/fml/example) example first. All services (Magistrala, Manager, Proplets, Proxy, FL demo stack) must be running and provisioned before proceeding.
+
+### Step 1: Modify the Aggregator
+
+Apply the median or trimmed mean aggregation changes to `examples/fl-demo/aggregator/main.go` as shown above.
+
+### Step 2: Rebuild and Recreate the Aggregator
+
+```bash
+# From repository root
+docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml \
+  --env-file docker/.env up -d --build --force-recreate aggregator
+```
+
+Verify the aggregator is running:
+
+```bash
+docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml \
+  --env-file docker/.env ps aggregator
+```
+
+### Step 3: Trigger an FL Experiment
+
+Export proplet client IDs from `docker/.env`, then submit the experiment as normal. The aggregator change is transparent to the Manager — the same experiment API is used:
+
+```bash
+export PROPLET_CLIENT_ID=$(grep '^PROPLET_CLIENT_ID=' docker/.env | grep -v '=""' | tail -1 | cut -d '=' -f2 | tr -d '"')
+export PROPLET_2_CLIENT_ID=$(grep '^PROPLET_2_CLIENT_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
+export PROPLET_3_CLIENT_ID=$(grep '^PROPLET_3_CLIENT_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
+
+curl -s -X POST http://localhost:7070/fl/experiments \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"experiment_id\": \"byzantine-$(date +%s)\",
+    \"round_id\": \"r-$(date +%s)\",
+    \"model_ref\": \"fl/models/global_model_v0\",
+    \"participants\": [\"$PROPLET_CLIENT_ID\", \"$PROPLET_2_CLIENT_ID\", \"$PROPLET_3_CLIENT_ID\"],
+    \"hyperparams\": {\"epochs\": 1, \"lr\": 0.01, \"batch_size\": 16},
+    \"k_of_n\": 2,
+    \"timeout_s\": 120,
+    \"task_wasm_image\": \"ghcr.io/YOUR_GITHUB_USERNAME/fl-client-wasm:latest\"
+  }" | jq .
+```
+
+### Step 4: Verify Median Aggregation
+
+Check coordinator logs to confirm aggregation completed:
+
+```bash
+docker logs fl-demo-coordinator 2>&1 | grep -E "Aggregated|Round complete" | tail -5
+```
+
+Check the updated model — weights will reflect median rather than weighted average values:
+
+```bash
+curl -s http://localhost:8084/models/1 | jq .
+```
+
+To observe Byzantine robustness in action, you can submit a deliberately corrupted update to the coordinator and confirm that the median aggregation filters it out, producing a model version consistent with the honest proplets' updates.
+
+## Trade-offs
+
+| Approach         | Pros                                | Cons                              |
+| ---------------- | ----------------------------------- | --------------------------------- |
+| Median           | Strong outlier resistance           | Ignores sample counts             |
+| Trimmed Mean     | Balances robustness with efficiency | Requires choosing trim percentage |
+| FedAvg (default) | Optimal for benign environments     | Vulnerable to Byzantine failures  |
+
+## Use Cases
+
+- Untrusted or semi-trusted edge environments
+- Public federated learning deployments
+- Environments with unreliable hardware that may produce corrupted updates

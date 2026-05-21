@@ -1,0 +1,851 @@
+---
+title: Federated Machine Learning
+description: Workload-agnostic federated learning architecture and lifecycle in Propeller
+---
+
+Propeller implements Federated Machine Learning (FML) as a workload-agnostic framework that enables distributed machine learning training across multiple edge devices without centralizing raw data.
+
+For a quick start tutorial with commands and expected outputs, see the [Federated Learning Example](/docs/fml/example).
+
+## Why Federated Learning
+
+### Data Locality and Privacy
+
+Traditional centralized machine learning requires moving raw data from edge devices to a central server. This approach has significant drawbacks:
+
+- **Privacy Concerns**: Sensitive data (medical records, personal information, proprietary sensor data) must leave the device, creating privacy risks and regulatory compliance challenges
+- **Data Sovereignty**: Organizations may be legally or contractually prohibited from moving data off-premises or across geographic boundaries
+- **Bandwidth Constraints**: Transferring large datasets from edge devices to the cloud consumes significant network bandwidth
+
+Federated learning solves these problems by keeping raw data on the device. Only model updates (weight gradients or deltas) are transmitted, not the underlying training data.
+
+![Federated Learning Privacy](../images/fml/federated-ml-simple-privacy-story.svg)
+
+### Distributed Assets and Edge Computing
+
+Modern IoT and edge deployments involve thousands or millions of devices distributed across diverse locations. For a deeper understanding of edge computing concepts, see [Cloud Edge Computing Explained](https://www.absmach.eu/blog/cloud-edge-computing-explained/).
+
+- **Geographic Distribution**: Devices may be spread across multiple sites, cities, or countries
+- **Resource Constraints**: Edge devices often have limited storage, compute, and network capabilities
+- **Real-time Requirements**: Many applications require models that adapt to local conditions in real-time
+
+### Scalability and Efficiency
+
+- **Parallel Training**: Multiple devices train simultaneously, reducing overall training time
+- **Reduced Server Load**: The central coordinator only aggregates updates, not raw data
+- **Incremental Learning**: New devices can join the federation without retraining from scratch
+
+## Architecture
+
+Propeller's FML system is built on a workload-agnostic design where the core orchestration layer (Manager) provides HTTP endpoints for FL operations but delegates all FL-specific logic to an external Coordinator service.
+
+![FML Architecture](../images/fml/federated-ml-architecture.svg)
+
+### Core Design Principles
+
+1. **Workload-Agnostic Manager**: The Manager service provides HTTP endpoints for FL operations and orchestrates task distribution without understanding FL semantics
+2. **External Coordinator**: FL-specific logic (round management, aggregation algorithms, model versioning) is implemented in a separate Coordinator service
+3. **Hybrid Communication**: Components communicate via HTTP (synchronous operations) and MQTT (orchestration)
+4. **WASM-Based Training**: Training workloads execute as WebAssembly modules
+
+### System Components
+
+| Component            | Description                                                                                                          | Port |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Manager**          | Core orchestration - exposes `POST /fl/experiments`, creates tasks for participants, proxies requests to Coordinator | 7070 |
+| **Coordinator**      | FL-specific service - manages rounds, collects updates, triggers aggregation, handles timeouts                       | 8086 |
+| **Aggregator**       | Performs FedAvg - computes weighted averages of model updates based on training samples                              | 8085 |
+| **Model Registry**   | Stores and versions global models - `GET /models/{version}`, `POST /models`                                          | 8084 |
+| **Proplet**          | Edge runtime - executes WASM training modules, fetches models/datasets, submits updates                              | -    |
+| **Local Data Store** | Provides training datasets to proplets - `GET /datasets/{proplet_id}`                                                | 8083 |
+| **Proxy**            | Fetches WASM binaries from container registries (GHCR) and serves them to proplets via MQTT                          | -    |
+
+![FML Components](../images/fml/federated-ml-components.svg)
+
+## Training Round Lifecycle
+
+![FML Message Workflow](../images/fml/federated-ml-message-workflow.svg)
+
+### 1. Round Initialization
+
+An external trigger sends an HTTP POST request to the Manager's `/fl/experiments` endpoint:
+
+```bash
+# Export CLIENT_IDs from docker/.env (Magistrala client IDs, NOT instance IDs)
+export PROPLET_CLIENT_ID=$(grep '^PROPLET_CLIENT_ID=' docker/.env | cut -d '=' -f2)
+export PROPLET_2_CLIENT_ID=$(grep '^PROPLET_2_CLIENT_ID=' docker/.env | cut -d '=' -f2)
+export PROPLET_3_CLIENT_ID=$(grep '^PROPLET_3_CLIENT_ID=' docker/.env | cut -d '=' -f2)
+
+curl -X POST http://localhost:7070/fl/experiments \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"experiment_id\": \"exp-r-$(date +%s)\",
+    \"round_id\": \"r-$(date +%s)\",
+    \"model_ref\": \"fl/models/global_model_v0\",
+    \"participants\": [\"$PROPLET_CLIENT_ID\", \"$PROPLET_2_CLIENT_ID\", \"$PROPLET_3_CLIENT_ID\"],
+    \"hyperparams\": {\"epochs\": 1, \"lr\": 0.01, \"batch_size\": 16},
+    \"k_of_n\": 3,
+    \"timeout_s\": 60,
+    \"task_wasm_image\": \"ghcr.io/YOUR_GITHUB_USERNAME/fl-client-wasm:latest\"
+  }"
+
+# Expected response:
+# {"experiment_id":"exp-r-...","round_id":"r-...","status":"configured"}
+```
+
+| Parameter         | Description                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| `experiment_id`   | Unique identifier for this experiment                        |
+| `round_id`        | Unique identifier for this training round                    |
+| `model_ref`       | Reference to the model version to use (v0 = initial weights) |
+| `participants`    | List of proplet client UUIDs that will participate           |
+| `k_of_n`          | Minimum number of updates required for aggregation (2 of 3)  |
+| `timeout_s`       | How long to wait for updates before timing out               |
+| `task_wasm_image` | GHCR URL of the WASM training client                         |
+
+When configuring FL experiments, you must use **Magistrala CLIENT_IDs** (UUIDs), not instance IDs like `"proplet-1"`. Proplets register using their CLIENT_ID from environment variables:
+
+```bash
+# Example docker/.env entries (generated by provisioning script)
+PROPLET_CLIENT_ID=3fe95a65-74f1-4ede-bf20-ef565f04cecb      # For proplet-1
+PROPLET_2_CLIENT_ID=1f074cd1-4e22-4e21-92ca-e35a21d3ce29    # For proplet-2
+PROPLET_3_CLIENT_ID=0d89e6d7-6410-40b5-bcda-07b0217796b8    # For proplet-3
+```
+
+Using instance IDs will result in `"Skipping participant: proplet not found"` errors.
+
+**Manager Processing:**
+
+1. Validates the experiment configuration (requires `round_id`, `participants`, `task_wasm_image`, `model_ref`)
+2. Forwards the configuration to the Coordinator via HTTP POST `/experiments`
+3. Publishes round start message to MQTT topic `{domain}/{channel}/fl/rounds/start`
+
+**Coordinator Processing:**
+
+1. Loads initial model from Model Registry (if available)
+2. Creates `RoundState` struct with: `RoundID`, `ModelURI`, `KOfN`, `TimeoutS`, `StartTime`, empty `Updates` slice
+3. Stores the round state in memory (keyed by `round_id`)
+4. Starts timeout monitoring (checks every 5 seconds for round expiration)
+
+### 2. Task Distribution
+
+Each proplet receives the task start command from the Manager via MQTT:
+
+1. **WASM Binary Fetching**: Proplet requests the WASM binary from the Proxy service via MQTT (`registry/proplet` request, `registry/server` response)
+2. **Binary Assembly**: Proplet receives chunks and assembles the complete WASM binary
+3. **Task Request**: Proplet requests FL task details from Coordinator via HTTP GET `/task?round_id={id}&proplet_id={id}`
+4. **Model Fetching**: Proplet fetches the current global model from Model Registry via HTTP GET `/models/{version}`
+5. **Dataset Fetching**: Proplet fetches its local training dataset from Local Data Store via HTTP GET `/datasets/{proplet_id}`
+
+**Coordinator Task Response:**
+
+The Coordinator returns task details including the model reference and hyperparameters:
+
+```json
+{
+  "task": {
+    "round_id": "r-1709309984",
+    "model_ref": "fl/models/global_model_v0",
+    "config": {
+      "proplet_id": "3fe95a65-74f1-4ede-bf20-ef565f04cecb"
+    },
+    "hyperparams": {
+      "epochs": 1,
+      "lr": 0.01,
+      "batch_size": 16
+    }
+  }
+}
+```
+
+### 3. Local Training
+
+The proplet executes the WASM module with the fetched model and dataset:
+
+1. **Environment Setup**: Proplet passes configuration via environment variables:
+   - `ROUND_ID`: Current training round identifier
+   - `MODEL_URI`: Reference to the model version
+   - `MODEL_DATA`: JSON-encoded model weights and bias
+   - `DATASET_DATA`: JSON-encoded local dataset
+   - `HYPERPARAMS`: JSON-encoded training hyperparameters
+   - `MANAGER_COORDINATOR_URL`: HTTP endpoint for task/update operations
+   - `PROPLET_ID`: This proplet's unique identifier
+
+2. **Training Algorithm**: The WASM module performs logistic regression training with Stochastic Gradient Descent (SGD):
+   - Shuffles the dataset at the start of each epoch
+   - Processes samples in mini-batches of size `batch_size`
+   - For each sample, computes: `z = w · x + b`
+   - Applies sigmoid activation: `p = 1/(1 + exp(-z))`
+   - Computes error: `err = p - y`
+   - Updates weights: `w[i] = w[i] - lr × err × x[i]`
+   - Updates bias: `b = b - lr × err`
+
+3. **Update Output**: After training, the WASM module outputs a JSON update containing the trained weights
+
+### 4. Update Submission
+
+Proplets submit their updates to the Coordinator via HTTP POST `/update`:
+
+```json
+{
+  "round_id": "r-1709309984",
+  "proplet_id": "3fe95a65-74f1-4ede-bf20-ef565f04cecb",
+  "base_model_uri": "fl/models/global_model_v0",
+  "num_samples": 64,
+  "metrics": {
+    "loss": 0.342,
+    "accuracy": 0.875
+  },
+  "update": {
+    "w": [0.0164, 0.0003, 0.0144],
+    "b": -0.00026
+  }
+}
+```
+
+**Coordinator Update Processing:**
+
+1. Validates required fields: `round_id`, `proplet_id`, `update` (non-empty)
+2. Retrieves or creates `RoundState` for the round
+3. Checks if round is already completed (ignores late updates)
+4. Appends update to the round's `Updates` slice with timestamp
+5. Checks if `len(Updates) >= KOfN` to trigger aggregation
+6. If threshold met, marks round as completed and triggers aggregation asynchronously
+
+### 5. Aggregation
+
+When the Coordinator receives k-of-n updates (or timeout expires with at least one update):
+
+**Trigger Conditions:**
+
+- `len(Updates) >= KOfN`: Sufficient updates received
+- `timeout_s` elapsed: Time limit reached (aggregates available updates)
+
+**Aggregation Process:**
+
+1. Coordinator copies the updates slice and calls Aggregator via HTTP POST `/aggregate`
+2. Aggregator validates each update contains `w` (weights array) and `b` (bias)
+3. Aggregator performs **weighted Federated Averaging**:
+   - For each update `i`, multiply weights and bias by `num_samples`
+   - Sum all weighted values
+   - Divide by total sample count across all updates
+4. Returns aggregated model: `{"w": [...], "b": ...}`
+
+**Retry Logic:**
+
+If Aggregator is unavailable, Coordinator retries with exponential backoff:
+
+- Maximum 3 attempts
+- Initial delay: 1 second
+- Backoff multiplier: 1.5x per attempt
+
+### 6. Model Storage and Completion
+
+After successful aggregation:
+
+1. **Version Increment**: Coordinator increments the global `modelVersion` counter
+2. **Store in Registry**: Sends aggregated model to Model Registry via HTTP POST `/models` with:
+   ```json
+   {
+     "version": 1,
+     "model": {"w": [...], "b": ...}
+   }
+   ```
+3. **Completion Notification**: Publishes to MQTT topic `fl/rounds/next`:
+   ```json
+   {
+     "round_id": "r-1709309984",
+     "new_model_version": 1,
+     "model_uri": "fl/models/global_model_v1",
+     "status": "complete",
+     "next_round_available": true,
+     "timestamp": "2024-03-01T12:34:56Z"
+   }
+   ```
+
+**Timeout Handling:**
+
+A background goroutine checks round timeouts every 5 seconds. If a round exceeds its `timeout_s`:
+
+- Round is marked as completed
+- If any updates have been received, aggregation proceeds with available updates
+- If no updates received, round fails silently
+
+![FML Model Lifecycle](../images/fml/federated-ml-lifecycle.svg)
+
+## Communication Patterns
+
+### HTTP Endpoints
+
+**Manager FL API**
+
+The Manager exposes FL endpoints for experiment configuration and coordination. See the [API Reference](/docs/api#federated-learning) for complete endpoint documentation.
+
+| Endpoint                                                                                    | Description                          |
+| ------------------------------------------------------------------------------------------- | ------------------------------------ |
+| [POST /fl/experiments](/docs/api/federated-ml/experiments/post)                             | Configure and start an FL experiment |
+| [GET /fl/task](/docs/api/federated-ml/task/get)                                             | Get FL task details for a proplet    |
+| [POST /fl/update](/docs/api/federated-ml/update/post)                                       | Submit training updates (JSON)       |
+| [POST /fl/update_cbor](/docs/api/federated-ml/update_cbor/post)                             | Submit training updates (CBOR)       |
+| [GET /fl/rounds/\{round_id\}/complete](/docs/api/federated-ml/rounds/round_id/complete/get) | Check round completion status        |
+
+**Internal FL Service Endpoints**
+
+The following endpoints are internal to the FL services and not exposed through the Manager API:
+
+| Service          | Endpoint                     | Description                                   |
+| ---------------- | ---------------------------- | --------------------------------------------- |
+| Coordinator      | `POST /experiments`          | Receive experiment configuration from Manager |
+| Coordinator      | `GET /task`                  | Provide FL task details to proplets           |
+| Coordinator      | `POST /update`               | Receive training updates                      |
+| Model Registry   | `GET /models/{version}`      | Fetch a specific model version                |
+| Model Registry   | `POST /models`               | Store a new model version                     |
+| Aggregator       | `POST /aggregate`            | Perform FedAvg on collected updates           |
+| Local Data Store | `GET /datasets/{proplet_id}` | Fetch dataset for a specific proplet          |
+
+All HTTP services expose a `/health` endpoint (e.g., `http://localhost:7070/health` for Manager).
+
+### MQTT Topics
+
+| Topic                                                          | Description                             |
+| -------------------------------------------------------------- | --------------------------------------- |
+| `{domain}/{channel}/fl/rounds/start`                           | Round start notification                |
+| `{domain}/{channel}/fl/rounds/next`                            | Round completion notification           |
+| `{domain}/{channel}/fl/rounds/{round_id}/updates/{proplet_id}` | Update submission (fallback)            |
+| `registry/proplet` / `registry/server`                         | WASM binary fetching (request/response) |
+
+## Aggregation Algorithms
+
+Aggregation algorithms combine locally trained models into a single global model. They determine how knowledge from distributed clients is incorporated while handling challenges like non-IID data, communication efficiency, and privacy preservation.
+
+### Federated Averaging (FedAvg)
+
+Propeller implements **Federated Averaging (FedAvg)** for model aggregation. FedAvg computes a weighted average of model updates based on the number of training samples each client used.
+
+**Formula**
+
+For n participating proplets with updates u₁, u₂, ..., uₙ and sample counts s₁, s₂, ..., sₙ:
+
+```
+w_aggregated = Σ(sᵢ × wᵢ) / Σ(sᵢ)
+b_aggregated = Σ(sᵢ × bᵢ) / Σ(sᵢ)
+```
+
+**Hyperparameters**
+
+| Parameter | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| **C**     | Fraction of clients that perform computation per round                |
+| **E**     | Number of training passes (epochs) each client performs on local data |
+| **B**     | Mini-batch size used for client updates                               |
+
+### Propeller Aggregation Process
+
+1. Coordinator collects updates from k-of-n participants
+2. Coordinator forwards all updates to Aggregator via `POST /aggregate`
+3. Aggregator validates each update contains `w` (weights array) and `b` (bias)
+4. Aggregator computes weighted sum of weights and bias
+5. Aggregator normalizes by total sample count
+6. Aggregated model is returned to Coordinator
+
+### Other Algorithms
+
+Other federated learning aggregation algorithms include FedProx, SCAFFOLD, and FedPer. For more details, see [Understanding Aggregation Algorithms in Federated Learning](https://medium.com/@praburam_93885/understanding-aggregation-algorithms-in-federated-learning-834ed2bbe860).
+
+## Customizing Algorithms
+
+Propeller's FL architecture is modular, allowing you to customize both the training algorithm (WASM client) and the aggregation algorithm (Aggregator service) by modifying the respective components.
+
+### Why These Defaults?
+
+Propeller uses **logistic regression with SGD** for training and **FedAvg** for aggregation as defaults for several reasons:
+
+| Component   | Default                   | Why                                                                                                                                                                                                                   |
+| ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Training    | Logistic Regression + SGD | Simple gradient-based algorithm that works well with federated optimization. Compact model size (weights + bias) ideal for edge devices with limited memory. Easy to implement in WASM with no external dependencies. |
+| Aggregation | FedAvg                    | Communication-efficient (one round-trip per training round). Proven effective across heterogeneous data distributions. Simple weighted averaging that works with any gradient-based model.                            |
+
+These choices prioritize **simplicity and portability** over raw performance—making them ideal starting points that you can customize for your specific use case.
+
+### Customizing the Training Algorithm
+
+The training algorithm runs inside the WASM client at `examples/fl-demo/client-wasm/fl-client.go`. The default implementation uses [logistic regression with SGD](https://satishkumarmoparthi.medium.com/logistic-regression-with-l2-regularization-using-sgd-from-scratch-893692b48362).
+
+**To implement a different training algorithm:**
+
+1. **Modify the training loop** in `fl-client.go`:
+
+```go
+// Current: Logistic regression with SGD
+// Replace this section with your algorithm
+
+for epoch := 0; epoch < epochs; epoch++ {
+    // Shuffle dataset
+    for i := len(dataset) - 1; i > 0; i-- {
+        j := rand.Intn(i + 1)
+        dataset[i], dataset[j] = dataset[j], dataset[i]
+    }
+
+    // Process samples - CUSTOMIZE THIS SECTION
+    for batchStart := 0; batchStart < len(dataset); batchStart += batchSize {
+        // Your training logic here
+        // Example: Neural network forward/backward pass
+        // Example: Decision tree update
+        // Example: K-means clustering step
+    }
+}
+```
+
+2. **Update the model structure** if your algorithm requires different parameters:
+
+```go
+// Current model structure
+model := map[string]interface{}{
+    "w": []float64{...},  // weights
+    "b": 0.0,             // bias
+}
+
+// Example: Neural network with multiple layers
+model := map[string]interface{}{
+    "layer1_w": [][]float64{...},
+    "layer1_b": []float64{...},
+    "layer2_w": [][]float64{...},
+    "layer2_b": []float64{...},
+}
+```
+
+3. **Rebuild the WASM binary**:
+
+```bash
+cd examples/fl-demo/client-wasm
+GOOS=wasip2 GOARCH=wasm go build -o fl-client.wasm fl-client.go
+```
+
+4. **Push to GHCR**:
+
+```bash
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" \
+  ghcr.io/oras-project/oras:v1.3.0 \
+  push ghcr.io/YOUR_GITHUB_USERNAME/fl-client-wasm:latest \
+  fl-client.wasm:application/wasm
+```
+
+### Customizing the Aggregation Algorithm
+
+The aggregation algorithm runs in the Aggregator service at `examples/fl-demo/aggregator/main.go`. The default implementation uses weighted Federated Averaging (FedAvg).
+
+**To implement a different aggregation algorithm:**
+
+1. **Modify `aggregateHandler`** in `aggregator/main.go`:
+
+```go
+func aggregateHandler(w http.ResponseWriter, r *http.Request) {
+    var req AggregateRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+        return
+    }
+
+    // CUSTOMIZE: Replace FedAvg with your algorithm
+    // Example implementations:
+
+    // FedAvg (current default):
+    // aggregatedW[j] += weight[j] * numSamples
+    // aggregatedW[j] /= totalSamples
+
+    // FedProx: Add proximal term penalty
+    // aggregatedW[j] = fedAvgW[j] - mu * (localW[j] - globalW[j])
+
+    // Median aggregation (Byzantine-robust):
+    // aggregatedW[j] = median(allUpdates[j])
+
+    // Trimmed mean (outlier-resistant):
+    // Sort values, remove top/bottom 10%, average remainder
+
+    model := AggregatedModel{
+        W: aggregatedW,
+        B: aggregatedB,
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(model)
+}
+```
+
+2. **Update the model structure** to match your WASM client:
+
+```go
+// Must match the structure sent by your WASM client
+type AggregatedModel struct {
+    W       []float64 `json:"w"`
+    B       float64   `json:"b"`
+    // Add additional fields as needed
+    Version int       `json:"version,omitempty"`
+}
+```
+
+3. **Rebuild and restart the Aggregator**:
+
+```bash
+# From repository root
+docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml \
+  --env-file docker/.env up -d --build aggregator
+```
+
+### Important Considerations
+
+| Consideration               | Details                                                                     |
+| --------------------------- | --------------------------------------------------------------------------- |
+| **Model compatibility**     | WASM client output structure must match Aggregator input expectations       |
+| **Update format**           | Both components must agree on the `update` field structure in JSON          |
+| **Coordinator passthrough** | The Coordinator forwards updates unchanged; it doesn't parse model contents |
+| **Testing**                 | Test with a single proplet first before scaling to multiple participants    |
+
+### Extending the Defaults
+
+Ready to go beyond logistic regression + FedAvg? These guides show you how:
+
+- [FedProx Algorithm](/docs/fml/fedprox) - Modify the WASM client to handle non-IID data with proximal regularization
+- [Byzantine-Robust Aggregation](/docs/fml/byzantine-robust) - Replace FedAvg with median-based aggregation for untrusted environments
+
+### Update Message Format
+
+Each proplet submits an update with this structure:
+
+```json
+{
+  "round_id": "r-1709309984",
+  "proplet_id": "3fe95a65-74f1-4ede-bf20-ef565f04cecb",
+  "base_model_uri": "fl/models/global_model_v0",
+  "num_samples": 64,
+  "metrics": {
+    "loss": 0.342,
+    "accuracy": 0.875
+  },
+  "update": {
+    "w": [0.0164, 0.0003, 0.0144],
+    "b": -0.00026
+  }
+}
+```
+
+| Field            | Type   | Description                                   |
+| ---------------- | ------ | --------------------------------------------- |
+| `round_id`       | string | Training round identifier                     |
+| `proplet_id`     | string | Magistrala client UUID of the proplet         |
+| `base_model_uri` | string | Model version used for training               |
+| `num_samples`    | int    | Number of samples used (for FedAvg weighting) |
+| `metrics`        | object | Optional training metrics (loss, accuracy)    |
+| `update`         | object | Updated model weights and bias                |
+
+## WASM Training Client
+
+The FL training client runs as a WebAssembly module executed by the proplet. When you specify an `image_url` in your FL task, the [Proxy service](/docs/proxy) fetches the WASM binary from the container registry (Docker Hub, GHCR, or a private registry), chunks it for MQTT transfer, and delivers it to the proplet.
+
+This is the same module delivery mechanism used for standard tasks—see the [Manager documentation](/docs/manager#wasm-module-deployment) for details. For FL, the WASM module contains your training algorithm (e.g., logistic regression with SGD).
+
+### Environment Variables
+
+The proplet passes training context to the WASM module via environment variables:
+
+| Variable                  | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| `ROUND_ID`                | Training round identifier                     |
+| `MODEL_URI`               | Reference to base model version               |
+| `HYPERPARAMS`             | JSON object with training hyperparameters     |
+| `MODEL_DATA`              | JSON string of fetched model weights          |
+| `DATASET_DATA`            | JSON string of fetched training dataset       |
+| `PROPLET_ID`              | Magistrala client UUID of this proplet        |
+| `MANAGER_COORDINATOR_URL` | URL of coordinator service                    |
+| `MODEL_REGISTRY_URL`      | URL of model registry service                 |
+| `ML_BACKEND`              | Backend mode: `standard`, `tinyml`, or `auto` |
+
+### ML Backend Selection
+
+The proplet supports multiple ML backends optimized for different hardware:
+
+| Backend    | Max Memory | GPU Support | Use Case                              |
+| ---------- | ---------- | ----------- | ------------------------------------- |
+| `standard` | 512 MB     | Yes         | Full-featured Linux devices           |
+| `tinyml`   | 64 MB      | No          | Resource-constrained embedded devices |
+| `auto`     | -          | -           | Auto-detect based on hyperparameters  |
+
+Backend selection logic (when set to `auto`):
+
+1. Check `ML_BACKEND` environment variable
+2. If `batch_size` ≤ 8, select TinyML backend
+3. Otherwise, select Standard backend
+
+### Expected Output
+
+The WASM module must output a JSON update message to stdout containing the trained weights:
+
+```json
+{
+  "round_id": "r-1709309984",
+  "proplet_id": "3fe95a65-74f1-4ede-bf20-ef565f04cecb",
+  "num_samples": 64,
+  "update": {
+    "w": [0.0164, 0.0003, 0.0144],
+    "b": -0.00026
+  }
+}
+```
+
+### Training Implementation
+
+The example FL client implements logistic regression with stochastic gradient descent (SGD):
+
+1. **Parse hyperparameters**: Extract `epochs`, `lr` (learning rate), `batch_size`
+2. **Load model**: Parse `MODEL_DATA` into weights array and bias
+3. **Load dataset**: Parse `DATASET_DATA` into training samples
+4. **Train**: For each epoch, shuffle data and update weights using SGD
+5. **Output**: Print JSON update with trained weights to stdout
+
+The SGD update rule for logistic regression:
+
+```
+w[j] = w[j] - α × (p - y) × x[j]
+b = b - α × (p - y)
+```
+
+Where α is the learning rate, p is the sigmoid prediction, and y is the true label.
+
+## Model Format
+
+Models are stored in the Model Registry as JSON objects with version tracking.
+
+### Model Structure
+
+```json
+{
+  "w": [0.0, 0.0, 0.0],
+  "b": 0.0,
+  "version": 0
+}
+```
+
+| Field     | Type    | Description                                        |
+| --------- | ------- | -------------------------------------------------- |
+| `w`       | float[] | Weight vector (dimension depends on feature count) |
+| `b`       | float   | Bias term                                          |
+| `version` | int     | Model version number (auto-incremented)            |
+
+### Initial Model
+
+The Model Registry creates a default initial model (v0) with zero weights:
+
+```json
+{
+  "w": [0.0, 0.0, 0.0],
+  "b": 0.0,
+  "version": 0
+}
+```
+
+### Model Versioning
+
+Each aggregation round produces a new model version:
+
+- **v0**: Initial model (zero weights)
+- **v1**: After first training round
+- **vN**: After N training rounds
+
+## Dataset Format
+
+The Local Data Store provides training data to proplets via HTTP. Each proplet has its own dataset identified by its Magistrala client UUID.
+
+### Why This Format?
+
+The default format uses `{x: features, y: label}` for each sample because:
+
+| Reason                  | Explanation                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------- |
+| **Universal structure** | Features + labels is the standard representation for supervised learning across ML frameworks |
+| **Simple parsing**      | JSON arrays are easy to parse in WASM without external dependencies                           |
+| **Algorithm-agnostic**  | Works with logistic regression, neural networks, decision trees, etc.                         |
+| **Compact**             | No redundant field names per sample; just `x` and `y`                                         |
+
+### Customizing the Format
+
+You can change the dataset format by modifying both the **Local Data Store** and **WASM client** to agree on the new structure.
+
+**Option 1: POST custom datasets via HTTP**
+
+```bash
+curl -X POST http://localhost:8083/datasets/{proplet_id} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schema": "my-custom-schema-v1",
+    "data": [
+      {"features": [1.0, 2.0], "label": "cat", "weight": 0.5},
+      {"features": [3.0, 4.0], "label": "dog", "weight": 1.0}
+    ]
+  }'
+```
+
+**Option 2: Place JSON files directly**
+
+Add files to the data directory (default: `/data/datasets/`):
+
+```bash
+# File: /data/datasets/{proplet_uuid}.json
+{
+  "schema": "my-custom-schema-v1",
+  "data": [...]
+}
+```
+
+**Option 3: Modify the generator**
+
+Edit `generateDataset()` in `examples/fl-demo/local-data-store/main.go` to produce your custom format, then update the WASM client's parsing logic to match.
+
+**Important:** When changing the format, update the WASM client (`fl-client.go`) to parse your new structure correctly. The client reads data from `DATASET_DATA` environment variable and expects to extract features and labels from each sample.
+
+### Dataset Structure
+
+```json
+{
+  "schema": "fl-demo-dataset-v1",
+  "proplet_id": "3fe95a65-74f1-4ede-bf20-ef565f04cecb",
+  "size": 64,
+  "data": [
+    { "x": [0.5, 0.3, 0.8], "y": 1 },
+    { "x": [0.2, 0.7, 0.1], "y": 0 }
+  ]
+}
+```
+
+| Field        | Type   | Description                                 |
+| ------------ | ------ | ------------------------------------------- |
+| `schema`     | string | Dataset schema version                      |
+| `proplet_id` | string | UUID of the proplet this dataset belongs to |
+| `size`       | int    | Number of samples in the dataset            |
+| `data`       | array  | Array of training samples                   |
+
+Each sample contains:
+
+- `x`: Feature vector (array of floats)
+- `y`: Label (0 or 1 for binary classification)
+
+### Dataset Provisioning
+
+Datasets are auto-seeded based on participant UUIDs passed via environment variables:
+
+```bash
+PROPLET_CLIENT_ID=uuid1
+PROPLET_2_CLIENT_ID=uuid2
+PROPLET_3_CLIENT_ID=uuid3
+```
+
+Alternatively, use a comma-separated list:
+
+```bash
+FL_DATASET_PARTICIPANTS="uuid1,uuid2,uuid3"
+```
+
+## Configuration Reference
+
+### Manager Environment Variables
+
+| Variable                  | Description                                                          | Default                   | Required |
+| ------------------------- | -------------------------------------------------------------------- | ------------------------- | -------- |
+| `MANAGER_COORDINATOR_URL` | URL of FL Coordinator service. If not set, FL features are disabled. | `""`                      | No       |
+| `MANAGER_HTTP_PORT`       | HTTP API port                                                        | `7070`                    | No       |
+| `MANAGER_MQTT_ADDRESS`    | MQTT broker address                                                  | `tcp://mqtt-adapter:1883` | No       |
+| `MANAGER_DOMAIN_ID`       | Magistrala domain ID                                                 | -                         | Yes      |
+| `MANAGER_CHANNEL_ID`      | Magistrala channel ID                                                | -                         | Yes      |
+
+### Proplet Environment Variables
+
+| Variable                  | Description             | Default                        | Required     |
+| ------------------------- | ----------------------- | ------------------------------ | ------------ |
+| `MODEL_REGISTRY_URL`      | URL of Model Registry   | -                              | Yes (for FL) |
+| `DATA_STORE_URL`          | URL of Local Data Store | -                              | Yes (for FL) |
+| `MANAGER_COORDINATOR_URL` | URL of FL Coordinator   | `http://coordinator-http:8080` | No           |
+| `PROPLET_CLIENT_ID`       | Magistrala client UUID  | -                              | Yes          |
+| `PROPLET_DOMAIN_ID`       | Magistrala domain ID    | -                              | Yes          |
+| `PROPLET_CHANNEL_ID`      | Magistrala channel ID   | -                              | Yes          |
+
+### Coordinator Environment Variables
+
+| Variable             | Description               | Default           | Required |
+| -------------------- | ------------------------- | ----------------- | -------- |
+| `MODEL_REGISTRY_URL` | URL of Model Registry     | -                 | Yes      |
+| `AGGREGATOR_URL`     | URL of Aggregator service | -                 | Yes      |
+| `MQTT_BROKER`        | MQTT broker address       | `tcp://mqtt:1883` | No       |
+| `MQTT_CLIENT_ID`     | Magistrala client ID      | -                 | Yes      |
+| `COORDINATOR_PORT`   | HTTP port                 | `8080`            | No       |
+
+## FL Demo Application
+
+For detailed setup instructions, step-by-step commands, and expected outputs, see the [Federated Learning Example](/docs/fml/example).
+
+The demo includes:
+
+- Complete Docker Compose configuration for all services
+- Provisioning scripts for Magistrala resources
+- Example WASM FL client implementing logistic regression
+- Production-ready Coordinator and Aggregator services
+- Model Registry and Local Data Store implementations
+
+## Troubleshooting
+
+### "Skipping participant: proplet not found" Error
+
+**Cause**: Using instance IDs (`"proplet-1"`) instead of Magistrala CLIENT_IDs (UUIDs).
+
+**Solution**:
+
+```bash
+# Verify docker/.env has CLIENT_IDs
+grep -E '^(PROPLET_CLIENT_ID|PROPLET_2_CLIENT_ID|PROPLET_3_CLIENT_ID)=' docker/.env
+# Should show UUIDs like: PROPLET_CLIENT_ID=3fe95a65-74f1-4ede-bf20-ef565f04cecb
+```
+
+### Round Timeout with 0 Updates
+
+**Cause**: Proxy service not fetching WASM binary from GHCR.
+
+**Solution**:
+
+1. Check proxy is running: `docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml --env-file docker/.env ps proxy`
+2. Configure GHCR authentication in `docker/.env`:
+   ```bash
+   PROXY_AUTHENTICATE=true
+   PROXY_REGISTRY_URL=ghcr.io
+   PROXY_REGISTRY_USERNAME=YOUR_GITHUB_USERNAME
+   PROXY_REGISTRY_PASSWORD=ghp_xxxxx
+   ```
+3. Restart proxy: `docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml --env-file docker/.env up -d --force-recreate proxy`
+
+### Model Weights Remain Zero After Training
+
+**Cause**: Dataset not loading correctly from Local Data Store.
+
+**Solution**:
+
+1. Verify datasets exist:
+   ```bash
+   curl http://localhost:8083/datasets/$PROPLET_CLIENT_ID | jq '.schema, .size'
+   ```
+2. Check proplet logs for dataset fetch errors:
+   ```bash
+   docker logs propeller-proplet 2>&1 | grep -i "dataset"
+   ```
+
+### Coordinator Connection Refused
+
+**Cause**: Coordinator service not running or credentials not configured.
+
+**Solution**:
+
+1. Rebuild coordinator:
+   ```bash
+   docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml \
+     --env-file docker/.env build coordinator-http
+   ```
+2. Verify health: `curl http://localhost:8086/health`

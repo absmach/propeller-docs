@@ -1,0 +1,38 @@
+---
+title: Getting Started
+description: Prerequisites and first steps for deploying the Propeller Kubernetes Operator.
+---
+
+The Propeller Kubernetes Operator lets you manage Propeller workloads as Kubernetes Custom Resources. This page covers what you need before deploying the operator and points you to the right resources.
+
+## Prerequisites
+
+You need the following tools installed:
+
+- **Go 1.24 or later** — required to build the operator from source.
+- **Docker** — runs the SuperMQ stack and proplet containers.
+- **k3d** — creates a lightweight local Kubernetes cluster for development and testing.
+- **kubectl** — manages Kubernetes resources.
+- **make** — runs the operator build targets.
+- **mosquitto-clients** — used to verify MQTT connectivity (`mosquitto_pub`, `mosquitto_sub`).
+
+You also need:
+
+- The **Propeller repository** cloned locally with binaries already built. If you have not built it yet, follow the [Getting Started guide](/docs/getting-started) first.
+- The **Propeller k8s operator repository** cloned locally:
+
+  ```bash
+  git clone https://github.com/absmach/propeller-k8s-operator.git
+  ```
+
+## How It Works
+
+The operator connects to a SuperMQ MQTT broker and watches five Custom Resource kinds: `Proplet`, `Task`, `PropellerJob`, `FederatedJob`, and `TrainingRound`. When you apply a manifest, the operator reconciles the desired state by dispatching WASM tasks to proplets over MQTT and recording results back into resource status fields.
+
+See the [Operator overview](/docs/k8s/operator) for a full architecture description.
+
+## Next Steps
+
+- Follow the [step-by-step example](/docs/k8s/example) to deploy the operator and run your first WASM task end-to-end.
+- Read the [Features reference](/docs/k8s/features) for the complete Custom Resource specification.
+- See the [Deployment guide](/docs/k8s/deployment) for production deployment, RBAC, and configuration options.

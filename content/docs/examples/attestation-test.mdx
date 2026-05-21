@@ -1,0 +1,156 @@
+---
+title: Attestation Test
+description: Attestation Test example
+---
+
+A WASM core module example using the [Elastic HAL](https://github.com/elasticproject-eu/wasmhal) `elastic:tee-hal` interface. It queries platform info, generates a random nonce, and requests TEE attestation evidence.
+
+## Prerequisites
+
+- A running proplet with HAL enabled, or a TDX-capable machine.
+
+To enable HAL in the proplet:
+
+```bash
+export PROPLET_EXTERNAL_WASM_RUNTIME=""
+export PROPLET_HAL_ENABLED=true
+```
+
+## Source Code
+
+The source code is available in the [examples/attestation-test](https://github.com/absmach/propeller/blob/main/examples/attestation-test/src/main.rs) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/attestation-test/src/main.rs"
+  lang="rust"
+/>
+
+## Build
+
+```bash
+cd examples/attestation-test && cargo build --target wasm32-wasip2 --release
+```
+
+Your output should look like this:
+
+```bash
+   Compiling attestation-test v0.4.0
+    Finished `release` profile [optimized] target(s) in 2.34s
+```
+
+The module is at `target/wasm32-wasip2/release/attestation_test.wasm`.
+
+## Create Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{"name": "run"}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "name": "run",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-19T10:00:00.000000000Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Upload Wasm
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/b2c3d4e5-f6a7-8901-bcde-f12345678901/upload" \
+-F "file=@examples/attestation-test/target/wasm32-wasip2/release/attestation_test.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "name": "run",
+  "kind": "standard",
+  "state": 0,
+  "file": "...<redacted>...",
+  "cli_args": null,
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-19T10:00:00.000000000Z",
+  "updated_at": "2026-03-19T10:01:00.000000000Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+## Start Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks/b2c3d4e5-f6a7-8901-bcde-f12345678901/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The output appears in the proplet logs and will vary depending on the platform.
+
+On a TDX CVM:
+
+```
+platform-info: {"platform_type":"IntelTdx","version":"0.1.0","attestation_support":true}
+attestation: ok (evidence len=863)
+evidence: {"measurements":{"hal":"6ad9613a455798d6d92e5f5f390ab4baa70596bc869ed6b17f5cdd2b28635f06","mrtd":"69485508de2750422a9b2caa165e2d43092b78b8a0c9b01e0e055add2c47ffbf49f34a46f13c57d24cf4fb909caeafec","rtmr0":"ae6a79a0ae6138e621205d94580fe482ba94e0071dfb6fbaa045dd58646957d14af0b7c6190fa0543e004ec6c26e15cc","rtmr1":"fc7cecbe5ccacd3bed9a4ccaa01889104d43ffcba800d523fe6280621e81b18f2165e269429afa6c207fd6b4881a8c4d","rtmr2":"35713c45a6e35362fe9b03d4533e44f10b3d93ee17533d5e7ef9591f010092f91dc8f161f05e0fb8dcc0a5562277ceb6","rtmr3":"94a170d5761a1f1cb64e2ac293798fc0f226944b6b981dca159ddbeb33bfde96cab949db9040d7dbc4163c5e5611177d"},"platform":"intel-tdx","report_data":"c033892c4f1b1038bfd00560c2885f12ee74424b5cd15324238c57a6d464c2e46848e76900000000000000000000000000000000000000000000000000000000","tdx_module_version":"1.5.0","timestamp":1776765032,"version":"0.1.0"}
+```
+
+On a machine with no TEE (stub mode):
+
+```
+platform-info: {"platform_type":"None","version":"0.0.0","attestation_support":false}
+attestation: ok (evidence len=2)
+evidence: {}
+```
+
+When `PROPLET_HAL_ENABLED=true` but no TEE hardware is present, the stub returns `{}` as the evidence.
+
+The task will complete in state 3:
+
+```bash
+curl -X GET "http://localhost:7070/tasks/b2c3d4e5-f6a7-8901-bcde-f12345678901"
+```
+
+```json
+{
+  "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "name": "run",
+  "kind": "standard",
+  "state": 3,
+  "proplet_id": "83a56492-5a89-4852-beee-a3ba95eca876",
+  "results": "",
+  "start_time": "2026-03-19T10:02:00.000000000Z",
+  "finish_time": "2026-03-19T10:02:00.200000000Z",
+  "created_at": "2026-03-19T10:00:00.000000000Z",
+  "updated_at": "2026-03-19T10:02:00.200000000Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+The module writes to stdout, which appears in proplet logs. The `results` field is empty because `_start` has no return value. The evidence is visible in the proplet log output above.
+
+> **Note:** This module cannot be run directly with `wasmtime run`. It imports `elastic:tee-hal/platform` and `elastic:tee-hal/random`, which are host interfaces provided by the proplet's HAL linker. Running it with `wasmtime run` will fail with an unresolved import error.

@@ -1,0 +1,800 @@
+---
+title: Task Scheduling & Workflows
+description: "Schedule WebAssembly tasks across edge nodes with Propeller. Configure DAG-based dependencies, parallel and sequential jobs, and fail-fast workflows for distributed Wasm execution."
+---
+
+## Overview
+
+Propeller schedules and executes tasks across distributed edge devices. When tasks depend on each other, Propeller ensures they run in the correct order.
+
+### What is a DAG?
+
+A [DAG (Directed Acyclic Graph)](https://www.datacamp.com/blog/what-is-a-dag) defines which tasks must complete before others can start:
+
+![Basic DAG](./images/dag/basic-dag.svg)
+
+- **Tasks** are the individual steps in your workflow
+- **Dependencies** specify which tasks must finish first
+- **Acyclic** means the workflow only moves forward—no circular dependencies
+
+Tasks without dependencies on each other run in parallel.
+
+| Benefit                | Description                                   |
+| ---------------------- | --------------------------------------------- |
+| **Correct order**      | Tasks wait for their dependencies to complete |
+| **Parallel execution** | Independent tasks run simultaneously          |
+| **Error isolation**    | Failures affect only downstream tasks         |
+| **Clear structure**    | The graph shows the entire workflow           |
+
+### Architecture
+
+![Propeller DAG Architecture](./images/dag/architecture.svg)
+
+### Components
+
+| Component            | Description                                                                       |
+| -------------------- | --------------------------------------------------------------------------------- |
+| **Manager**          | Central coordinator that receives workflow definitions and orchestrates execution |
+| **Jobs**             | Groups of related tasks with a shared execution mode (parallel or sequential)     |
+| **Workflows**        | DAG-based task definitions with explicit dependencies between tasks               |
+| **Standalone Tasks** | Individual tasks executed independently without belonging to a job or workflow    |
+| **Scheduling**       | Determines task ordering: priority, cron schedules, or round-robin distribution   |
+| **Tasks**            | The atomic unit of work—a WebAssembly module executed on a proplet                |
+| **Proplets**         | Edge devices that receive and execute tasks assigned by the Manager               |
+
+## Jobs
+
+Jobs group related tasks with configurable execution modes (parallel, sequential). Jobs execute tasks with a common strategy, simplifying management of multi-task workloads.
+
+### Creating a Job
+
+Send a POST request to the `/jobs` endpoint with a name, execution mode, and list of tasks:
+
+```bash
+curl -X POST "http://localhost:7070/jobs" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "data-pipeline",
+  "execution_mode": "sequential",
+  "tasks": [
+    {
+      "name": "extract",
+      "image_url": "docker.io/myorg/extract:v1"
+    },
+    {
+      "name": "transform",
+      "image_url": "docker.io/myorg/transform:v1"
+    },
+    {
+      "name": "load",
+      "image_url": "docker.io/myorg/load:v1"
+    }
+  ]
+}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "job_id": "job-abc123",
+  "tasks": [
+    {"id": "task-001", "name": "extract", "state": 0},
+    {"id": "task-002", "name": "transform", "state": 0},
+    {"id": "task-003", "name": "load", "state": 0}
+  ]
+}
+```
+
+- **job_id**: Unique identifier assigned to the job. Use this to start, stop, or query the job.
+- **tasks**: Each task receives its own `id` and starts in `state: 0` (pending).
+
+### Execution Modes
+
+| Mode           | Behavior                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `parallel`     | All tasks start simultaneously on available proplets                                                                                  |
+| `sequential`   | Tasks run one at a time in order; first failure stops the job (fail-fast)                                                             |
+| `configurable` | Uses DAG-based topological sort: starts tasks with no dependencies first, then starts dependent tasks as their prerequisites complete |
+
+### Starting a Job
+
+Trigger execution of a job by sending a POST request to the start endpoint:
+
+```bash
+curl -X POST "http://localhost:7070/jobs/job-abc123/start"
+```
+
+Your output should look like this:
+
+```json
+{
+  "job_id": "job-abc123",
+  "message": "job started"
+}
+```
+
+- **job_id**: The ID of the job that was started.
+- **message**: Confirms the job was successfully queued for execution.
+
+### Stopping a Job
+
+Halt a running job and cancel any pending tasks:
+
+```bash
+curl -X POST "http://localhost:7070/jobs/job-abc123/stop"
+```
+
+Your output should look like this:
+
+```json
+{
+  "job_id": "job-abc123",
+  "message": "job stopped"
+}
+```
+
+### Listing Jobs
+
+Retrieve all jobs with pagination support:
+
+```bash
+curl "http://localhost:7070/jobs?offset=0&limit=100"
+```
+
+Your output should look like this:
+
+```json
+{
+  "offset": 0,
+  "limit": 100,
+  "total": 2,
+  "jobs": [
+    {
+      "job_id": "38c745f1-b5c8-4e72-8c0a-f269ec0637f5",
+      "name": "sequential-pipeline",
+      "state": 3,
+      "tasks": [...],
+      "start_time": "2026-03-01T17:13:42.099469689Z",
+      "finish_time": "2026-03-01T17:13:42.287081364Z",
+      "created_at": "2026-03-01T17:13:24.540925091Z"
+    },
+    {
+      "job_id": "981a9c91-92e2-4518-a0b6-46b8b590d9bb",
+      "name": "addition-pipeline",
+      "state": 3,
+      "tasks": [...],
+      "start_time": "2026-03-01T17:06:17.452922184Z",
+      "finish_time": "2026-03-01T17:06:17.683702371Z",
+      "created_at": "2026-03-01T17:05:45.493390418Z"
+    }
+  ]
+}
+```
+
+- **offset** / **limit**: Pagination parameters from the request.
+- **total**: Total number of jobs in the system.
+- **jobs**: Array of job summaries with nested task arrays.
+
+### Immutable Jobs
+
+Jobs cannot be updated or deleted once created. To modify a job, create a new one with the desired configuration.
+
+This **immutable design** provides several benefits:
+
+| Benefit                | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| **Auditability**       | Every job version is preserved for tracing exactly what ran and when     |
+| **Reproducibility**    | Re-running a job ID always references the same definition                |
+| **Concurrency safety** | No race conditions between execution and configuration changes           |
+| **Debugging**          | Failed jobs retain their original configuration for post-mortem analysis |
+
+## Workflows
+
+Workflows provide DAG-based task orchestration with dependencies and conditional execution. Unlike jobs, workflows allow fine-grained control over task dependencies using `depends_on` arrays and conditional execution with `run_if` fields.
+
+### DAG Concepts
+
+Workflows execute tasks based on dependency relationships and conditional logic. The following diagram shows a typical workflow with success and failure branches:
+
+![DAG Run-If Success/Failure Branching](./images/dag/run-if-success-failure-branching.svg)
+
+**Execution flow:**
+1. **Payment Task** executes first
+2. Based on outcome, one of two paths runs:
+   - **On success**: Send Confirmation task runs (`run_if: success`)
+   - **On failure**: Send Failure Alert task runs (`run_if: failure`)
+
+Only one downstream task executes—never both. This pattern is ideal for notifications, cleanup, or any action that depends on whether the upstream task succeeded or failed.
+
+#### Task Dependencies
+
+The following diagram shows how `depends_on` chains tasks together:
+
+![Task Dependencies](./images/dag/dependency.svg)
+
+**Execution flow:**
+- **Task A** has no dependencies and runs first
+- **Task B** depends on Task A (`depends_on: ["task-a"]`)
+- **Task C** depends on both Task A and Task B (`depends_on: ["task-a", "task-b"]`)
+- Task C waits for **all** its dependencies to complete before starting
+
+This pattern is common when a task needs results from multiple upstream tasks before it can proceed.
+
+#### Fan-Out and Fan-In
+
+DAG workflows support two common parallel execution patterns for distributing and consolidating work.
+
+##### Fan-Out
+
+A single parent task triggers multiple child tasks. All children start simultaneously when the parent completes. This pattern maximizes parallelism for independent work.
+
+![Fan-Out and Fan-In](./images/dag/fanout-fanin.svg)
+
+**Example (image processing pipeline):**
+- **Ingest** task runs first—loads the source image
+- Ingest triggers three parallel tasks: **Resize**, **Watermark**, **Compress**
+- All three run simultaneously since they have no dependencies on each other
+
+##### Fan-In
+
+Multiple tasks converge into a single downstream task. The downstream task waits for **all** upstream tasks to complete. This pattern is used for aggregation, merging results, or synchronization points.
+
+**Example (image processing pipeline):**
+- **Merge & Upload** depends on Resize, Watermark, and Compress
+- It waits for all three to complete before starting
+- Combines results and uploads the final processed image
+
+### Creating a Workflow
+
+When tasks have dependencies, specify explicit `id` values so `depends_on` can reference them:
+
+```bash
+curl -X POST "http://localhost:7070/workflows" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "etl-workflow",
+  "tasks": [
+    {
+      "id": "fetch-a",
+      "name": "fetch-source-a",
+      "image_url": "docker.io/myorg/fetch:v1",
+      "env": {"SOURCE": "database-a"}
+    },
+    {
+      "id": "fetch-b",
+      "name": "fetch-source-b",
+      "image_url": "docker.io/myorg/fetch:v1",
+      "env": {"SOURCE": "database-b"}
+    },
+    {
+      "id": "merge",
+      "name": "merge-data",
+      "image_url": "docker.io/myorg/merge:v1",
+      "depends_on": ["fetch-a", "fetch-b"],
+      "run_if": "success"
+    },
+    {
+      "id": "report",
+      "name": "generate-report",
+      "image_url": "docker.io/myorg/report:v1",
+      "depends_on": ["merge"],
+      "run_if": "success"
+    },
+    {
+      "id": "alert",
+      "name": "send-alert",
+      "image_url": "docker.io/myorg/alert:v1",
+      "depends_on": ["merge"],
+      "run_if": "failure"
+    }
+  ]
+}'
+```
+
+**Request fields:**
+
+| Field        | Description                                                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | Explicit task identifier used by `depends_on` references. Required for tasks that others depend on.                                                     |
+| `depends_on` | Array of task IDs that must complete before this task starts. `fetch-a` and `fetch-b` have no dependencies (root tasks), while `merge` depends on both. |
+| `run_if`     | Conditional execution—`merge` and `report` run on success; `alert` runs only if `merge` fails.                                                          |
+| `image_url`  | WASM module location. Multiple tasks can share the same image with different `env` values.                                                              |
+
+Your output should look like this:
+
+```json
+{
+  "tasks": [
+    {"id": "fetch-a", "name": "fetch-source-a", "workflow_id": "...", "state": 0},
+    {"id": "fetch-b", "name": "fetch-source-b", "workflow_id": "...", "state": 0},
+    {"id": "merge", "name": "merge-data", "workflow_id": "...", "depends_on": ["fetch-a", "fetch-b"], "run_if": "success", "state": 0},
+    {"id": "report", "name": "generate-report", "workflow_id": "...", "depends_on": ["merge"], "run_if": "success", "state": 0},
+    {"id": "alert", "name": "send-alert", "workflow_id": "...", "depends_on": ["merge"], "run_if": "failure", "state": 0}
+  ]
+}
+```
+
+**Response fields:**
+
+| Field         | Description                                                                                                                                        |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow_id` | All tasks share the same auto-generated workflow ID, linking them as a single workflow. Use this to identify all tasks belonging to this workflow. |
+| `depends_on`  | Omitted from the response for root tasks (field is absent when empty).                                                                             |
+| `run_if`      | Omitted from the response when not explicitly set; defaults to `success` behavior at runtime.                                                      |
+
+### Task and Dependency Fields
+
+| Field         | Type            | Description                                                                                                                      |
+| ------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | string          | Task identifier. If omitted, auto-generated as a UUID. Specify explicitly when other tasks need to reference it in `depends_on`. |
+| `depends_on`  | array of string | Task IDs that must complete before this task starts                                                                              |
+| `run_if`      | string          | Condition for execution: `success` (default) or `failure`                                                                        |
+| `workflow_id` | string (auto)   | ID of the workflow this task belongs to                                                                                          |
+
+The `depends_on` field references task IDs that must complete before this task runs. The manager validates:
+- All referenced task IDs exist in the workflow
+- No circular dependencies exist (DAG validation)
+
+### WASM Module Deployment
+
+Tasks execute independently on proplets—possibly on different nodes—so each task needs access to its WASM module. There are three ways to provide it:
+
+1. **Upload directly**: Use `PUT /tasks/{id}/upload` with a multipart form to upload a `.wasm` file. The module is stored with the task record.
+2. **OCI registry**: Set `image_url` to an OCI image reference (e.g. `docker.io/myorg/app:v1`). The proplet fetches the binary through the registry proxy when execution begins.
+3. **Plain HTTP/HTTPS URL**: Set `image_url` to an `http://` or `https://` URL pointing directly to a `.wasm` file (e.g. `https://releases.example.com/app.wasm`). The proplet detects the scheme and fetches the binary directly—no registry proxy involved. Maximum fetch size is **100 MB**.
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "my-task",
+  "image_url": "https://releases.example.com/app.wasm"
+}'
+```
+
+The proplet automatically routes based on the `image_url` scheme: `http://` and `https://` URLs are fetched directly; anything else is treated as an OCI registry reference.
+
+### Data Passing Between Tasks
+
+When tasks depend on each other, downstream tasks often need access to results from upstream tasks. For example, a data transformation task needs the raw data extracted by its parent task, or an aggregation task needs outputs from multiple parallel processing tasks.
+
+Propeller passes task results through the workflow coordinator. Each task receives the outputs from the tasks listed in its `depends_on` array—and only those outputs. This scoped data passing keeps workflows efficient and predictable.
+
+![Data Passing Between Tasks](./images/dag/data-passing-between-tasks.svg)
+
+**Diagram explanation:**
+- **Task A** produces results and completes
+- **Task B** receives Task A's results, processes them, and produces its own results
+- **Task C** receives results from **both** Task A and Task B
+- Each task receives only the outputs from tasks listed in its `depends_on` array
+
+### run_if Values
+
+Conditional execution lets you build workflows that respond to task outcomes. Common use cases include:
+
+- **Success handlers**: Send notifications, trigger deployments, or start downstream processing only when upstream tasks succeed
+- **Failure handlers**: Send alerts, run cleanup routines, or log diagnostics when tasks fail
+
+![Conditional Branching](./images/dag/conditional-branching.svg)
+
+**Diagram explanation:**
+- **Parent Task** completes with either success or failure
+- **Child Task (run_if: success)** executes only when all parents succeeded
+- **Child Task (run_if: failure)** executes only when at least one parent failed
+- When conditions aren't met, tasks are marked **Skipped** (terminal state)
+- Skipped tasks don't trigger their downstream dependencies
+
+| Value                 | Behavior                                                      |
+| --------------------- | ------------------------------------------------------------- |
+| `success` _(default)_ | Task runs only if **all** dependencies completed successfully |
+| `failure`             | Task runs only if **any** dependency failed                   |
+
+### Starting a Workflow
+
+Start the root task (a task with no `depends_on`). The manager automatically schedules dependent tasks as their prerequisites complete:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/{root_task_id}/start"
+```
+
+The workflow coordinator will:
+1. Identify tasks with no dependencies (roots) — these are started manually
+2. Monitor root task completion
+3. Start dependent tasks when their prerequisites are satisfied
+4. Evaluate `run_if` conditions before starting each task
+
+For a complete working example with real WASM modules and actual API responses, see [DAG Workflows and Jobs](/docs/examples/dag).
+
+## Workflow vs Job Comparison
+
+| Aspect              | Workflow                                                                        | Job                                                             |
+| ------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **Endpoint**        | [`POST /workflows`](/docs/api/workflows/post)                                   | [`POST /jobs`](/docs/api/jobs/post)                             |
+| **Execution order** | Defined by `depends_on` arrays                                                  | Controlled by `execution_mode`                                  |
+| **Dependencies**    | Explicit task-to-task                                                           | None—mode determines order                                      |
+| **Use case**        | Complex DAGs with fan-out/fan-in                                                | Simple parallel or sequential batches                           |
+| **Start command**   | [`POST /tasks/{task_id}/start`](/docs/api/tasks/task_id/start/post) (root task) | [`POST /jobs/{job_id}/start`](/docs/api/jobs/job_id/start/post) |
+
+## DAG Validation
+
+The workflow coordinator validates DAG structure before execution:
+
+### Circular Dependency Detection
+
+A **circular dependency** occurs when tasks form a loop—Task A depends on Task B, which depends on Task C, which depends back on Task A. This creates an impossible execution order where no task can start because each is waiting for another.
+
+Circular dependencies are not allowed because:
+- **Deadlock**: Tasks wait forever since their prerequisites never complete
+- **Invalid DAG**: A graph with cycles is not acyclic, violating the DAG definition
+- **Unpredictable behavior**: The workflow has no valid starting point
+
+The coordinator detects and rejects circular dependencies:
+
+```json
+{
+  "tasks": [
+    {"name": "task-a", "depends_on": ["task-c"]},
+    {"name": "task-b", "depends_on": ["task-a"]},
+    {"name": "task-c", "depends_on": ["task-b"]}
+  ]
+}
+```
+
+Error response:
+```json
+{
+  "error": "DAG validation failed: circular dependency detected: cycle detected involving tasks task-a and task-b"
+}
+```
+
+### Dependency Existence Validation
+
+All referenced task IDs must exist:
+
+```json
+{
+  "tasks": [
+    {"name": "process", "depends_on": ["nonexistent-task"]}
+  ]
+}
+```
+
+Error response:
+```json
+{
+  "error": "dependency validation failed: dependency task not found: task process depends on nonexistent-task which does not exist"
+}
+```
+
+### Topological Sorting
+
+The coordinator performs topological sorting to determine execution order:
+
+1. Tasks with no dependencies execute first
+2. Tasks are ordered so all dependencies run before the dependent
+3. Tasks at the same level can run in parallel
+
+## Task Scheduling
+
+### Priority-Based Scheduling
+
+Priority scheduling controls task dispatch order based on priority values. When multiple tasks are pending, the Manager dispatches higher-priority tasks first.
+
+#### How Priority Works
+
+Each task has a `priority` field (0–100). When the Manager has multiple pending tasks, it dispatches the highest-priority task first. This ensures urgent work gets processed before background tasks, even if background tasks were created earlier.
+
+![Priority Within Level](./images/dag/priority-within-level.svg)
+
+#### Setting Task Priority
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "urgent-task",
+  "image_url": "docker.io/myorg/process:v1",
+  "priority": 90
+}'
+```
+
+#### Priority Levels
+
+| Priority | Range  | Description                        |
+| -------- | ------ | ---------------------------------- |
+| Low      | 0–30   | Background tasks, batch processing |
+| Normal   | 31–70  | Default priority (50)              |
+| High     | 71–100 | Urgent tasks, real-time processing |
+
+#### Priority vs Proplet Selection
+
+Priority determines **which task** is dispatched next. Round Robin determines **which proplet** receives the task. A high-priority task will be dispatched before lower-priority tasks, but proplet selection still cycles evenly.
+
+### Round Robin Proplet Selection
+
+The Manager cycles through alive proplets when assigning tasks:
+
+```
+Task 1 → Proplet A
+Task 2 → Proplet B
+Task 3 → Proplet C
+Task 4 → Proplet A
+Task 5 → Proplet B
+...
+```
+
+Only proplets with recent heartbeats (within the liveliness threshold) are eligible.
+
+### Pinning to a Specific Proplet
+
+Override scheduling by specifying a proplet. Only that proplet will execute the task; all others ignore it.
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "pinned-task",
+  "image_url": "docker.io/myorg/process:v1",
+  "proplet_id": "proplet-specific-001"
+}'
+```
+
+### Broadcast Execution
+
+Set `broadcast: true` to run the same task on all active proplets simultaneously. This is useful for deploying configuration updates, running diagnostics, or executing the same function across a fleet of controllers at the same time.
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "fleet-diagnostic",
+  "image_url": "docker.io/myorg/diagnostic:v1",
+  "broadcast": true
+}'
+```
+
+`broadcast` and `proplet_id` are mutually exclusive. Setting both returns a `400` error.
+
+## Cron Scheduling
+
+Cron scheduling enables time-based task execution with cron expressions. Tasks can run on fixed schedules—hourly, daily, weekly—or at specific times using standard cron syntax.
+
+### Creating a Scheduled Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "hourly-cleanup",
+  "image_url": "docker.io/myorg/cleanup:v1",
+  "schedule": "0 * * * *",
+  "timezone": "UTC",
+  "is_recurring": true
+}'
+```
+
+### Cron Expression Format
+
+```
+┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of week (0-6, Sun=0)
+│ │ │ │ │
+* * * * *
+```
+
+### Common Cron Patterns
+
+| Pattern          | Description                    |
+| ---------------- | ------------------------------ |
+| `0 * * * *`      | Every hour at minute 0         |
+| `0 0 * * *`      | Daily at midnight              |
+| `0 0 * * 0`      | Weekly on Sunday at midnight   |
+| `0 0 1 * *`      | Monthly on the 1st at midnight |
+| `*/15 * * * *`   | Every 15 minutes               |
+| `0 9-17 * * 1-5` | Every hour 9am-5pm, Mon-Fri    |
+
+### Timezone Support
+
+Specify timezone for cron evaluation:
+
+```json
+{
+  "schedule": "0 9 * * *",
+  "timezone": "America/New_York"
+}
+```
+
+The Manager evaluates the cron expression in the specified timezone and calculates `next_run` accordingly.
+
+### Viewing Next Run
+
+```bash
+curl http://localhost:7070/tasks/task-abc123 | jq '{next_run, is_recurring}'
+```
+
+Response:
+```json
+{
+  "next_run": "2026-02-27T11:00:00Z",
+  "is_recurring": true
+}
+```
+
+### Stopping a Recurring Task
+
+Stop a recurring task to halt future scheduled executions:
+
+```bash
+curl -X POST "http://localhost:7070/tasks/task-abc123/stop"
+```
+
+Your output should look like this:
+
+```json
+{"stopped": true}
+```
+
+The response indicates the task was successfully stopped. The task's `state` changes to `6` (Interrupted).
+
+Alternatively, update the task to disable recurrence while keeping the task definition:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/task-abc123" \
+-H "Content-Type: application/json" \
+-d '{"is_recurring": false}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "task-abc123",
+  "name": "hourly-cleanup",
+  "state": 0,
+  "is_recurring": false,
+  "schedule": "0 * * * *",
+  "updated_at": "2026-03-01T18:25:26.423162005Z"
+}
+```
+
+The response returns the full updated task. Key changes:
+- **is_recurring**: Now `false`—the task won't run on schedule
+- **updated_at**: Reflects when the change was applied
+- **schedule**: Retained for reference, but won't trigger execution
+
+## Task Metadata
+
+Tasks accept an optional `metadata` field—a free-form JSON object you can use to attach any key-value information to a task, such as environment labels, team ownership, or custom tags. Metadata is persisted alongside the task and is available in all get/list responses.
+
+### Setting Metadata on a Task
+
+Pass the `metadata` field when creating or updating a task:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "nightly-report",
+  "image_url": "docker.io/myorg/report:v1",
+  "metadata": {
+    "env": "production",
+    "team": "data-eng",
+    "version": "2.1.0"
+  }
+}'
+```
+
+Metadata values can be strings, numbers, booleans, or nested objects—any valid JSON value. The total serialized size must not exceed **1 MB**.
+
+### Filtering Tasks by Metadata
+
+Use `metadata[<key>]=<value>` query parameters to filter the task list. Only tasks whose metadata contains **all** specified key-value pairs are returned:
+
+```bash
+curl "http://localhost:7070/tasks?metadata[env]=production&metadata[team]=data-eng"
+```
+
+Multiple filters are combined with AND semantics—a task must match every supplied filter to appear in the results.
+
+**Metadata key rules:**
+- Allowed characters: alphanumerics, `.`, `_`, `-`
+- Keys with other characters are rejected with a `400` error
+
+### Updating Metadata
+
+Update metadata on an existing task with a `PUT` request. The entire `metadata` object is replaced:
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/task-abc123" \
+-H "Content-Type: application/json" \
+-d '{
+  "metadata": {
+    "env": "staging",
+    "team": "data-eng"
+  }
+}'
+```
+
+## Task States
+
+Tasks move through these states during execution:
+
+| Value | Name          | Description                                     |
+| ----- | ------------- | ----------------------------------------------- |
+| `0`   | `Pending`     | Task created, not yet started                   |
+| `1`   | `Scheduled`   | Task assigned to a proplet                      |
+| `2`   | `Running`     | Task is executing on a proplet                  |
+| `3`   | `Completed`   | Task finished successfully                      |
+| `4`   | `Failed`      | Task encountered an error                       |
+| `5`   | `Skipped`     | Task skipped (e.g., `run_if` condition not met) |
+| `6`   | `Interrupted` | Task was stopped externally                     |
+
+![Task State Transitions](./images/dag/state-transitions-in-workflows.svg)
+
+### Interrupted Tasks
+
+A task enters the `Interrupted` state (`6`) when it's stopped before natural completion. This can happen through:
+
+- **Manual stop**: Calling `POST /tasks/{id}/stop` on a running or pending task
+- **Job stop**: Calling `POST /jobs/{id}/stop` interrupts all tasks in the job
+- **Workflow cancellation**: Stopping a root task may interrupt dependent tasks
+- **System shutdown**: Proplet disconnection during execution
+
+Interrupted tasks:
+- Don't trigger downstream dependencies in workflows
+- Can be restarted with `POST /tasks/{id}/start`
+- Retain their configuration for debugging or retry
+
+### State Transitions in Workflows
+
+The diagram above shows the complete state machine. Key transitions:
+
+- **Normal flow**: Pending → Scheduled → Running → Completed
+- **Error path**: Running → Failed
+- **Conditional skip**: Pending → Skipped (when `run_if` condition not met)
+- **Manual stop**: Any active state → Interrupted
+- **Recovery**: Interrupted → Pending (via restart)
+
+## Daemon Tasks
+
+For long-running services that should run continuously:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "api-server",
+  "image_url": "docker.io/myorg/api:v1",
+  "daemon": true
+}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "8c5f2631-1ac9-4fc1-968d-a7cbdb14d660",
+  "name": "api-server",
+  "kind": "standard",
+  "state": 0,
+  "image_url": "docker.io/myorg/api:v1",
+  "daemon": true,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-01T18:39:34.055594605Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+Daemon tasks:
+- Run until explicitly stopped
+- Automatically restart on the same proplet if they crash
+- Don't count toward workflow completion
+
+For complete working examples including ETL pipelines and troubleshooting guides, see [DAG Workflows and Jobs](/docs/examples/dag).

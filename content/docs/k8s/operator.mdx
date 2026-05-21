@@ -1,0 +1,70 @@
+---
+title: Propeller Kubernetes Operator
+description: Architecture, controllers, Custom Resource Definitions, and MQTT communication for the Propeller Kubernetes Operator.
+---
+
+The Propeller Kubernetes Operator extends any Kubernetes cluster with five Custom Resource Definitions that bring Propeller's WebAssembly task execution model into the Kubernetes control plane. You describe workers (Proplets) and workloads (Tasks, PropellerJobs, FederatedJobs) as Kubernetes manifests, and the operator reconciles them to the desired state—creating Deployments for in-cluster workers, dispatching tasks to remote devices over MQTT, and propagating results back into resource status fields.
+
+The operator source code is available at [github.com/absmach/propeller-k8s-operator](https://github.com/absmach/propeller-k8s-operator).
+
+
+## Architecture
+
+### How the Operator Fits into Propeller
+
+Propeller consists of a **manager** (task dispatch), **proplets** (workers that execute WASM), and **[SuperMQ](https://docs.supermq.absmach.eu/)** (MQTT broker providing authentication and routing). In a standalone deployment these run as separate processes or Docker containers. The Propeller Kubernetes Operator replaces the manager process: it watches Kubernetes Custom Resources for desired state and drives proplets over MQTT to achieve it, while recording outcomes back into Kubernetes status fields.
+
+The operator connects to a SuperMQ MQTT broker on startup using the manager's credentials. It subscribes to the wildcard topic for its configured domain and channel, and dispatches to individual proplets by publishing targeted start messages.
+
+![Propeller Kubernetes Operator Architecture Overview](../images/kubernetes-operator/architecture.svg)
+
+*Figure: High-level architecture of the Propeller Kubernetes Operator showing the relationship between the operator, Kubernetes API, SuperMQ MQTT broker, and proplet workers (both in-cluster k8s pods and external devices). The operator watches Custom Resources and reconciles state through MQTT communication.*
+
+### Controllers
+
+The operator runs five controllers concurrently. Each controller owns one Custom Resource kind and drives it through a phase-based state machine.
+
+| Controller                  | Custom Resource   | Responsibility                                                                                                                                          |
+| --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PropletReconciler`         | `Proplet`         | Creates and reconciles Kubernetes Deployments for in-cluster workers; monitors external devices via MQTT heartbeats                                     |
+| `TaskReconciler`            | `Task`            | Schedules a WASM workload on the selected proplet; creates a Kubernetes Job for k8s proplets or publishes an MQTT message for external proplets         |
+| `PropellerJobReconciler`    | `PropellerJob`    | Groups a set of Tasks into a single batch; creates child Task resources and aggregates their outcomes                                                   |
+| `FederatedJobReconciler`    | `FederatedJob`    | Orchestrates a multi-round federated learning experiment by creating and advancing `TrainingRound` resources                                            |
+| `TrainingRoundReconciler`   | `TrainingRound`   | Creates per-participant Task resources for one training round, collects model updates via MQTT, and aggregates them once k-of-n participants complete   |
+
+### Custom Resource Definitions
+
+The operator installs five CRDs into the cluster:
+
+| CRD               | API Version                                          | Description                                                    |
+| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| `Task`            | `propeller.propeller.abstractmachines.fr/v1`         | A single WASM workload to execute on a proplet                 |
+| `Proplet`         | `propeller.propeller.abstractmachines.fr/v1`         | A worker node, either a Kubernetes pod or an external device   |
+| `PropellerJob`    | `propeller.propeller.abstractmachines.fr/v1`         | A named batch of Tasks executed as a group                     |
+| `FederatedJob`    | `propeller.propeller.abstractmachines.fr/v1`         | A federated learning experiment spanning multiple proplets     |
+| `TrainingRound`   | `propeller.propeller.abstractmachines.fr/v1`         | One round within a FederatedJob                                |
+
+### MQTT Communication
+
+All communication between the operator and proplets uses MQTT, routed through SuperMQ. Every message is scoped to a domain and channel:
+
+```text
+m/{domain_id}/c/{channel_id}/{sub-topic}
+```
+
+The operator subscribes to the wildcard `m/{domain_id}/c/{channel_id}/#` and dispatches incoming messages to the appropriate handler by matching the topic suffix.
+
+| Sub-topic                        | Direction            | Purpose                                                                                 |
+| -------------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
+| `control/proplet/alive`          | proplet → operator   | Heartbeat published by every proplet every 10 seconds; carries optional device metadata |
+| `control/proplet/metrics`        | proplet → operator   | Proplet system metrics (CPU utilisation, memory usage)                                  |
+| `control/proplet/results`        | proplet → operator   | Task result payload after WASM execution completes                                      |
+| `control/proplet/task_metrics`   | proplet → operator   | Per-task CPU and memory metrics during execution                                        |
+| `control/manager/start`          | operator → proplet   | Task execution instruction including the full task spec                                 |
+| `control/manager/stop`           | operator → proplet   | Instruction to stop a running task                                                      |
+
+![MQTT Communication Flow](../images/kubernetes-operator/mqtt-communication.svg)
+
+*Figure: MQTT message flow between the Propeller Kubernetes Operator and proplets via SuperMQ. Shows the bidirectional communication pattern including heartbeats, task dispatch, status updates, and result collection across domain and channel scoped topics.*
+
+The MQTT client ID used by the operator is `propeller-controller`. Proplets identify themselves in alive messages using their SuperMQ `client_id`. The operator matches this value against `spec.connectionConfig.clientId` in Proplet CRs to route heartbeats and results to the correct resource.

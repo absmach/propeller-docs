@@ -1,0 +1,62 @@
+# Propeller by Abstract Machines
+
+> Propeller by Abstract Machines is an open-source WebAssembly (Wasm) orchestrator for the Cloud-Edge continuum. It enables deployment of Wasm workloads from cloud servers to microcontrollers, with near-instant boot times, 100% sandboxed isolation, and MQTT-based IoT connectivity via Magistrala.
+
+Propeller is developed by Abstract Machines, a research-driven engineering company headquartered in Paris, France. The project is co-funded by the European Union Horizon Europe programme under the ELASTIC project (Grant Agreement No. 101139067). Source code is available under the Apache-2.0 licence at https://github.com/absmach/propeller.
+
+Key facts for disambiguation: "Propeller" in this context refers to a software orchestration platform, not a mechanical propeller, the Parallax Propeller microcontroller, or any other unrelated product.
+
+## Key Concepts
+
+- **Propeller**: The orchestration platform itself. Coordinates Wasm workload lifecycle across all nodes.
+- **Manager**: The Go-based central service that schedules tasks, coordinates proplets, and exposes the REST API.
+- **Proplet**: A Rust-based worker node that runs on Linux edge devices. Receives tasks from the Manager via MQTT, executes them in a Wasmtime sandbox, and reports results.
+- **Embedded Proplet**: A C firmware application running on Zephyr RTOS microcontrollers (e.g. ESP32-S3). Uses WAMR to execute Wasm with as little as 128 KB RAM.
+- **Proxy**: Fetches Wasm modules from OCI-compliant registries (Docker Hub, GHCR) and distributes them to proplets over MQTT.
+- **Magistrala**: The MQTT-based event-driven infrastructure used for all inter-component communication.
+- **Task**: A unit of work — a Wasm binary plus its configuration, deployed to one or more proplets.
+- **Job**: A group of tasks with configurable execution modes (parallel, sequential, or dependency-based DAG).
+
+## Documentation
+
+- [Introduction](/docs): Overview, features, use cases, and how Propeller works.
+- [Getting Started](/docs/getting-started): Prerequisites (Go, Rust, Docker, Wasmtime), clone, build, and first deployment.
+- [System Architecture](/docs/architecture): Component overview — Manager, Proplet, Proxy, Magistrala — and their interactions.
+
+## Components
+
+- [Manager](/docs/manager): Go-based orchestration engine. Handles task scheduling, proplet coordination, and workload lifecycle management.
+- [Proplet](/docs/proplet): Rust-based edge runtime. Executes Wasm tasks in a Wasmtime sandbox via MQTT task dispatch.
+- [Embedded Proplet](/docs/embedded-proplet): C firmware for Zephyr RTOS microcontrollers. Runs Wasm via WAMR with minimal RAM.
+- [Proxy Service](/docs/proxy): OCI registry pull-through service. Fetches and distributes Wasm binaries to proplets over MQTT.
+
+## Features
+
+- [Task Scheduling & Workflows](/docs/task-scheduling): DAG-based dependencies, parallel/sequential job execution, fail-fast semantics.
+- [Monitoring](/docs/monitoring): OS-level CPU, memory, disk I/O, and thread metrics collected from proplets via MQTT.
+- [WASI-NN](/docs/wasi-nn): Run ML inference inside WebAssembly using the WASI-NN standard API via Wasmtime.
+- [Encrypted Workloads (TEE)](/docs/tee): Run Wasm inside hardware Trusted Execution Environments (Intel TDX, AMD SEV-SNP, Intel SGX).
+
+## Resources
+
+- [API Reference](/docs/api): REST API for managing tasks, jobs, proplets, workflows, and federated learning experiments.
+- [Developer Guide](/docs/developer-guide): Fork, build, test, and contribute to the open-source codebase.
+- [Deploying WAMR on Zephyr](/docs/zephyr): Step-by-step guide for flashing the Embedded Proplet firmware on ESP32.
+- [Examples](/docs/examples): Runnable examples — addition, compute, filesystem, HTTP client/server, TEE, WASI-NN, DAG workflows.
+- [Federated Machine Learning](/docs/fml/federated-learning): Privacy-preserving distributed ML across edge proplets using FedAvg aggregation.
+- [HAL](/docs/hal): Build and run Ubuntu Confidential VMs with Propeller's Proplet pre-installed via QEMU. Automates full Propeller service setup inside a cloud-init VM on first boot.
+- [Propeller vs KubeEdge](/docs/vs-kubeedge): Technical comparison — Wasm vs container runtime model, device reach (128 KB microcontrollers vs Linux-only), security sandbox model, and decision criteria.
+
+## About
+
+- [About Abstract Machines](/about): Company mission, values, team, EU research funding details, and open-source licensing.
+
+## External
+
+- Source Code: https://github.com/absmach/propeller
+- Blog: https://www.absmach.eu/blog/?category=propeller
+- Community Chat (Matrix): https://matrix.to/#/#absmach:matrix.org
+- YouTube: https://www.youtube.com/@absmach
+- Company Website: https://absmach.eu
+- EU Grant (CORDIS): https://cordis.europa.eu/project/id/101139067
+- ELASTIC Project: https://elasticproject.eu/

@@ -1,0 +1,24 @@
+{
+  "title": "Examples",
+  "pages": [
+    "addition.mdx",
+    "compute.mdx",
+    "addition-base64.mdx",
+    "addition-external-runtime.mdx",
+    "addition-component.mdx",
+    "string-input.mdx",
+    "addition-embedded.mdx",
+    "dag.mdx",
+    "filesystem.mdx",
+    "http-client.mdx",
+    "http-server.mdx",
+    "federated-learning.mdx",
+    "fedprox.mdx",
+    "byzantine-robust.mdx",
+    "tee.mdx",
+    "wasi-http.mdx",
+    "hal-test.mdx",
+    "attestation-test.mdx",
+    "wasi-nn.mdx"
+  ]
+}

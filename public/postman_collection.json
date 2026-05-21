@@ -1,0 +1,1014 @@
+{
+  "info": {
+    "_postman_id": "ff50e552-db77-444a-8119-176646f48f22",
+    "name": "Propeller",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "5838754",
+    "_collection_link": "https://ox6flab.postman.co/workspace/Magistrala~acba89f8-0255-435e-9547-59e542474e21/collection/5838754-ff50e552-db77-444a-8119-176646f48f22?action=share&source=collection_link&creator=5838754"
+  },
+  "item": [
+    {
+      "name": "Manager",
+      "item": [
+        {
+          "name": "Proplets",
+          "item": [
+            {
+              "name": "Get Proplet",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/proplets/{{PROPLET_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["proplets", "{{PROPLET_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Proplet",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/proplets/{{PROPLET_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["proplets", "{{PROPLET_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Proplet Metrics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/proplets/{{PROPLET_ID}}/metrics",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["proplets", "{{PROPLET_ID}}", "metrics"],
+                  "query": [
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Proplets",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "function getID() {",
+                      "    var res = pm.response.json();",
+                      "    var id = res.proplets[0].id;",
+                      "    return id;",
+                      "}",
+                      "",
+                      "pm.collectionVariables.set('PROPLET_ID', getID());",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/proplets",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["proplets"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1000",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Task",
+          "item": [
+            {
+              "name": "Embedded",
+              "item": [
+                {
+                  "name": "Create Task",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "function constructVisualizerPayload() {",
+                          "    var res = pm.response.json();",
+                          "    var id = res.id;",
+                          "    return id;",
+                          "}",
+                          "",
+                          "pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"name\": \"main\",\n    \"file\": \"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks"]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Task",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks", "{{TASK_ID}}"]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Start Task",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/start",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks", "{{TASK_ID}}", "start"]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Host Runtime",
+              "item": [
+                {
+                  "name": "Create Task",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "function constructVisualizerPayload() {",
+                          "    var res = pm.response.json();",
+                          "    var id = res.id;",
+                          "    return id;",
+                          "}",
+                          "",
+                          "pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"name\": \"add\",\n    \"cli_args\": [\n        \"--invoke\",\n        \"add\"\n    ],\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks"]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Task",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks", "{{TASK_ID}}"]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Upload Wasm File",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "PUT",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": "/home/rodneyosodo/code/absmach/propeller/build/addition.wasm"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/upload",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks", "{{TASK_ID}}", "upload"]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Start Task",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [""],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/start",
+                      "host": ["{{MANAGER_BASE_URL}}"],
+                      "path": ["tasks", "{{TASK_ID}}", "start"]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Create Task With Image",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "function constructVisualizerPayload() {",
+                      "    var res = pm.response.json();",
+                      "    var id = res.id;",
+                      "    return id;",
+                      "}",
+                      "",
+                      "pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ],\n    \"image_url\": \"localhost:5000/addition.wasm\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Task",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "function constructVisualizerPayload() {",
+                      "    var res = pm.response.json();",
+                      "    var id = res.id;",
+                      "    return id;",
+                      "}",
+                      "",
+                      "pm.collectionVariables.set('TASK_ID', constructVisualizerPayload());",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Task",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Task",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"add\",\n    \"inputs\": [\n        10,\n        20\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Upload Wasm File",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "postman-cloud:///1efb9331-db42-42b0-818c-ea887cc3579a"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/upload",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}", "upload"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Tasks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks"],
+                  "query": [
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1000",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Task",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Start Task",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/start",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}", "start"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Stop Task",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [""],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/stop",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}", "stop"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Task Metrics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/metrics",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}", "metrics"],
+                  "query": [
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Task Results",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/tasks/{{TASK_ID}}/results",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["tasks", "{{TASK_ID}}", "results"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Jobs",
+          "item": [
+            {
+              "name": "Create Job",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var res = pm.response.json();",
+                      "if (res.id) {",
+                      "    pm.collectionVariables.set('JOB_ID', res.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"batch-process\",\n    \"execution_mode\": \"sequential\",\n    \"tasks\": [\n        {\n            \"name\": \"step-1\",\n            \"image_url\": \"docker.io/myorg/step1:v1\"\n        },\n        {\n            \"name\": \"step-2\",\n            \"image_url\": \"docker.io/myorg/step2:v1\"\n        }\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/jobs",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["jobs"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Jobs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/jobs",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["jobs"],
+                  "query": [
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Job",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/jobs/{{JOB_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["jobs", "{{JOB_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Start Job",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/jobs/{{JOB_ID}}/start",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["jobs", "{{JOB_ID}}", "start"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Stop Job",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/jobs/{{JOB_ID}}/stop",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["jobs", "{{JOB_ID}}", "stop"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Workflows",
+          "item": [
+            {
+              "name": "Create Workflow",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"tasks\": [\n        {\n            \"name\": \"fetch-data\",\n            \"image_url\": \"docker.io/myorg/fetch:v1\"\n        },\n        {\n            \"name\": \"process\",\n            \"image_url\": \"docker.io/myorg/process:v1\",\n            \"depends_on\": [\"<fetch-data-task-id>\"],\n            \"run_if\": \"success\"\n        }\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/workflows",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["workflows"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Federated Learning",
+          "item": [
+            {
+              "name": "Configure FL Experiment",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var res = pm.response.json();",
+                      "if (res.round_id) {",
+                      "    pm.collectionVariables.set('ROUND_ID', res.round_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"experiment_id\": \"exp-001\",\n    \"round_id\": \"round-1\",\n    \"model_ref\": \"model-v1\",\n    \"participants\": [\"proplet-1\", \"proplet-2\"],\n    \"hyperparams\": {\n        \"learning_rate\": 0.01,\n        \"epochs\": 5\n    },\n    \"k_of_n\": 2,\n    \"timeout_s\": 300\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/fl/experiments",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["fl", "experiments"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get FL Task",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/fl/task?round_id={{ROUND_ID}}",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["fl", "task"],
+                  "query": [
+                    {
+                      "key": "round_id",
+                      "value": "{{ROUND_ID}}"
+                    },
+                    {
+                      "key": "proplet_id",
+                      "value": "{{PROPLET_ID}}",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Submit FL Update (JSON)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"round_id\": \"{{ROUND_ID}}\",\n    \"proplet_id\": \"{{PROPLET_ID}}\",\n    \"weights\": {},\n    \"metrics\": {}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/fl/update",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["fl", "update"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Submit FL Update (CBOR)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/cbor"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": ""
+                },
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/fl/update_cbor",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["fl", "update_cbor"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Round Completion Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/fl/rounds/{{ROUND_ID}}/complete",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["fl", "rounds", "{{ROUND_ID}}", "complete"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "System",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/health",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["health"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Prometheus Metrics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{MANAGER_BASE_URL}}/metrics",
+                  "host": ["{{MANAGER_BASE_URL}}"],
+                  "path": ["metrics"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "MANAGER_BASE_URL",
+      "value": "http://localhost:7070",
+      "type": "string"
+    },
+    {
+      "key": "WORKER_ID",
+      "value": ""
+    },
+    {
+      "key": "TASK_ID",
+      "value": ""
+    },
+    {
+      "key": "PROPLET_ID",
+      "value": ""
+    },
+    {
+      "key": "JOB_ID",
+      "value": ""
+    },
+    {
+      "key": "ROUND_ID",
+      "value": ""
+    }
+  ]
+}

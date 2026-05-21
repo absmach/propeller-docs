@@ -1,0 +1,198 @@
+---
+title: String Input (WASM Component)
+description: Pass a string to a WASM Component Model export and get a greeting back
+---
+
+This example demonstrates passing a **string input** to a WASM Component Model export via propeller. The component takes a name and returns a personalised greeting.
+
+## Source Code
+
+The source code is available in the [examples/greet-component](https://github.com/absmach/propeller/blob/main/examples/greet-component) directory.
+
+The WIT interface defines a single exported function:
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/greet-component/wit/world.wit"
+  lang="wit"
+/>
+
+The Rust implementation:
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/greet-component/src/lib.rs"
+  lang="rust"
+/>
+
+## Build the Component
+
+You need the following tools installed:
+
+- [Rust](https://rustup.rs/) with the `wasm32-wasip2` target: `rustup target add wasm32-wasip2`
+
+```bash
+cd propeller/examples/greet-component
+cargo build --target wasm32-wasip2 --release
+```
+
+## Create Task
+
+The task `name` must exactly match the exported function name in the WIT interface. The proplet uses the task name to look up and call the component export — if the names don't match, the task will fail.
+
+String inputs require [WAVE encoding](#wave-encoding-for-string-inputs) — see below for details.
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "greet", "inputs": ["\"John Doe\""]}'
+```
+
+Your output should look like this:
+
+```json
+{
+    "id": "6381afd0-cefd-434e-85d2-473576a81432",
+    "name": "greet",
+    "kind": "standard",
+    "state": 0,
+    "cli_args": null,
+    "inputs": [
+        "\"John Doe\""
+    ],
+    "daemon": false,
+    "encrypted": false,
+    "start_time": "0001-01-01T00:00:00Z",
+    "finish_time": "0001-01-01T00:00:00Z",
+    "created_at": "2026-03-26T10:22:23.697115725Z",
+    "updated_at": "0001-01-01T00:00:00Z",
+    "next_run": "0001-01-01T00:00:00Z",
+    "priority": 50
+}
+```
+
+## Upload Wasm
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/6381afd0-cefd-434e-85d2-473576a81432/upload" \
+  -F "file=@target/wasm32-wasip2/release/greet_component.wasm"
+```
+
+Your output should look like this:
+
+```json
+{
+    "id": "6381afd0-cefd-434e-85d2-473576a81432",
+    "name": "greet",
+    "kind": "standard",
+    "state": 0,
+    "file": "...<redacted>...",
+    "cli_args": null,
+    "inputs": [
+        "\"John Doe\""
+    ],
+    "daemon": false,
+    "encrypted": false,
+    "start_time": "0001-01-01T00:00:00Z",
+    "finish_time": "0001-01-01T00:00:00Z",
+    "created_at": "2026-03-26T10:22:23.697115725Z",
+    "updated_at": "2026-03-26T10:22:27.341182514Z",
+    "next_run": "0001-01-01T00:00:00Z",
+    "priority": 50
+}
+```
+
+## Start Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks/6381afd0-cefd-434e-85d2-473576a81432/start"
+```
+
+Your output should look like this:
+
+```json
+{ "started": true }
+```
+
+The proplet logs will show the component export being invoked:
+
+```bash
+2026-03-26T10:22:37.451615Z  INFO Received start command for task: 6381afd0-cefd-434e-85d2-473576a81432
+2026-03-26T10:22:37.457237Z  INFO Decoded wasm binary, size: 72591 bytes
+2026-03-26T10:22:37.459183Z  INFO Executing task 6381afd0-cefd-434e-85d2-473576a81432 in spawned task
+2026-03-26T10:22:37.462876Z  INFO Starting Wasmtime runtime app: task_id=6381afd0-cefd-434e-85d2-473576a81432, function=greet, daemon=false, wasm_size=72591, is_component=true, is_proxy=false
+2026-03-26T10:22:37.463406Z  INFO Compiling WASM component for custom export 'greet' for task: 6381afd0-cefd-434e-85d2-473576a81432
+2026-03-26T10:22:37.858028Z  INFO Export 'greet' for task 6381afd0-cefd-434e-85d2-473576a81432 completed, result: "Hello, John Doe!"
+2026-03-26T10:22:37.936202Z  INFO Task 6381afd0-cefd-434e-85d2-473576a81432 completed successfully. Result: "Hello, John Doe!"
+2026-03-26T10:22:37.936288Z  INFO Publishing result for task 6381afd0-cefd-434e-85d2-473576a81432
+2026-03-26T10:22:37.936324Z  INFO Successfully published result for task 6381afd0-cefd-434e-85d2-473576a81432
+```
+
+## Get Results
+
+```bash
+curl -X GET "http://localhost:7070/tasks/6381afd0-cefd-434e-85d2-473576a81432"
+```
+
+Your output should look like this:
+
+```json
+{
+    "id": "6381afd0-cefd-434e-85d2-473576a81432",
+    "name": "greet",
+    "kind": "standard",
+    "state": 3,
+    "cli_args": null,
+    "inputs": [
+        "\"John Doe\""
+    ],
+    "daemon": false,
+    "encrypted": false,
+    "proplet_id": "fecdb9c3-be8c-458b-a188-f974a2aa93c7",
+    "results": "\"Hello, John Doe!\"",
+    "start_time": "2026-03-26T10:22:37.454060334Z",
+    "finish_time": "2026-03-26T10:22:37.971575688Z",
+    "created_at": "2026-03-26T10:22:23.697115725Z",
+    "updated_at": "2026-03-26T10:22:37.971575412Z",
+    "next_run": "0001-01-01T00:00:00Z",
+    "priority": 50
+}
+```
+
+State `3` means the task completed successfully. The `results` field shows `"\"Hello, John Doe!\""` — the return value of `greet("John Doe")`.
+
+## WAVE Encoding for String Inputs
+
+The proplet passes inputs to component exports using [WAVE](https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-wave) (WebAssembly Value Encoding). In WAVE, a `string` value must include its own surrounding quotes — `"John Doe"` — so the parser knows it is a string and not an identifier, enum variant, or other type.
+
+Because every element in the `inputs` JSON array is already a JSON string, you end up with two layers of quoting:
+
+1. **WAVE layer** — the value itself must be `"John Doe"` (with quotes) to be a valid WAVE string
+2. **JSON layer** — to embed that quoted value inside a JSON string, the inner quotes must be escaped: `\"John Doe\"`
+
+The final JSON input for the string `John Doe` is therefore `"\"John Doe\""`.
+
+**What happens if you omit the inner quotes?**
+
+If you send `"John Doe"` instead of `"\"John Doe\""`, the WAVE parser receives `John Doe` with no surrounding quotes. It treats that as an identifier — not a string literal — and rejects it. The task will fail with a WAVE parse error before the component is even called.
+
+| Wasm type | JSON input value   | WAVE value received by component |
+| --------- | ------------------ | -------------------------------- |
+| `string`  | `"\"John Doe\""`   | `"John Doe"`                     |
+| `s32`     | `"42"`             | `42`                             |
+| `f32`     | `"3.14"`           | `3.14`                           |
+| `bool`    | `"true"`           | `true`                           |
+
+Non-string types (`s32`, `f32`, `bool`) do not need inner quotes because their WAVE representations have no quoting requirement.
+
+## Invoking Using Wasmtime
+
+You can test the component binary directly without propeller:
+
+```bash
+wasmtime run --invoke 'greet("John Doe")' target/wasm32-wasip2/release/greet_component.wasm
+```
+
+The output should look like this:
+
+```bash
+"Hello, John Doe!"
+```

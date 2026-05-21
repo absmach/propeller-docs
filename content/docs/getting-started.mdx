@@ -1,0 +1,653 @@
+---
+title: Getting Started
+description: "Install and deploy Propeller, the open-source WebAssembly orchestrator. Step-by-step setup for Go, Rust, Docker, and Wasmtime — from clone to first Wasm workload deployment."
+---
+
+This guide walks you through installing Propeller and running your first WASM workload in under 15 minutes.
+
+## Prerequisites
+
+| Tool                                       | Version | Purpose                      |
+| ------------------------------------------ | ------- | ---------------------------- |
+| [Go](https://go.dev/doc/install)           | 1.26.0+ | Building Propeller binaries  |
+| [Rust](https://rustup.rs/)                 | Latest  | Building the proplet runtime |
+| [Docker](https://docs.docker.com/)         | 20.10+  | Running Magistrala services  |
+| [Make](https://www.gnu.org/software/make/) | 3.81+   | Build automation             |
+| [Mosquitto Tools](https://mosquitto.org/)  | Latest  | MQTT CLI utilities           |
+
+These are only needed if you plan to build WASM modules locally:
+
+- [TinyGo](https://tinygo.org/getting-started/install/) (0.34.0+) - Compile Go to WASM
+- [Wasmtime](https://wasmtime.dev/) - Local WASM testing
+
+> **Note:** `rustup` will install the Rust toolchain and `cargo`. You will also use it to add WebAssembly targets.
+
+## Download Pre-built Binaries
+
+You can download pre-built binaries from the [GitHub Releases](https://github.com/absmach/propeller/releases) page.
+
+### Docker Images
+
+Propeller also provides pre-built Docker images via GitHub Container Registry:
+
+| Service           | Image                                              |
+| ----------------- | -------------------------------------------------- |
+| Manager           | `ghcr.io/absmach/propeller/manager:latest`         |
+| CLI               | `ghcr.io/absmach/propeller/cli:latest`             |
+| Proxy             | `ghcr.io/absmach/propeller/proxy:latest`           |
+| Proplet           | `ghcr.io/absmach/propeller/proplet:latest`         |
+| Proplet (WASI-NN) | `ghcr.io/absmach/propeller/proplet:wasi-nn`        |
+
+To pull the latest images:
+
+```bash
+docker pull ghcr.io/absmach/propeller/manager:latest
+docker pull ghcr.io/absmach/propeller/cli:latest
+docker pull ghcr.io/absmach/propeller/proxy:latest
+docker pull ghcr.io/absmach/propeller/proplet:latest
+```
+
+For WASI-NN (OpenVINO) support:
+
+```bash
+docker pull ghcr.io/absmach/propeller/proplet:wasi-nn
+```
+
+> **Note:** The WASI-NN image is only available for `linux/amd64` architecture due to OpenVINO limitations.
+
+### Multi-Architecture Support
+
+Docker images are built for multiple architectures:
+
+| Architecture | manager | cli | proxy | proplet | proplet-wasi-nn |
+| ------------ | ------- | --- | ----- | ------- | --------------- |
+| amd64        | ✓       | ✓   | ✓     | ✓       | ✓               |
+| arm64        | ✓       | ✓   | ✓     | ✓       | ✗               |
+| riscv64      | ✓       | ✓   | ✓     | ✗       | ✗               |
+
+## Build from Source
+
+### Step 1: Clone and Build
+
+```bash
+git clone https://github.com/absmach/propeller.git
+cd propeller
+make all -j $(nproc)
+make install
+```
+
+#### What the build process does
+
+During the build, you will see output similar to:
+
+```bash
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/magistrala.BuildTime=...' -X 'github.com/absmach/magistrala.Version=v0.3.0'" -o build/manager cmd/manager/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "..." -o build/cli cmd/cli/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "..." -o build/proxy cmd/proxy/main.go
+cd proplet && cargo build --release && cp target/release/proplet ../build
+    Finished `release` profile [optimized] target(s) in 15.36s
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/addition.wasm -target wasi examples/addition/addition.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/compute.wasm -target wasi examples/compute/compute.go
+GOOS=js GOARCH=wasm tinygo build -buildmode=c-shared -o build/hello-world.wasm -target wasi examples/hello-world/hello-world.go
+```
+
+This means:
+
+- All Go binaries were built and placed into `build/`
+- All example WASM modules were built using TinyGo into `build/`
+
+`make install` copies the compiled binaries into your `$GOBIN` directory so you can run them directly from your terminal.
+
+#### If `make install` fails
+
+You likely don't have your Go binary path (`$GOBIN`) configured. Set it up like this:
+
+```bash
+export GOBIN=$HOME/go/bin
+export PATH=$PATH:$GOBIN
+make install
+```
+
+See the [Developer Guide](./developer-guide#troubleshooting) for other common build problems.
+
+### Step 2: Start Magistrala
+
+Magistrala provides the messaging infrastructure for Propeller. From the root of the `propeller` repo:
+
+```bash
+cd propeller
+make start-magistrala
+```
+
+This runs:
+
+```bash
+docker compose -f docker/compose.yaml --env-file docker/.env up -d
+```
+
+The output will look something like:
+
+```bash
+docker compose -f docker/compose.yaml --env-file docker/.env up -d
+[+] up 66/66
+ ✔ Network magistrala-base-net                        Created                                                                        0.1s
+ ✔ Volume magistrala_magistrala-users-db-volume       Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-domains-redis-volume  Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-channels-redis-volume Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-auth-redis-volume     Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-clients-redis-volume  Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-journal-volume        Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-openbao-data          Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-fluxmq-node3-volume   Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-re-db-volume          Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-reports-db-volume     Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-certs-db-volume       Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-clients-db-volume     Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-alarms-db-volume      Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-channels-db-volume    Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-fluxmq-node2-volume   Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-spicedb-db-volume     Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-pat-db-volume         Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-ui-backend-db-volume  Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-auth-db-volume        Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-fluxmq-node1-volume   Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-domains-db-volume     Created                                                                        0.0s
+ ✔ Volume magistrala_magistrala-groups-db-volume      Created                                                                        0.0s
+ ✔ Container magistrala-clients-redis                 Started                                                                        5.1s
+ ✔ Container magistrala-re-db                         Started                                                                       10.7s
+ ✔ Container magistrala-seaweedfs-s3                  Started                                                                        9.5s
+ ✔ Container magistrala-fluxmq-auth                   Started                                                                        9.9s
+ ✔ Container magistrala-auth-db                       Started                                                                        5.7s
+ ✔ Container magistrala-ui-backend-db                 Healthy                                                                       20.5s
+ ✔ Container magistrala-openbao                       Healthy                                                                       25.5s
+ ✔ Container magistrala-auth-redis                    Started                                                                        5.5s
+ ✔ Container magistrala-groups-db                     Started                                                                        9.9s
+ ✔ Container magistrala-reports-db                    Started                                                                        9.0s
+ ✔ Container magistrala-alarms-db                     Started                                                                        6.6s
+ ✔ Container magistrala-channels-db                   Started                                                                        5.1s
+ ✔ Container magistrala-users-db                      Started                                                                        9.1s
+ ✔ Container magistrala-jaeger                        Started                                                                        9.9s
+ ✔ Container magistrala-domains-db                    Started                                                                        9.0s
+ ✔ Container magistrala-channels-redis                Started                                                                        9.9s
+ ✔ Container magistrala-ui                            Started                                                                        4.9s
+ ✔ Container magistrala-clients-db                    Started                                                                        5.7s
+ ✔ Container magistrala-domains-redis                 Started                                                                        9.2s
+ ✔ Container magistrala-spicedb-db                    Started                                                                        9.0s
+ ✔ Container magistrala-certs-db                      Started                                                                        4.8s
+ ✔ Container magistrala-pdf                           Started                                                                        6.6s
+ ✔ Container magistrala-journal-db                    Started                                                                        5.4s
+ ✔ Container magistrala-seaweedfs-init                Started                                                                        9.9s
+ ✔ Container magistrala-fluxmq-node1                  Started                                                                       10.3s
+ ✔ Container magistrala-ui-backend                    Started                                                                       23.4s
+ ✔ Container magistrala-spicedb-migrate               Started                                                                        9.3s
+ ✔ Container magistrala-fluxmq-node2                  Started                                                                       10.1s
+ ✔ Container magistrala-fluxmq-node3                  Started                                                                       10.1s
+ ✔ Container magistrala-spicedb                       Started                                                                        9.3s
+ ✔ Container magistrala-nginx                         Started                                                                       10.0s
+ ✔ Container magistrala-certs                         Started                                                                       26.8s
+ ✔ Container magistrala-auth                          Started                                                                       10.2s
+ ✔ Container magistrala-alarms                        Started                                                                       17.7s
+ ✔ Container magistrala-reports                       Started                                                                       12.0s
+ ✔ Container magistrala-re                            Started                                                                       17.2s
+ ... 7 more
+```
+
+Only Magistrala services start at this point. Wait ~30–60 seconds for Magistrala's internal services to stabilise before proceeding. Verify with:
+
+```bash
+docker ps | grep magistrala
+```
+
+Logs from `docker logs magistrala-users` look like this once Magistrala is ready:
+
+```bash
+{"time":"...","level":"INFO","msg":"users service http server listening at users:9002 without TLS"}
+{"time":"...","level":"INFO","msg":"users service gRPC server listening at users:7002 without TLS"}
+```
+
+### Step 3: Provision Propeller
+
+Now we create everything Propeller needs **inside** Magistrala and generate the config file:
+
+```bash
+propeller-cli provision
+```
+
+This command will:
+
+- Log you into Magistrala (you must have a Magistrala user already created; if not, create one using the [magistrala-cli](https://magistrala.absmach.eu/docs/dev-guide/cli/users-cli/#create-user), `curl`, or the web UI). You can also use the admin user if you have the credentials.
+- Create a **domain**
+- Log your user into that domain
+- Create a **manager client**
+- Create a **proplet client**
+- Create a **manager channel**
+- Connect the manager client to the manager channel
+- Connect the proplet client to the manager channel
+- Write all of these IDs and keys into a **`config.toml`** file in the current directory
+
+The process will look something like this:
+
+[![asciicast](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH.svg)](https://asciinema.org/a/8oYuONLQkvuJ3jdjYdVH97qxH)
+
+On success:
+
+```bash
+Successfully created config.toml file
+```
+
+Your `config.toml` will look like:
+
+```toml
+# Magistrala Configuration
+
+[manager]
+domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+client_id = "f2fe9a33-144a-4346-a5d6-38e2eb07815e"
+client_key = "ef7da52b-c01f-4b62-9502-6723d639405b"
+channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
+
+[proplet]
+domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+client_id = "fa407362-9c5f-41b8-9a09-9d0c0b039287"
+client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
+channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
+
+[proxy]
+domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+client_id = "fa407362-9c5f-41b8-9a09-9d0c0b039287"
+client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
+channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
+```
+
+### Step 4: Configure and Start Propeller
+
+Copy the configuration to the Docker directory (the Propeller compose file mounts `config.toml` from there):
+
+```bash
+cp config.toml docker/config.toml
+```
+
+The volume mounts for `config.toml` are already configured in `docker/compose.propeller.yaml`. Copy the config and start Propeller:
+
+```bash
+make start-propeller
+```
+
+This runs:
+
+```bash
+docker compose -f docker/compose.propeller.yaml --env-file docker/.env up -d
+```
+
+The three Propeller containers start, read `config.toml` from their mount paths, and connect to Magistrala over the shared `magistrala-base-net` network.
+
+### Step 5: Verify Deployment
+
+Check each service is running:
+
+```bash
+# Manager logs
+docker logs propeller-manager | tail -5
+```
+
+Expected:
+
+```json
+{"time":"...","level":"INFO","msg":"MQTT connection established"}
+{"time":"...","level":"WARN","msg":"COORDINATOR_URL not configured - FL features will not be available"}
+{"time":"...","level":"INFO","msg":"Subscribe to MQTT topic completed successfully","duration":"64ms"}
+{"time":"...","level":"INFO","msg":"cron scheduler started","check_interval":60000000000}
+{"time":"...","level":"INFO","msg":"manager service http server listening at manager:7070 without TLS"}
+```
+
+```bash
+# Proplet logs
+docker logs propeller-proplet | tail -5
+```
+
+Expected:
+
+```
+INFO Starting Proplet (Rust) - Instance ID: ...
+INFO MQTT client created (TLS: false)
+INFO Published discovery message
+INFO Subscribed to topic: .../control/manager/start
+INFO Subscribed to topic: .../control/manager/stop
+```
+
+```bash
+# Proxy logs
+docker logs propeller-proxy | tail -3
+```
+
+Expected:
+
+```json
+{"level":"INFO","msg":"MQTT connection established"}
+{"level":"INFO","msg":"starting proxy service"}
+{"level":"INFO","msg":"successfully subscribed to topic"}
+```
+
+#### Health check
+
+Verify the manager API is up:
+
+```bash
+curl http://localhost:7070/health
+```
+
+Verify the proplet has registered:
+
+```bash
+curl http://localhost:7070/proplets
+```
+
+## Deploy Your First Workload
+
+### List Available Proplets
+
+```bash
+curl http://localhost:7070/proplets | jq
+```
+
+```json
+{
+  "offset": 0,
+  "limit": 100,
+  "total": 1,
+  "proplets": [
+    {
+      "id": "a95517f9-5655-4cf5-a7c8-aa00290b3895",
+      "name": "Dankert-Gene",
+      "task_count": 0,
+      "alive": true,
+      "last_alive_at": "2026-02-13T09:36:53.478319036Z",
+      "metadata": {
+        "description": "Proplet running in Docker",
+        "tags": ["docker", "prod"],
+        "location": "rack-1",
+        "ip": "172.18.0.5",
+        "environment": "docker",
+        "os": "linux",
+        "hostname": "propeller-proplet",
+        "cpu_arch": "x86_64",
+        "total_memory_bytes": 8589934592,
+        "proplet_version": "0.1.0",
+        "wasm_runtime": "wasmtime-internal"
+      }
+    }
+  ]
+}
+```
+
+### Create a Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "add", "inputs": [10, 20]}'
+```
+
+```json
+{
+  "id": "2226e867-1f9f-4ff2-b8e7-f0ea46830664",
+  "name": "add",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": null,
+  "inputs": [10, 20],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-02-13T09:38:50.765084043Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+You can also use the CLI:
+
+```bash
+# propeller-cli tasks create <name>
+propeller-cli tasks create demo
+```
+
+### Get a Task
+
+```bash
+curl -X GET "http://localhost:7070/tasks/2226e867-1f9f-4ff2-b8e7-f0ea46830664"
+```
+
+CLI equivalent:
+
+```bash
+# propeller-cli tasks view <id>
+propeller-cli tasks view 2226e867-1f9f-4ff2-b8e7-f0ea46830664
+```
+
+### Upload a WASM Module
+
+There are two ways to upload a WASM file:
+
+**Option A — Upload via file:**
+
+```bash
+curl -X PUT "http://localhost:7070/tasks/97946bd0-26b1-4d14-aca5-1c2b4f1d0447/upload" \
+  -F 'file=@build/addition.wasm'
+```
+
+**Option B — Upload via base64-encoded WASM in the task body:**
+
+```bash
+curl --location --request PUT 'http://localhost:7070/tasks/2226e867-1f9f-4ff2-b8e7-f0ea46830664' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"
+}'
+```
+
+CLI equivalent:
+
+```bash
+propeller-cli tasks update 2226e867-1f9f-4ff2-b8e7-f0ea46830664 '{"file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL"}'
+```
+
+### Start the Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks/97946bd0-26b1-4d14-aca5-1c2b4f1d0447/start"
+```
+
+```json
+{ "started": true }
+```
+
+CLI equivalent:
+
+```bash
+# propeller-cli tasks start <id>
+propeller-cli tasks start 97946bd0-26b1-4d14-aca5-1c2b4f1d0447
+```
+
+### Check Results
+
+```bash
+curl "http://localhost:7070/tasks/<task_id>" | jq
+```
+
+The task `state` will change from `0` (pending) to `3` (completed) with the result in the `results` field.
+
+### Stop a Task
+
+```bash
+curl -X POST "http://localhost:7070/tasks/<task_id>/stop"
+```
+
+### Creating Tasks from OCI Registry Images
+
+For WASM modules stored in an OCI registry, specify the image URL during task creation. The proxy automatically retrieves the WASM file from the registry when the task starts, eliminating manual uploads:
+
+```bash
+curl -X POST "http://localhost:7070/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "add", "inputs": [10, 20], "image_url": "docker.io/mrstevenyaga/add.wasm"}'
+```
+
+## Alternative: Run Without Docker
+
+You can run Propeller binaries directly on your host (useful for development or debugging). Magistrala still runs in Docker via `make start-magistrala`, but the Propeller processes run locally.
+
+The provisioning step is the same: run `propeller-cli provision` to generate `config.toml`, then ensure it is in the directory where you start the binaries.
+
+Stop the Docker-based Propeller services first if they are running:
+
+```bash
+docker stop propeller-manager propeller-proxy propeller-proplet
+```
+
+Then start each service in a separate terminal:
+
+```bash
+# Terminal 1
+propeller-manager
+
+# Terminal 2
+propeller-proplet
+
+# Terminal 3 — set registry env vars before starting proxy
+export PROXY_REGISTRY_URL="docker.io"
+export PROXY_AUTHENTICATE="TRUE"
+export PROXY_REGISTRY_USERNAME=""   # set if your registry requires auth
+export PROXY_REGISTRY_PASSWORD=""   # set if your registry requires auth
+propeller-proxy
+```
+
+Docker is recommended for production; local binaries are easier for debugging.
+
+## Adding More Proplets to an Existing Deployment
+
+Once your initial deployment is running, you can add more proplets without re-provisioning from scratch. The `add-proplets` subcommand reads your existing `config.toml`, creates new Magistrala clients, connects them to the same channel, and appends their credentials to the file.
+
+```bash
+propeller-cli provision add-proplets
+```
+
+The command asks for your Magistrala username and password, then for the number of new proplets to create. For example, if you already have one proplet (`[proplet]`) and add two more, the file becomes:
+
+```toml
+[manager]
+domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+client_id = "f2fe9a33-144a-4346-a5d6-38e2eb07815e"
+client_key = "ef7da52b-c01f-4b62-9502-6723d639405b"
+channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
+
+[proplet]
+...
+
+[proplet2]
+domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+client_id = "b3c12d45-89ef-4f10-a123-7c5d8e9f0a12"
+client_key = "22ab3ef0-9c1d-48f2-b6a5-cd5f1234567e"
+channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
+
+[proplet3]
+domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+client_id = "d7e89f01-2345-6789-abcd-ef0123456789"
+client_key = "33cd4fg1-0d2e-59g3-c7b6-de6g2345678f"
+channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
+
+[proxy]
+...
+```
+
+> **Note:** New sections are always numbered from where the existing count left off.
+
+Each new proplet process needs to know which section of `config.toml` to read. Set the `PROPLET_CONFIG_SECTION` environment variable before starting it:
+
+```bash
+PROPLET_CONFIG_SECTION=proplet2 propeller-proplet
+PROPLET_CONFIG_SECTION=proplet3 propeller-proplet
+```
+
+Or in `docker/compose.propeller.yaml`, add an `environment` entry per proplet service:
+
+```yaml
+environment:
+  PROPLET_CONFIG_SECTION: proplet2
+```
+
+After copying the updated `config.toml` into `docker/`, restart only the Propeller services:
+
+```bash
+make stop-propeller
+make start-propeller
+```
+
+## Postman Collection
+
+A [Postman collection](../postman_collection.json) of all API calls is available for interacting with the Propeller system.
+
+## What's Next?
+
+| Goal                        | Documentation                          |
+| --------------------------- | -------------------------------------- |
+| Build from source           | [Developer Guide](./developer-guide)   |
+| Understand the architecture | [Architecture](./architecture)         |
+| See working examples        | [Examples](./examples)                 |
+| Run on embedded devices     | [Embedded Proplet](./embedded-proplet) |
+| Use the REST API            | [API Reference](./api)                 |
+| Monitor deployments         | [Monitoring](./monitoring)             |
+| Enable secure enclaves      | [TEE](./tee)                           |
+
+## Troubleshooting
+
+### `make install` fails with permission denied
+
+Your `$GOBIN` path isn't configured:
+
+```bash
+export GOBIN=$HOME/go/bin
+export PATH=$PATH:$GOBIN
+make install
+```
+
+### `propeller-cli provision` fails
+
+Ensure Magistrala is fully started:
+
+```bash
+docker logs magistrala-users | tail -10
+```
+
+Look for: `users service http server listening at users:9002`
+
+### Services can't find config.toml
+
+The config must be mounted into Docker containers. Verify:
+
+```bash
+ls docker/config.toml
+```
+
+If missing, copy it: `cp config.toml docker/config.toml`
+
+### WASM execution fails
+
+Check proplet logs for runtime errors:
+
+```bash
+docker logs propeller-proplet | grep -i error
+```
+
+For detailed troubleshooting, see the [Developer Guide](./developer-guide#troubleshooting).
+
+## Stopping Propeller
+
+```bash
+make stop-propeller
+make stop-magistrala
+```
+
+This stops all Propeller containers first, then all Magistrala containers, while preserving data volumes.

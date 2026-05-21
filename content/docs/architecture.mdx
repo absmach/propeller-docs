@@ -1,0 +1,417 @@
+---
+title: System Architecture
+description: "Explore Propeller's Cloud-Edge architecture: Manager, Proplet and Proxy. Learn how Wasm workloads are orchestrated across distributed nodes via MQTT."
+---
+
+## Overview
+
+The Propeller system is a **WebAssembly (Wasm) workload orchestrator** for the Cloud-Edge continuum. It enables seamless deployment of Wasm applications from powerful cloud servers to constrained microcontrollers, combining flexibility, security, and performance. The system leverages MQTT for communication, a manager service for task orchestration, and supports multiple storage backends for different deployment scenarios.
+
+The system is composed of several key components:
+
+1. **CLI**: Command Line Interface for interacting with the Propeller system.
+2. **Manager**: Central service responsible for task management, workflow orchestration, and proplet coordination.
+3. **Proplet**: Worker nodes that execute WebAssembly workloads. The proplet is implemented in Rust for performance and memory safety.
+4. **Proxy**: Service downloading wasm modules from OCI registries and distributing them to proplets using MQTT.
+5. **Magistrala**: Open-source IoT platform framework for messaging, identity, and access control
+
+![System Architecture](images/architecture.svg)
+
+## Components
+
+### CLI
+
+The CLI provides a command-line interface for users to interact with the Propeller system. It allows users to:
+
+- Create, list, update, and delete tasks
+- Start and stop tasks
+- Manage jobs and workflows
+- Configure federated learning experiments
+- Provision manager and proplets
+
+### Manager
+
+The Manager is the central orchestrator written in Go, responsible for managing the entire lifecycle of workloads and coordinating proplets. It handles:
+
+**Core Responsibilities:**
+
+- Task lifecycle management (creation, scheduling, execution, monitoring)
+- Workflow orchestration with DAG-based dependencies
+- Job management with configurable execution modes
+- Federated learning experiment coordination
+- Proplet health monitoring and liveliness tracking
+- Cron-based scheduled task execution
+
+**Key Features:**
+
+- REST API for external integration
+- MQTT-based communication with proplets
+- Pluggable scheduler implementations (Round Robin, Priority-based)
+- Support for multiple storage backends
+- Middleware for logging, metrics, and tracing
+
+**Architecture Pattern:**
+
+Currently, the system supports **1 manager : multiple proplets**. In the future, the system will be expanded to support **multiple managers : multiple proplets** for high availability.
+
+### Kubernetes Operator
+
+The [Propeller Kubernetes Operator](https://github.com/absmach/propeller-k8s-operator) provides a way to deploy and manage Propeller on Kubernetes clusters. It handles the orchestration of tasks across proplets, scheduling, and resource management. The Operator is responsible for:
+
+**Deployment and Management:**
+
+- Deploying Propeller components (Manager, Proplet, Proxy)
+- Managing Propeller components (scaling, restarting, monitoring)
+
+**Resource Management:**
+
+- Monitoring and scaling proplets based on resource utilization
+- Dynamically adjusting proplet count based on workload demand
+
+**Security and Compliance:**
+
+- Ensuring secure communication and deployment of Propeller components
+- Compliance with privacy regulations and best practices
+
+### Proplet
+
+Proplets are worker nodes that execute WebAssembly workloads. The Rust implementation provides high-performance async I/O via Tokio, memory safety without garbage collection, and strong typing with comprehensive error handling. Proplets are responsible for:
+
+**Execution:**
+
+- Receiving tasks from the Manager via MQTT
+- Executing WebAssembly modules using various runtimes (Wasmtime, Host, TEE)
+- Reporting task results and status back to the Manager
+- Supporting chunked binary downloads for large Wasm modules, with a 5-minute TTL for incomplete chunk assemblies
+
+**Health Monitoring:**
+
+- Sending periodic liveliness heartbeats (default: every 10 seconds, configurable via `PROPLET_LIVELINESS_INTERVAL`)
+- Publishing proplet-level resource metrics (CPU, memory, cgroup stats) on a configurable interval
+- Publishing per-task process metrics (CPU, memory, disk I/O, threads, file descriptors) while tasks are running
+- Indicating availability for task scheduling
+
+**Runtime Support:**
+
+- **Wasmtime**: In-process WebAssembly execution using Wasmtime
+- **Host**: External WebAssembly runtime integration via subprocess execution
+- **TeeWasmRuntime**: Trusted Execution Environment with automatic TEE detection and attestation support
+
+### Process Monitoring
+
+Proplet includes a built-in process monitoring subsystem for observing task and system resource usage:
+
+- **Monitoring Profiles**: Each task can have a custom `MonitoringProfile` or use a pre-defined profile:
+  - **Standard**: 10-second interval, collects CPU/memory/disk I/O/threads/file descriptors, retains 100 history entries
+  - **Long-Running Daemon**: 120-second interval, retains 500 history entries
+- **PID Attachment**: For runtimes that spawn separate OS processes (Host runtime), the monitor attaches to the task's PID to collect process-level metrics
+- **Metrics Export**: Task metrics are published to `control/proplet/task_metrics` via MQTT during task execution
+- **Proplet Metrics**: Separate from task metrics, proplet-level CPU and memory (including Linux cgroup v1/v2 stats) are published to `control/proplet/metrics` on a configurable interval
+
+### Proxy
+
+The Proxy service handles downloading and distributing WebAssembly modules from OCI registries and distributes them to proplets.
+
+### Magistrala
+
+Magistrala is an open-source IoT platform built for engineers who need full control over their messaging, device management, and data pipelines.
+
+It is built on top of [FluxMQ](https://github.com/absmach/fluxmq), a modern message broker designed for both messaging and event streams. Magistrala provides everything around it: identity, access control, device provisioning, data processing, and observability.
+
+**What it is:**
+- An event-driven IoT middleware platform
+- A unified control plane for devices, users, and data
+- A foundation for building scalable IoT systems
+
+**What it is not:**
+- Not just an MQTT broker
+- Not a black-box SaaS
+- Not tied to a single cloud or vendor
+
+**Key Components:**
+- Users, clients (devices), channels, messages, and policies
+- Multi-tenant domains for isolating environments
+- Fine-grained access control (ABAC + RBAC)
+- Mutual TLS (X.509) and JWT-based authentication
+- Native support for MQTT, HTTP, WebSocket, and CoAP
+- Rules engine for message processing and routing
+- Audit logs, metrics, and tracing via Prometheus and OpenTelemetry
+
+## Communication
+
+### MQTT
+
+MQTT is the primary communication protocol between the Manager and Proplets:
+
+**Manager to Proplet:**
+
+- Task assignments and configuration
+- Start/stop commands
+- Binary chunk distribution
+
+**Proplet to Manager:**
+
+- Liveliness heartbeats (configurable interval, default 10 seconds)
+- Task execution results
+- Proplet-level resource metrics (CPU, memory, cgroup usage)
+- Per-task process metrics (CPU, memory, disk I/O, threads, file descriptors)
+
+### HTTP
+
+HTTP is used for:
+
+- CLI interactions with the Manager REST API
+- External system integrations
+- Proxy routing
+- Federated learning coordinator communication (primary channel, with MQTT fallback)
+- Model registry and local data store access during federated learning tasks
+
+### MQTT Topic Structure
+
+Proplet uses the following MQTT topic structure:
+
+```
+m/{domainID}/c/{channelID}/control/proplet/alive
+    └─ Liveliness heartbeat (configurable interval, default 10 seconds)
+
+m/{domainID}/c/{channelID}/control/proplet/create
+    └─ Discovery announcement on startup
+
+m/{domainID}/c/{channelID}/control/manager/start
+    └─ Task start commands from Manager
+
+m/{domainID}/c/{channelID}/control/manager/stop
+    └─ Task stop commands from Manager
+
+m/{domainID}/c/{channelID}/registry/server
+    └─ Incoming Wasm binary chunks from Registry
+
+m/{domainID}/c/{channelID}/registry/proplet
+    └─ Requests for Wasm binary chunks to Registry
+
+m/{domainID}/c/{channelID}/control/proplet/results
+    └─ Task execution results back to Manager
+
+m/{domainID}/c/{channelID}/control/proplet/metrics
+    └─ Proplet-level resource metrics (CPU, memory, cgroup stats)
+
+m/{domainID}/c/{channelID}/control/proplet/task_metrics
+    └─ Per-task process metrics (CPU, memory, disk I/O, threads, file descriptors)
+```
+
+## Task System
+
+### Task Structure
+
+Tasks are the fundamental unit of work in Propeller:
+
+### Task States
+
+Tasks progress through the following states:
+
+1. **Pending**: Task created but not yet scheduled
+2. **Scheduled**: Task assigned to a proplet, awaiting execution
+3. **Running**: Task currently executing on a proplet
+4. **Completed**: Task finished successfully
+5. **Failed**: Task execution failed
+6. **Skipped**: Task skipped due to conditional workflow logic
+7. **Interrupted**: Task interrupted during execution
+
+### Task Types
+
+**By Kind:**
+
+- **Standard**: Regular WebAssembly workload execution
+- **Federated**: Federated learning training task
+
+**By Mode:**
+
+- **Infer**: Inference/prediction mode for ML models
+- **Train**: Training mode for ML models
+
+**By Execution Pattern:**
+
+- **One-shot**: Single execution task
+- **Daemon**: Long-running continuous task
+- **Scheduled**: Recurring task with cron expression
+
+## Task Lifecycle
+
+1. **Task Creation**: A user creates a task using the CLI or HTTP API, which sends a request to the Manager.
+2. **Task Scheduling**: The Manager selects a proplet based on the configured scheduler (Round Robin or Priority-based) and task requirements.
+3. **Task Assignment**: The Manager sends the task to the selected proplet via MQTT.
+4. **Task Execution**: The proplet receives the task, fetches the WebAssembly module (from OCI registry or embedded binary), and executes it.
+5. **Status Reporting**: The proplet sends periodic status updates and final results back to the Manager.
+6. **Task Completion**: The Manager updates the task status, stores the results, and triggers any dependent workflow tasks.
+
+**Task Interruption**: Tasks can be interrupted at any point in their lifecycle by calling the `/tasks/{id}/stop` REST API endpoint. When interrupted, a task transitions to the **Interrupted** state, and the Manager signals the proplet to stop execution immediately. See the [Manager API](manager.mdx) for details on the stop endpoint.
+
+## Jobs
+
+Jobs provide a way to group multiple related tasks together with a common JobID:
+
+### Job Execution Modes
+
+- **Parallel**: All tasks in the job run concurrently
+- **Sequential**: Tasks execute in order, one after another
+- **Configurable**: Custom dependency-based execution using DAG
+
+### Job Lifecycle
+
+1. **CreateJob**: Create a job with a name, list of tasks, and execution mode
+2. **StartJob**: Initiate job execution based on the configured mode
+3. **Monitor**: Track job progress through aggregated task states
+4. **Complete**: Job reaches terminal state (Completed or Failed) based on constituent tasks
+
+## Workflows
+
+Workflows provide DAG-based task orchestration with dependencies:
+
+### Dependency Management
+
+- **DependsOn**: List of task IDs that must complete before this task can start
+- **RunIf**: Conditional execution based on parent task outcome:
+  - `success` (default): Task runs only if all dependencies succeeded
+  - `failure`: Task runs only if any dependency failed
+
+### Workflow Coordinator
+
+The workflow coordinator:
+
+- Validates DAG structure (detects circular dependencies)
+- Performs topological sorting for execution ordering
+- Evaluates conditional execution (RunIf) based on parent states
+- Automatically starts ready tasks when dependencies are satisfied
+- Supports fail-fast semantics (stops on first failure)
+
+### DAG Validation
+
+- **Circular Dependency Detection**: Prevents invalid workflow configurations
+- **Dependency Existence Validation**: Ensures all referenced tasks exist
+- **Topological Sorting**: Determines valid execution order for sequential mode
+
+## Federated Learning
+
+Propeller includes built-in support for federated machine learning:
+
+### Core Components
+
+**Experiment Configuration:**
+
+- Define participants (proplets)
+- Configure aggregation strategy
+- Set round parameters (K-of-N, timeout)
+
+**Round Management:**
+
+- **RoundState**: Tracks round progress, updates, and completion
+- **K-of-N**: Minimum number of updates required to complete a round
+- **Timeout**: Maximum time to wait for participant updates
+
+**Aggregation:**
+
+- **FedAvg**: Federated Averaging algorithm
+- Weighted aggregation by number of training samples
+- Support for model weights (`w`) and bias (`b`) aggregation
+
+### FL Lifecycle
+
+1. **ConfigureExperiment**: Setup FL experiment with participants and parameters
+2. **GetFLTask**: Proplets retrieve training tasks for the current round. The task includes a `round_id`, `model_ref`, optional `hyperparams`, and an `ml_backend` hint (`standard`, `tinyml`, or `auto`)
+3. **ML Backend Selection**: Proplet selects the ML backend automatically based on hyperparameters (e.g., small batch sizes trigger TinyML) or an explicit `ML_BACKEND` environment variable
+4. **Model Fetching**: Proplet fetches the current global model from the model registry (`MODEL_REGISTRY_URL`) before training
+5. **Dataset Fetching**: Proplet fetches local training data from the data store (`DATA_STORE_URL`) using its proplet ID
+6. **Local Training**: Proplet trains the model on local data and produces a model update
+7. **PostFLUpdate**: Proplet posts the model update directly to the coordinator via HTTP (`COORDINATOR_URL/update`). If HTTP fails, falls back to MQTT (`fl/rounds/{roundID}/updates/{propletID}`)
+8. **Aggregation**: Manager aggregates updates using FedAvg when K-of-N reached or timeout occurs
+9. **Model Distribution**: Updated global model distributed to participants
+
+### FL Task Environment Variables
+
+Federated learning tasks are driven by environment variables passed with the task:
+
+| Variable                  | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `ROUND_ID`                | Current federated learning round identifier                   |
+| `MODEL_URI`               | URI to the current global model in the model registry         |
+| `MODEL_REGISTRY_URL`      | Base URL of the model registry service                        |
+| `DATA_STORE_URL`          | Base URL of the local data store service                      |
+| `MANAGER_COORDINATOR_URL` | Base URL of the FL coordinator service                        |
+| `ML_BACKEND`              | ML backend hint: `standard`, `tinyml`, or `auto`              |
+| `HYPERPARAMS`             | JSON-encoded hyperparameters for training                     |
+| `FL_NUM_SAMPLES`          | Number of training samples used (included in update envelope) |
+| `FL_FORMAT`               | Update format (default: `f32-delta`)                          |
+
+## Scheduling
+
+The Manager uses two complementary scheduling mechanisms:
+
+### Round Robin (Proplet Selection)
+
+- Selects which proplet receives each task
+- Cycles evenly across all alive proplets
+- Skips proplets that are dead (no recent heartbeat)
+
+### Priority Ordering (Task Dispatch Order)
+
+- When multiple tasks are pending, higher-priority tasks are dispatched first
+- Priority range: 0–100 (default: 50)
+- Ties broken by task creation time (earlier tasks run first)
+
+Priority ordering determines the sequence in which pending tasks enter the scheduler; Round Robin determines which proplet handles each task.
+
+### Scheduling Constraints
+
+- Only schedules to "alive" proplets (heartbeat received within liveliness threshold window)
+- Tracks task count per proplet for load balancing
+
+## Storage Backends
+
+Propeller supports multiple storage backends for different deployment scenarios:
+
+| Backend        | Type                 | Use Case                                  |
+| -------------- | -------------------- | ----------------------------------------- |
+| **PostgreSQL** | Relational DB        | Production deployments, high availability |
+| **SQLite**     | Embedded SQL         | Edge/single-node deployments              |
+| **BadgerDB**   | Key-value (embedded) | High-performance edge deployments         |
+| **Memory**     | In-memory            | Testing and development                   |
+
+## Proplet Liveliness
+
+Proplets maintain their availability status through a heartbeat mechanism:
+
+- **Heartbeat Interval**: Configurable via `PROPLET_LIVELINESS_INTERVAL` (default: 10 seconds)
+- **Liveliness Threshold**: Proplets are considered "alive" if heartbeat received within threshold window
+- **Scheduling Eligibility**: Only alive proplets are eligible for task scheduling
+- **Health Monitoring**: Manager tracks proplet health and removes stale entries
+- **Proplet Metrics**: Proplets publish resource metrics (CPU, memory, cgroup stats) on a separate configurable interval (`PROPLET_METRICS_INTERVAL`, default: 10 seconds)
+- **Task Metrics**: When monitoring is enabled, proplets publish per-task process metrics while tasks are running
+
+## Cron Scheduling
+
+Propeller supports scheduled and recurring tasks:
+
+- **Cron Expressions**: Standard cron syntax for scheduling
+- **Timezone Support**: Configurable timezone for cron execution
+- **Persistent Scheduling**: Schedules survive manager restarts
+- **Next Run Tracking**: Automatic calculation of next execution time
+- **Recurring Tasks**: Support for tasks that run on a schedule indefinitely
+
+## Container Image Distribution
+
+Proplet supports WebAssembly module distribution through:
+
+- **OCI Registry**: Fetch Wasm modules from OCI-compliant registries
+- **Embedded Binaries**: Direct binary embedding in task definitions (base64-encoded)
+- **Chunked Downloads**: Large modules split into chunks for efficient MQTT distribution. Incomplete chunk assemblies expire after a 5-minute TTL
+
+## Security Features
+
+- **TEE Auto-Detection**: Proplet automatically detects the Trusted Execution Environment type at startup by inspecting device files, sysfs, `/proc/cpuinfo`, and kernel messages. Supported TEE types:
+  - **Intel TDX**: detected via `/dev/tdx_guest`, `/sys/firmware/tdx_guest`, or cpuinfo/dmesg flags
+  - **AMD SEV/SNP**: detected via `/dev/sev`, EFI variables, or cpuinfo/dmesg flags
+  - **Intel SGX**: detected via `/dev/sgx_enclave`, `/dev/sgx/enclave`, or cpuinfo/dmesg flags
+- **Encrypted Workloads**: When a TEE is detected, encrypted Wasm workloads are fetched from OCI registries and decrypted using the attestation agent and KBS
+- **Attestation**: The attestation agent (`attestation-agent`) listens on port **50010**; `coco_keyprovider` uses port **50011**
+- **KBS Integration**: Key Broker Service (KBS) integration for secure encryption key management. `PROPLET_KBS_URI` must be set when a TEE is detected
+- **Magistrala**: Secure MQTT communication for IoT deployments

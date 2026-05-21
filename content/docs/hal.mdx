@@ -1,0 +1,290 @@
+---
+title: HAL
+description: "Build and run Ubuntu Confidential VMs with Propeller's Proplet pre-installed via QEMU. Automates full Propeller service setup inside a cloud-init VM on first boot."
+---
+
+The Hardware Abstraction Layer (HAL) provides a single script — [hal/ubuntu/qemu.sh](https://github.com/absmach/propeller/blob/main/hal/ubuntu/qemu.sh) — that builds an **Ubuntu Noble (24.04)** cloud image and boots it as a QEMU virtual machine. On first boot, cloud-init compiles and installs all Propeller services inside the VM automatically.
+
+The first boot takes **10–15 minutes** while cloud-init installs packages and compiles services from source. Subsequent boots start all services immediately in under 30 seconds.
+
+## Understand what it does
+
+The script has two phases controlled by a positional argument:
+
+- **`build`** — downloads the Ubuntu base image, creates a QCOW2 disk, and generates a cloud-init seed with all credentials, packages, build scripts, and systemd service units baked in
+- **`run`** — detects TDX or SEV support on the host, assembles the QEMU command for the matching confidential mode, and boots the VM
+- **`all`** (default) — runs both in sequence
+
+On first boot, cloud-init runs unattended and:
+
+1. Installs system packages (`build-essential`, `libssl-dev`, `protobuf-compiler`, `libtss2-dev`, `tpm2-tools`, `rustup`, and others)
+2. Installs the Rust toolchain via `rustup`
+3. Downloads and installs the latest Wasmtime release binary from GitHub
+4. Clones and compiles the **Attestation Agent** from [guest-components](https://github.com/confidential-containers/guest-components) with all attesters enabled
+5. Clones and compiles the **CoCo Keyprovider** for OCI image decryption
+6. Clones and compiles **Proplet** from the Propeller repository
+7. Verifies all four binaries exist before enabling any services
+8. Enables and starts three systemd services: `attestation-agent`, `coco-keyprovider`, and `proplet`
+
+## Install dependencies
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  qemu-system-x86 \
+  cloud-image-utils \
+  ovmf \
+  wget
+```
+
+## Configure
+
+The script reads configuration from environment variables. Set credentials before running.
+
+### Required
+
+| Variable             | Description           |
+| -------------------- | --------------------- |
+| `PROPLET_DOMAIN_ID`  | Magistrala domain ID  |
+| `PROPLET_CLIENT_ID`  | Magistrala client ID  |
+| `PROPLET_CLIENT_KEY` | Magistrala client key |
+| `PROPLET_CHANNEL_ID` | Magistrala channel ID |
+
+### Optional
+
+| Variable               | Description                                    | Default                |
+| ---------------------- | ---------------------------------------------- | ---------------------- |
+| `PROPLET_MQTT_ADDRESS` | MQTT broker address                            | `tcp://localhost:1883` |
+| `KBS_URL`              | Key Broker Service URL for encrypted workloads | `http://10.0.2.2:8082` |
+| `ENABLE_CVM`           | CVM mode: `auto`, `tdx`, `sev`, or `none`      | `auto`                 |
+| `RAM`                  | VM memory                                      | `16384M`               |
+| `CPU`                  | vCPU count                                     | `4`                    |
+| `DISK_SIZE`            | Disk image size                                | `40G`                  |
+
+`KBS_URL` uses the QEMU user-mode NAT address `10.0.2.2`, which maps to the host's loopback. If KBS runs on the host at port 8082, `http://10.0.2.2:8082` reaches it from inside the VM.
+
+## Build and run
+
+The script re-executes itself with `sudo -E` automatically to preserve your exported variables. Run it as a regular user.
+
+```bash
+export PROPLET_DOMAIN_ID="a93fa93e-30d0-425e-b5d1-c93cd916dca7"
+export PROPLET_CLIENT_ID="c902e51c-5eac-4a2d-a489-660b5f7ab461"
+export PROPLET_CLIENT_KEY="75a0fefe-9713-478d-aafd-72032c2d9958"
+export PROPLET_CHANNEL_ID="54bdaf41-0009-4d3e-bd49-6d7abda7a832"
+export PROPLET_MQTT_ADDRESS="tcp://mqtt.example.com:1883"
+export KBS_URL="http://10.0.2.2:8082"
+./qemu.sh
+```
+
+To build once and boot many times:
+
+```bash
+./qemu.sh build
+./qemu.sh run
+```
+
+## Choose a CVM mode
+
+The script detects TDX by checking `dmesg` for `virt/tdx: module initialized` and `/proc/cpuinfo` for the `tdx` flag. It detects SEV by checking `/proc/cpuinfo` for the `sev` flag. Override detection with `ENABLE_CVM`:
+
+```bash
+# Auto-detect (default)
+./qemu.sh
+
+# Force Intel TDX
+ENABLE_CVM=tdx ./qemu.sh
+
+# Force AMD SEV
+ENABLE_CVM=sev ./qemu.sh
+
+# Regular VM — no confidential computing
+ENABLE_CVM=none ./qemu.sh
+```
+
+### TDX QEMU options
+
+When TDX is active the script adds:
+
+- `memory-backend-memfd` shared memory object
+- `tdx-guest` machine object with vsock quote generation on CID 2, port 4050
+- `q35` machine with `confidential-guest-support=tdx0` and `kernel-irqchip=split`
+- `virtio-net-pci` with `iommu_platform=true`
+- OVMF firmware via `-bios /usr/share/ovmf/OVMF.fd`
+
+### SEV QEMU options
+
+When SEV is active the script adds:
+
+- `sev-guest` object with `cbitpos=47` and `reduced-phys-bits=1`
+- `q35` machine with `memory-encryption=sev0`
+- `EPYC` CPU model
+- Pflash OVMF code and per-VM OVMF vars copy
+
+### Regular mode options
+
+Without CVM, the script uses `q35` with `host` CPU passthrough and the same pflash OVMF drives.
+
+## Understand host port forwarding
+
+All modes forward these ports from host to guest:
+
+| Host port | Guest port | Service                    |
+| --------- | ---------- | -------------------------- |
+| `2222`    | `22`       | SSH                        |
+| `50010`   | `50010`    | Attestation Agent gRPC API |
+| `50011`   | `50011`    | CoCo Keyprovider gRPC API  |
+
+## Access the VM
+
+Log in from the console (press `Enter` first) or over SSH:
+
+```bash
+ssh -p 2222 propeller@localhost
+# password: propeller
+```
+
+## Understand the services
+
+Three systemd services run inside the VM. They start in order: attestation-agent → coco-keyprovider → proplet.
+
+### attestation-agent
+
+Reads from `/etc/default/attestation-agent` and listens on `127.0.0.1:50010`. Performs TEE attestation and provides decryption keys to the CoCo Keyprovider.
+
+```
+AA_ATTESTATION_SOCK=127.0.0.1:50010
+RUST_LOG=info
+```
+
+The service unit runs `modprobe tdx_guest` as a pre-start step and allows read/write access to `/dev/tdx_guest`.
+
+### coco-keyprovider
+
+Reads from `/etc/default/coco-keyprovider` and listens on `127.0.0.1:50011`. Bridges OCI image decryption requests to the Attestation Agent.
+
+```
+COCO_KP_SOCKET=127.0.0.1:50011
+COCO_KP_KBS_URL=http://10.0.2.2:8082
+RUST_LOG=info
+```
+
+### proplet
+
+Reads from `/etc/default/proplet`. Waits for both `127.0.0.1:50010` and `127.0.0.1:50011` to be reachable before starting. Uses the host runtime via `/usr/local/bin/wasmtime`.
+
+Key values written into `/etc/default/proplet`:
+
+```bash
+PROPLET_EXTERNAL_WASM_RUNTIME=/usr/local/bin/wasmtime
+PROPLET_KBS_URI=http://10.0.2.2:8082
+PROPLET_AA_CONFIG_PATH=/etc/default/proplet.toml
+PROPLET_LAYER_STORE_PATH=/tmp/proplet/layers
+PROPLET_ENABLE_MONITORING=true
+```
+
+The Attestation Agent config at `/etc/default/proplet.toml`:
+
+```toml
+[token_configs]
+[token_configs.coco_kbs]
+url = "http://10.0.2.2:8082"
+```
+
+The OCI decrypt keyprovider config at `/etc/ocicrypt_keyprovider.conf`:
+
+```json
+{
+  "key-providers": {
+    "attestation-agent": {
+      "grpc": "127.0.0.1:50011"
+    }
+  }
+}
+```
+
+## Check service status
+
+```bash
+sudo systemctl status attestation-agent coco-keyprovider proplet
+```
+
+```bash
+sudo journalctl -u attestation-agent -f
+sudo journalctl -u coco-keyprovider -f
+sudo journalctl -u proplet -f
+```
+
+Proplet logs on a successful start:
+
+```
+INFO Starting Proplet (Rust) - Instance ID: c03a17a9-008c-4d8d-9578-9c91121ca3c9
+INFO MQTT client created (TLS: false)
+INFO Using external Wasm runtime: /usr/local/bin/wasmtime
+INFO Starting MQTT event loop
+INFO Starting PropletService
+INFO Published discovery message
+```
+
+## Understand files created
+
+The script writes these files to the directory where it is run:
+
+| File                  | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `ubuntu-base.qcow2`   | Downloaded Ubuntu Noble cloud image (cached)            |
+| `propeller-cvm.qcow2` | QCOW2 overlay image with the Propeller disk             |
+| `seed.img`            | ISO image containing cloud-init user-data and meta-data |
+| `user-data`           | Generated cloud-init configuration                      |
+| `meta-data`           | Cloud-init instance ID and hostname                     |
+| `OVMF_VARS.fd`        | Per-VM writable UEFI variable store copy                |
+
+The base image is only downloaded once. Re-running `./qemu.sh build` reuses `ubuntu-base.qcow2` if it exists.
+
+## Run multiple VMs
+
+Each VM needs its own working directory to avoid file conflicts:
+
+```bash
+mkdir vm1 vm2
+cp qemu.sh vm1/ && cp qemu.sh vm2/
+
+export PROPLET_CLIENT_ID="client-1"
+# ... set other vars
+(cd vm1 && ./qemu.sh build)
+
+export PROPLET_CLIENT_ID="client-2"
+# ... set other vars
+(cd vm2 && ./qemu.sh build)
+```
+
+Adjust port forwarding in each copy of the script to avoid host port conflicts.
+
+## Hardware requirements
+
+### Intel TDX
+
+- Intel Xeon Scalable (Sapphire Rapids or later)
+- TDX enabled in BIOS
+- Linux kernel with TDX support and the `tdx_guest` module loaded
+
+Verify TDX availability on the host:
+
+```bash
+grep tdx /proc/cpuinfo
+dmesg | grep -i tdx
+dmesg | grep "virt/tdx: module initialized"
+```
+
+### AMD SEV
+
+- AMD EPYC processor
+- SEV enabled in BIOS
+- Linux kernel with SEV support
+
+Verify SEV availability on the host:
+
+```bash
+grep sev /proc/cpuinfo
+dmesg | grep -i sev
+```

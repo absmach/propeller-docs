@@ -1,0 +1,861 @@
+---
+title: WASI NN
+description: WASI-NN example
+---
+
+This example demonstrates running machine learning inference using the WASI-NN API with an OpenVINO backend. It loads a neural network model and performs inference on an input tensor. For this example we need the `wasi-nn` proplet image which includes OpenVINO libraries.
+
+For a comprehensive guide on WASI-NN concepts, supported backends, and detailed build instructions, see the [WASI-NN](/docs/wasi-nn) documentation.
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- **Docker** and **Docker Compose** (v2.x or later)
+- **Rust** with the `wasm32-wasip1` target (`rustup target add wasm32-wasip1`)
+- **Python 3.8+** with pip (for model preparation)
+- **jq** (for JSON formatting in terminal)
+- **curl** (for API requests)
+- **Git** and the Propeller repository cloned
+- Basic familiarity with the [Getting Started](/docs/getting-started) guide
+
+## Source Code
+
+The source code is available in the [examples/wasi-nn](https://github.com/absmach/propeller/blob/main/examples/wasi-nn/src/main.rs) directory.
+
+<CodeFromSource
+  src="https://raw.githubusercontent.com/absmach/propeller/refs/heads/main/examples/wasi-nn/src/main.rs"
+  lang="rust"
+/>
+
+## Step 1: Clean Environment (Optional but Recommended)
+
+Start with a clean environment to avoid conflicts with previous runs. This removes all containers, networks, and volumes from prior deployments.
+
+```bash
+cd propeller
+docker compose -f docker/compose.yaml down -v
+```
+
+Your output should look like this:
+
+```
+docker compose -f docker/compose.yaml down -v
+[+] down 66/66
+ ✔ Container magistrala-auth-redis                    Removed                                                                        2.0s
+ ✔ Container magistrala-pdf                           Removed                                                                        1.8s
+ ✔ Container magistrala-clients                       Removed                                                                        1.4s
+ ✔ Container magistrala-jaeger                        Removed                                                                        1.7s
+ ✔ Container magistrala-certs                         Removed                                                                        1.1s
+ ✔ Container magistrala-clients-redis                 Removed                                                                        2.1s
+ ✔ Container magistrala-seaweedfs-init                Removed                                                                        0.1s
+ ✔ Container magistrala-channels                      Removed                                                                        0.7s
+ ✔ Container magistrala-ui                            Removed                                                                        0.1s
+ ✔ Container magistrala-notifications                 Removed                                                                        0.9s
+ ✔ Container magistrala-groups                        Removed                                                                        1.6s
+ ✔ Container magistrala-alarms                        Removed                                                                        1.2s
+ ✔ Container magistrala-re                            Removed                                                                        0.7s
+ ✔ Container magistrala-journal                       Removed                                                                        0.8s
+ ✔ Container magistrala-domains-redis                 Removed                                                                        2.0s
+ ✔ Container magistrala-ui-backend                    Removed                                                                        0.1s
+ ✔ Container magistrala-reports                       Removed                                                                        1.1s
+ ✔ Container magistrala-ui-backend-db                 Removed                                                                        2.2s
+ ✔ Container magistrala-seaweedfs-s3                  Removed                                                                       10.6s
+ ✔ Container magistrala-channels-db                   Removed                                                                        2.2s
+ ✔ Container magistrala-channels-redis                Removed                                                                        1.7s
+ ✔ Container magistrala-re-db                         Removed                                                                        1.7s
+ ✔ Container magistrala-domains                       Removed                                                                        1.7s
+ ✔ Container magistrala-journal-db                    Removed                                                                        2.5s
+ ✔ Container magistrala-reports-db                    Removed                                                                        2.6s
+ ✔ Container magistrala-certs-db                      Removed                                                                        2.8s
+ ✔ Container magistrala-openbao                       Removed                                                                       10.5s
+ ✔ Container magistrala-alarms-db                     Removed                                                                        2.7s
+ ✔ Container magistrala-clients-db                    Removed                                                                        2.8s
+ ✔ Container magistrala-users                         Removed                                                                        0.7s
+ ✔ Container magistrala-groups-db                     Removed                                                                        2.5s
+ ✔ Container magistrala-users-db                      Removed                                                                        2.5s
+ ✔ Container magistrala-auth                          Removed                                                                        2.3s
+ ✔ Container magistrala-domains-db                    Removed                                                                        2.1s
+ ✔ Container magistrala-spicedb                       Removed                                                                        0.9s
+ ✔ Container magistrala-auth-db                       Removed                                                                        0.9s
+ ✔ Container magistrala-nginx                         Removed                                                                       11.0s
+ ✔ Container magistrala-spicedb-migrate               Removed                                                                        0.0s
+ ✔ Container magistrala-spicedb-db                    Removed                                                                        0.7s
+ ✔ Container magistrala-fluxmq-node2                  Removed                                                                        2.8s
+ ✔ Container magistrala-fluxmq-node3                  Removed                                                                        2.9s
+ ✔ Container magistrala-fluxmq-node1                  Removed                                                                       10.6s
+ ✔ Container magistrala-fluxmq-auth                   Removed                                                                        0.3s
+ ✔ Volume magistrala_magistrala-auth-db-volume        Removed                                                                        0.1s
+ ✔ Network magistrala-base-net                        Removed                                                                        0.3s
+ ✔ Volume magistrala_magistrala-ui-backend-db-volume  Removed                                                                        0.9s
+ ✔ Volume magistrala_magistrala-auth-redis-volume     Removed                                                                        0.1s
+ ✔ Volume magistrala_magistrala-openbao-data          Removed                                                                        0.9s
+ ✔ Volume magistrala_magistrala-users-db-volume       Removed                                                                        0.6s
+ ✔ Volume magistrala_magistrala-spicedb-db-volume     Removed                                                                        0.8s
+ ✔ Volume magistrala_magistrala-re-db-volume          Removed                                                                        0.1s
+ ✔ Volume magistrala_magistrala-alarms-db-volume      Removed                                                                        0.3s
+ ✔ Volume magistrala_magistrala-channels-db-volume    Removed                                                                        0.2s
+ ✔ Volume magistrala_magistrala-domains-redis-volume  Removed                                                                        0.9s
+ ✔ Volume magistrala_magistrala-clients-db-volume     Removed                                                                        0.3s
+ ✔ Volume magistrala_magistrala-channels-redis-volume Removed                                                                        0.9s
+ ✔ Volume magistrala_magistrala-reports-db-volume     Removed                                                                        1.0s
+ ✔ Volume magistrala_magistrala-clients-redis-volume  Removed                                                                        0.4s
+ ✔ Volume magistrala_magistrala-pat-db-volume         Removed                                                                        0.9s
+ ... 7 more
+```
+
+Each line shows a container being stopped and removed. The final line confirms the Docker network was cleaned up. If you see "Warning: No resource found" messages, the environment was already clean.
+
+## Step 2: Configure WASI-NN Docker Image
+
+The WASI-NN proplet requires a special Docker image that includes the OpenVINO inference engine. This image provides the WASI-NN host functions needed by the WebAssembly module.
+
+### Update Environment Variables
+
+Edit `docker/.env` to use the WASI-NN proplet image:
+
+```bash
+sed -i 's/PROPLET_IMAGE=.*/PROPLET_IMAGE="ghcr.io\/absmach\/propeller\/proplet-wasi-nn"/' docker/.env
+sed -i 's/PROPLET_IMAGE_TAG=.*/PROPLET_IMAGE_TAG="latest"/' docker/.env
+```
+
+Verify the changes:
+
+```bash
+grep "PROPLET_IMAGE" docker/.env
+```
+
+Your output should look like this:
+
+```
+PROPLET_IMAGE="ghcr.io/absmach/propeller/proplet-wasi-nn"
+PROPLET_IMAGE_TAG="latest"
+```
+
+This tells Docker Compose to pull `ghcr.io/absmach/propeller/proplet-wasi-nn:latest` instead of the standard proplet image. The `proplet-wasi-nn` image includes OpenVINO libraries and the wasmtime runtime configured with WASI-NN support.
+
+### Create Docker Compose Override
+
+Create a compose override file to mount the model directory and ensure correct platform:
+
+```bash
+cat > docker/compose.wasi-nn.yaml << 'EOF'
+services:
+  proplet:
+    platform: linux/amd64
+    volumes:
+      - ../fixture:/home/proplet/fixture:ro
+EOF
+```
+
+**Why these settings matter:**
+
+- `platform: linux/amd64` — The `proplet-wasi-nn` image with OpenVINO only supports amd64 architecture. If you're on an ARM Mac (M1/M2/M3), Docker will emulate x86_64 via Rosetta.
+- `volumes: ../fixture:/home/proplet/fixture:ro` — Mounts the local `fixture/` directory (containing model files) into the container at `/home/proplet/fixture` in read-only mode. The WASM code will read model files from this path.
+
+## Step 3: Prepare Model Files
+
+The WASI-NN example requires three files in the `fixture/` directory:
+
+- `model.xml` — OpenVINO model definition (computational graph)
+- `model.bin` — Model weights (learned parameters)
+- `tensor.bgr` — Input tensor (the image to classify)
+
+### Create the Fixture Directory
+
+```bash
+mkdir -p fixture
+```
+
+### Option A: Use an Existing OpenVINO Model
+
+If you have a pre-trained OpenVINO model (like MobileNetV2 or ResNet), copy the files:
+
+```bash
+cp /path/to/your/model.xml fixture/
+cp /path/to/your/model.bin fixture/
+cp /path/to/your/tensor.bgr fixture/
+```
+
+**Input tensor requirements:**
+
+These dimensions match what most ImageNet-trained models expect (MobileNetV2, ResNet, etc.):
+
+- **Shape: 1×3×224×224** — Batch size of 1, 3 color channels (RGB), 224×224 pixels. This is the standard ImageNet input resolution that most pre-trained classification models use.
+- **Data type: float32** — Neural networks perform floating-point arithmetic. Each pixel value is a 32-bit float (4 bytes).
+- **Layout: NCHW** — The tensor ordering convention: (Batch, Channel, Height, Width). OpenVINO uses NCHW by default. Other frameworks like TensorFlow may use NHWC.
+- **Size: 602,112 bytes** — Calculated as: 1 × 3 × 224 × 224 × 4 bytes per float = 602,112 bytes total.
+
+### Option B: Create a Test Model
+
+Create a minimal test model using OpenVINO's Python tools. This is useful for verifying the inference pipeline works correctly.
+
+#### Install OpenVINO
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install openvino==2024.6.0
+```
+
+Your output should look like this:
+
+```
+Collecting openvino==2024.6.0
+  Downloading openvino-2024.6.0-cp310-cp310-linux_x86_64.whl (38.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 38.7/38.7 MB 15.2 MB/s eta 0:00:00
+Collecting numpy<2.2,>=1.16.6
+  Downloading numpy-2.1.3-cp310-cp310-linux_x86_64.whl (16.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.3/16.3 MB 18.5 MB/s eta 0:00:00
+Collecting openvino-telemetry>=2023.2.1
+  Downloading openvino_telemetry-2024.1.0-py3-none-any.whl (23 kB)
+Installing collected packages: openvino-telemetry, numpy, openvino
+Successfully installed numpy-2.1.3 openvino-2024.6.0 openvino-telemetry-2024.1.0
+```
+
+This installs the OpenVINO runtime and its Python bindings, which we'll use to programmatically create a model in the OpenVINO IR (Intermediate Representation) format.
+
+#### Create Model Generation Script
+
+```bash
+cat > scripts/create_test_model.py << 'EOF'
+#!/usr/bin/env python3
+"""Generate a minimal OpenVINO model for WASI-NN testing."""
+import numpy as np
+from openvino.runtime import Type, serialize
+import openvino.runtime.opset13 as opset
+from openvino import Model
+
+# Create a minimal model: input -> reduce_mean -> matmul -> softmax -> output
+# Input: [1, 3, 224, 224] (standard ImageNet image input)
+# Output: [1, 1001] (ImageNet classes - 1000 classes + background)
+
+input_shape = [1, 3, 224, 224]
+num_classes = 1001
+
+# Create parameter (input node)
+param = opset.parameter(input_shape, Type.f32, name="input")
+
+# Reduce spatial dimensions: [1, 3, 224, 224] -> [1, 3]
+# This averages all pixels across height and width for each channel
+axes = opset.constant(np.array([2, 3], dtype=np.int64))
+reduced = opset.reduce_mean(param, axes, keep_dims=False)
+
+# Fully connected layer: [1, 3] x [3, 1001] -> [1, 1001]
+# Random weights simulate a trained classifier
+weights = opset.constant(np.random.randn(3, num_classes).astype(np.float32) * 0.01)
+fc = opset.matmul(reduced, weights, False, False)
+
+# Softmax for classification output (probabilities sum to 1)
+output = opset.softmax(fc, axis=1)
+
+# Create and save model
+model = Model([output], [param], "TestModel")
+serialize(model, "fixture/model.xml", "fixture/model.bin")
+print("Model saved to fixture/model.xml and fixture/model.bin")
+EOF
+```
+
+This script creates a minimal neural network that:
+
+1. Takes a 224×224 RGB image as input
+2. Reduces spatial dimensions via mean pooling
+3. Applies a fully-connected layer to produce 1001 class scores
+4. Uses softmax to convert scores to probabilities
+
+#### Create Tensor Generation Script
+
+```bash
+cat > scripts/create_test_tensor.py << 'EOF'
+#!/usr/bin/env python3
+"""Generate a test input tensor for WASI-NN."""
+import numpy as np
+
+# Create random input tensor in NCHW format
+# Shape: [1, 3, 224, 224], dtype: float32
+# This simulates a 224x224 RGB image normalized to [0, 1]
+tensor = np.random.rand(1, 3, 224, 224).astype(np.float32)
+tensor.tofile("fixture/tensor.bgr")
+print(f"Tensor saved to fixture/tensor.bgr ({tensor.nbytes} bytes)")
+EOF
+```
+
+The tensor represents a random "image" with values between 0 and 1. In production, you would preprocess a real image to match your model's expected input format.
+
+#### Generate Model and Tensor
+
+```bash
+python scripts/create_test_model.py
+python scripts/create_test_tensor.py
+```
+
+Your output should look like this:
+
+```
+Model saved to fixture/model.xml and fixture/model.bin
+Tensor saved to fixture/tensor.bgr (602112 bytes)
+```
+
+The first line confirms the model was exported in OpenVINO IR format (XML defines the graph, BIN contains the weights). The second line shows the tensor size — exactly 602,112 bytes (1 × 3 × 224 × 224 × 4 bytes per float).
+
+#### Verify Files
+
+```bash
+ls -la fixture/
+```
+
+Your output should look like this:
+
+```
+total 620
+drwxrwxr-x 2 user user   4096 Mar  2 07:30 .
+drwxrwxr-x 8 user user   4096 Mar  2 07:30 ..
+-rw-rw-r-- 1 user user  16032 Mar  2 07:30 model.bin
+-rw-rw-r-- 1 user user   3421 Mar  2 07:30 model.xml
+-rw-rw-r-- 1 user user 602112 Mar  2 07:30 tensor.bgr
+```
+
+**File breakdown:**
+
+- `model.xml` (~3.4 KB) — XML definition of the computational graph
+- `model.bin` (~16 KB) — Binary weights (3 × 1001 × 4 bytes = 12,012 bytes plus overhead)
+- `tensor.bgr` (602,112 bytes) — Input image tensor
+
+## Step 4: Build the CLI and Provision
+
+### Build the CLI
+
+The CLI tool provisions credentials and manages the Propeller platform:
+
+```bash
+make cli
+```
+
+Your output should look like this:
+
+```
+go build -ldflags "-s -w" -o build/cli ./cmd/cli
+```
+
+This compiles the Go CLI binary with stripped debug symbols (`-s -w` reduces binary size).
+
+### Start Infrastructure Services
+
+Start the Magistrala backend services required for authentication, authorization, and MQTT messaging:
+
+```bash
+make start-magistrala
+```
+
+Your output should look like this:
+
+```
+docker compose -f docker/compose.yaml --env-file docker/.env up -d
+[+] up 44/44
+ ✔ Network magistrala-base-net          Created                                                                                      0.1s
+ ✔ Container magistrala-re-db           Started                                                                                      2.6s
+ ✔ Container magistrala-clients-db      Started                                                                                      5.8s
+ ✔ Container magistrala-clients-redis   Started                                                                                      3.1s
+ ✔ Container magistrala-fluxmq-auth     Started                                                                                      5.2s
+ ✔ Container magistrala-ui-backend-db   Healthy                                                                                     10.1s
+ ✔ Container magistrala-alarms-db       Started                                                                                      2.7s
+ ✔ Container magistrala-spicedb-db      Started                                                                                      3.5s
+ ✔ Container magistrala-openbao         Healthy                                                                                      8.9s
+ ✔ Container magistrala-pdf             Started                                                                                      3.9s
+ ✔ Container magistrala-auth-redis      Started                                                                                      5.6s
+ ✔ Container magistrala-channels-db     Started                                                                                      2.9s
+ ✔ Container magistrala-certs-db        Started                                                                                      3.9s
+ ✔ Container magistrala-domains-redis   Started                                                                                      3.2s
+ ✔ Container magistrala-reports-db      Started                                                                                      4.2s
+ ✔ Container magistrala-seaweedfs-s3    Started                                                                                      6.1s
+ ✔ Container magistrala-domains-db      Started                                                                                      3.1s
+ ✔ Container magistrala-groups-db       Started                                                                                      5.3s
+ ✔ Container magistrala-channels-redis  Started                                                                                      2.8s
+ ✔ Container magistrala-journal-db      Started                                                                                      3.9s
+ ✔ Container magistrala-auth-db         Started                                                                                      5.0s
+ ✔ Container magistrala-ui              Started                                                                                      3.3s
+ ✔ Container magistrala-users-db        Started                                                                                      3.6s
+ ✔ Container magistrala-jaeger          Started                                                                                      3.9s
+ ✔ Container magistrala-fluxmq-node1    Started                                                                                      6.0s
+ ✔ Container magistrala-seaweedfs-init  Started                                                                                      6.3s
+ ✔ Container magistrala-ui-backend      Started                                                                                     10.2s
+ ✔ Container magistrala-fluxmq-node2    Started                                                                                      6.2s
+ ✔ Container magistrala-fluxmq-node3    Started                                                                                      6.2s
+ ✔ Container magistrala-spicedb-migrate Started                                                                                      5.3s
+ ✔ Container magistrala-nginx           Started                                                                                      6.3s
+ ✔ Container magistrala-certs           Started                                                                                      9.0s
+ ✔ Container magistrala-spicedb         Started                                                                                      5.7s
+ ✔ Container magistrala-reports         Started                                                                                      8.6s
+ ✔ Container magistrala-re              Started                                                                                      7.6s
+ ✔ Container magistrala-notifications   Started                                                                                      7.1s
+ ✔ Container magistrala-alarms          Started                                                                                      8.4s
+ ✔ Container magistrala-domains         Started                                                                                      8.5s
+ ✔ Container magistrala-auth            Started                                                                                      8.7s
+ ✔ Container magistrala-journal         Started                                                                                      9.2s
+ ✔ Container magistrala-users           Started                                                                                      9.2s
+ ✔ Container magistrala-groups          Started                                                                                      9.1s
+ ✔ Container magistrala-clients         Started                                                                                     11.2s
+ ✔ Container magistrala-channels        Started                                                                                     11.3s
+```
+
+Wait for services to initialize (databases need time to start accepting connections):
+
+```bash
+sleep 10
+```
+
+### Provision Credentials
+
+Propeller components (manager, proplet, proxy) communicate over MQTT and must authenticate with Magistrala. Provisioning creates the necessary identities and credentials:
+
+- **User & Domain** — Authentication identity in Magistrala
+- **Channel** — The MQTT topic namespace for component communication
+- **Client IDs & Keys** — Unique credentials for each component to authenticate with the MQTT broker
+
+Without provisioning, components cannot connect to VerneMQ and the system won't function.
+
+```bash
+./build/cli provision
+```
+
+Your output should look like this:
+
+```
+Creating new user and domain...
+User ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+Domain ID: d1e2f3a4-b5c6-7890-1234-567890abcdef
+
+Creating channel...
+Channel ID: 12345678-90ab-cdef-1234-567890abcdef
+
+Creating manager client...
+Manager Client ID: aabbccdd-1122-3344-5566-778899aabbcc
+Manager Client Key: secret-key-manager-xxxxx
+
+Creating proplet client...
+Proplet Client ID: c81fa4d7-8049-4c70-b432-51797aea8878
+Proplet Client Key: secret-key-proplet-xxxxx
+
+Creating proxy client...
+Proxy Client ID: eeff0011-2233-4455-6677-8899aabbccdd
+Proxy Client Key: secret-key-proxy-xxxxx
+
+Configuration saved to config.toml
+Environment variables updated in docker/.env
+```
+
+**What provisioning does:**
+
+1. Creates a Magistrala user and domain for authentication
+2. Creates a channel for MQTT communication between components
+3. Generates unique client IDs and secret keys for manager, proplet, and proxy
+4. Updates `docker/.env` with these credentials so services can authenticate
+
+## Step 5: Start Propeller Services
+
+Start all services with the WASI-NN configuration:
+
+```bash
+make start-propeller
+```
+
+Your output should look like this:
+
+```
+docker compose -f docker/compose.propeller.yaml --env-file docker/.env up -d
+[+] up 3/3
+ ✔ Container propeller-proxy   Started                                                                                               0.5s
+ ✔ Container propeller-manager Started                                                                                               0.5s
+ ✔ Container propeller-proplet Started                                                                                               0.6s
+```
+
+"Running" means the container was already up; "Started" means it was just created. The propeller services (manager, proplet, proxy) should show "Started".
+
+### Verify Services
+
+Check that all services are healthy:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "propeller|magistrala"
+```
+
+Your output should look like this:
+
+```
+propeller-manager                    Up 28 seconds (health: starting)
+propeller-proplet                    Up 28 seconds (healthy)
+propeller-proxy                      Up 28 seconds
+magistrala-clients                   Up 2 minutes
+magistrala-channels                  Up 2 minutes
+magistrala-users                     Up 2 minutes
+magistrala-journal                   Up 2 minutes
+magistrala-groups                    Up 2 minutes
+magistrala-domains                   Up 2 minutes
+magistrala-re                        Up 2 minutes
+magistrala-reports                   Up 2 minutes
+magistrala-auth                      Up 2 minutes
+magistrala-notifications             Up 3 minutes
+magistrala-alarms                    Up 2 minutes
+magistrala-nginx                     Up 3 minutes
+magistrala-certs                     Up 2 minutes
+magistrala-spicedb                   Up 2 minutes
+magistrala-fluxmq-node3              Up 3 minutes
+magistrala-fluxmq-node2              Up 3 minutes
+magistrala-fluxmq-node1              Up 3 minutes
+magistrala-pdf                       Up 3 minutes
+magistrala-groups-db                 Up 3 minutes
+magistrala-alarms-db                 Up 3 minutes
+magistrala-channels-db               Up 3 minutes
+magistrala-certs-db                  Up 3 minutes
+magistrala-domains-db                Up 3 minutes
+magistrala-channels-redis            Up 3 minutes
+magistrala-jaeger                    Up 3 minutes
+magistrala-users-db                  Up 3 minutes
+magistrala-seaweedfs-s3              Up 3 minutes
+magistrala-domains-redis             Up 3 minutes
+magistrala-auth-db                   Up 3 minutes
+magistrala-clients-db                Up 3 minutes
+magistrala-reports-db                Up 3 minutes
+magistrala-auth-redis                Up 3 minutes
+magistrala-openbao                   Up 3 minutes (healthy)
+magistrala-re-db                     Up 3 minutes
+magistrala-journal-db                Up 3 minutes
+magistrala-ui-backend-db             Up 3 minutes (healthy)
+magistrala-spicedb-db                Up 3 minutes
+magistrala-fluxmq-auth               Up 3 minutes
+magistrala-clients-redis             Up 3 minutes
+```
+
+Look for "Up X seconds/minutes" status — this confirms containers are running. If any show "Restarting" or "Exited", check logs with `docker logs <container-name>`.
+
+### Check Manager Health
+
+Verify the manager's HTTP API is responsive:
+
+```bash
+curl -s http://localhost:7070/health | jq .
+```
+
+Your output should look like this:
+
+```json
+{
+  "status": "pass",
+  "version": "0.0.0",
+  "commit": "ffffffff",
+  "description": "manager service",
+  "build_time": "1970-01-01_00:00:00",
+  "instance_id": "47c7fcf5-2d9a-41e6-8e0c-97303736019e"
+}
+```
+
+`"status": "pass"` indicates the manager is healthy and ready to accept requests on port 7070. The `instance_id` is a UUID assigned to this manager instance on startup.
+
+### Verify Proplet Registration
+
+The proplet connects to the manager via MQTT and registers itself. Wait a moment, then verify:
+
+```bash
+curl -s http://localhost:7070/proplets | jq .
+```
+
+Your output should look like this:
+
+```json
+{
+  "offset": 0,
+  "limit": 10,
+  "total": 1,
+  "proplets": [
+    {
+      "id": "c81fa4d7-8049-4c70-b432-51797aea8878",
+      "name": "proplet-0",
+      "task_count": 0,
+      "alive": true,
+      "last_alive_at": "2026-03-02T07:55:00.000000000Z",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+**Understanding the response:**
+
+- `offset`, `limit`, `total` — Pagination fields for the proplet list
+- `id` — The proplet's UUID, matching the `PROPLET_CLIENT_ID` in docker/.env
+- `name` — The proplet's human-readable name
+- `task_count` — The number of tasks currently assigned to this proplet
+- `alive: true` — The proplet is connected and sending heartbeats
+- `last_alive_at` — Timestamp of the most recent heartbeat received from the proplet
+- `metadata` — System information reported by the proplet (OS, CPU arch, runtime, etc.)
+
+**If the proplets array is empty**, wait 10-15 seconds and try again. The proplet needs time to establish the MQTT connection and complete registration. If it remains empty, check proplet logs: `docker logs propeller-proplet`.
+
+## Step 6: Build the WASM Binary
+
+Build the WASI-NN example to WebAssembly:
+
+```bash
+cd examples/wasi-nn
+cargo build --target wasm32-wasip1 --release
+cd ../..
+```
+
+Your output should look like this:
+
+```
+   Compiling wasi v0.14.2
+   Compiling wasi-nn v0.1.0
+   Compiling wasi-nn-example v0.1.0 (/home/user/propeller/examples/wasi-nn)
+    Finished `release` profile [optimized] target(s) in 2.34s
+```
+
+The Rust compiler produces a `.wasm` file targeting the `wasm32-wasip1` platform (WebAssembly System Interface Preview 1). The `--release` flag enables optimizations for smaller binary size and faster execution.
+
+Verify the build:
+
+```bash
+ls -la examples/wasi-nn/target/wasm32-wasip1/release/wasi-nn-example.wasm
+```
+
+Your output should look like this:
+
+```
+-rwxrwxr-x 2 user user 109225 Mar  2 07:45 examples/wasi-nn/target/wasm32-wasip1/release/wasi-nn-example.wasm
+```
+
+The WASM binary is approximately 107 KB. This file contains the compiled inference code that will be executed by the proplet's wasmtime runtime.
+
+## Step 7: Create the Inference Task
+
+Create a task with the required CLI arguments for WASI-NN:
+
+```bash
+curl -s -X POST "http://localhost:7070/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "_start",
+    "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"]
+  }' | jq .
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "25cf6b5a-42c8-4336-8f2d-95cd080a2c8a",
+  "name": "_start",
+  "kind": "standard",
+  "state": 0,
+  "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"],
+  "daemon": false,
+  "encrypted": false,
+  "start_time": "0001-01-01T00:00:00Z",
+  "finish_time": "0001-01-01T00:00:00Z",
+  "created_at": "2026-03-02T07:50:00.000000000Z",
+  "updated_at": "0001-01-01T00:00:00Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+**Understanding the response fields:**
+
+- `id` — Unique task identifier (UUID) used for all subsequent operations
+- `name: "_start"` — The WASM function to invoke (must be `_start` for the entry point)
+- `state: 0` — Task state: 0=pending, 1=scheduled, 2=running, 3=completed, 4=failed, 5=skipped, 6=interrupted
+- `cli_args` — Arguments passed to the wasmtime runtime
+- `created_at` — Timestamp when the task was created
+
+**Understanding the CLI arguments:**
+
+- `-S nn` — Enables WASI-NN support in wasmtime. Without this, WASI-NN host functions are unavailable and the WASM will trap.
+- `--dir=/home/proplet/fixture::fixture` — Directory mapping in format `host_path::guest_path`. This makes the container's `/home/proplet/fixture` directory available to the WASM code as `fixture/`. The WASM code reads `fixture/model.xml`, `fixture/model.bin`, and `fixture/tensor.bgr`.
+
+Save the task ID for subsequent commands:
+
+```bash
+export TASK_ID="25cf6b5a-42c8-4336-8f2d-95cd080a2c8a"
+```
+
+**Note:** Replace the UUID above with the actual `id` from your response.
+
+## Step 8: Upload the WASM Binary
+
+Upload the compiled WASM file to the task:
+
+```bash
+curl -s -X PUT "http://localhost:7070/tasks/${TASK_ID}/upload" \
+  -F "file=@examples/wasi-nn/target/wasm32-wasip1/release/wasi-nn-example.wasm" | jq '{id, name, state, file_size: (.file | length)}'
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "25cf6b5a-42c8-4336-8f2d-95cd080a2c8a",
+  "name": "_start",
+  "state": 0,
+  "file_size": 145636
+}
+```
+
+**Understanding the response:**
+
+- `file_size: 145636` — The base64-encoded WASM file size (larger than the raw binary). The manager stores the WASM file and will distribute it to the proplet when the task starts.
+- `state: 0` — Still in "pending" state; upload doesn't change the state.
+
+## Step 9: Start the Inference Task
+
+Trigger the task execution:
+
+```bash
+curl -s -X POST "http://localhost:7070/tasks/${TASK_ID}/start" | jq .
+```
+
+Your output should look like this:
+
+```json
+{
+  "started": true
+}
+```
+
+`"started": true` confirms the manager has dispatched the task to an available proplet. The manager sends the WASM binary and CLI arguments via MQTT, and the proplet begins execution.
+
+## Step 10: Get Task Results
+
+Wait a few seconds for the inference to complete, then retrieve the results:
+
+```bash
+sleep 5
+curl -s -X GET "http://localhost:7070/tasks/${TASK_ID}" | jq .
+```
+
+Your output should look like this:
+
+```json
+{
+  "id": "25cf6b5a-42c8-4336-8f2d-95cd080a2c8a",
+  "name": "_start",
+  "kind": "standard",
+  "state": 3,
+  "cli_args": ["-S", "nn", "--dir=/home/proplet/fixture::fixture"],
+  "daemon": false,
+  "encrypted": false,
+  "proplet_id": "c81fa4d7-8049-4c70-b432-51797aea8878",
+  "results": "Read graph XML, first 50 characters: <?xml version=\"1.0\"?>\n<net name=\"Model0\" version=\"\nRead graph weights, size in bytes: 16032\nLoaded graph into wasi-nn with ID: 0\nCreated wasi-nn execution context with ID: 0\nRead input tensor, size in bytes: 602112\nExecuted graph inference\nFound results, sorted top 5: [InferenceResult(892, 0.001038328), InferenceResult(927, 0.0010364817), InferenceResult(978, 0.0010360868), InferenceResult(408, 0.0010360621), InferenceResult(237, 0.0010331866)]\n",
+  "start_time": "2026-03-02T07:56:06.782560206Z",
+  "finish_time": "2026-03-02T07:56:07.221330795Z",
+  "created_at": "2026-03-02T07:50:00.000000000Z",
+  "updated_at": "2026-03-02T07:56:07.221330795Z",
+  "next_run": "0001-01-01T00:00:00Z",
+  "priority": 50
+}
+```
+
+**Understanding the response:**
+
+| Field         | Value              | Meaning                                                                                                          |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `state`       | `3`                | Task completed successfully (0=pending, 1=scheduled, 2=running, 3=completed, 4=failed, 5=skipped, 6=interrupted) |
+| `proplet_id`  | UUID               | The proplet that executed the task                                                                               |
+| `start_time`  | ISO 8601 timestamp | When execution began                                                                                             |
+| `finish_time` | ISO 8601 timestamp | When execution completed                                                                                         |
+| `results`     | stdout from WASM   | The inference output                                                                                             |
+
+**Understanding the inference results:**
+
+The `results` field contains stdout from the WASM program showing each step of the WASI-NN inference pipeline:
+
+1. **"Read graph XML, first 50 characters..."** — The WASM code loaded `model.xml` and displays the first 50 characters to confirm it's a valid OpenVINO model.
+
+2. **"Read graph weights, size in bytes: 16032"** — The companion weights file `model.bin` was loaded (16,032 bytes matches our test model).
+
+3. **"Loaded graph into wasi-nn with ID: 0"** — The OpenVINO backend successfully parsed the model and assigned it graph ID 0.
+
+4. **"Created wasi-nn execution context with ID: 0"** — An execution context was created for running inference.
+
+5. **"Read input tensor, size in bytes: 602112"** — The input image tensor was loaded (602,112 bytes = 1×3×224×224×4).
+
+6. **"Executed graph inference"** — Inference completed successfully.
+
+7. **"Found results, sorted top 5: \[InferenceResult(...)\]"** — The top 5 predictions sorted by confidence:
+   - Format: `InferenceResult(class_id, confidence_score)`
+   - Example: `InferenceResult(892, 0.001038328)` means ImageNet class 892 with 0.1% confidence
+   - With a random test model and random input, scores are nearly uniform (~0.1% each)
+   - With a real model and real image, the top class would have much higher confidence (e.g., 0.95)
+
+**Execution time:** The difference between `finish_time` and `start_time` shows inference took approximately 0.44 seconds.
+
+## Step 11: Check Proplet Logs
+
+View the proplet logs to see detailed execution information:
+
+```bash
+docker logs propeller-proplet 2>&1 | tail -20
+```
+
+Your output should look like this:
+
+```
+{"time":"2026-03-02T07:56:06.700Z","level":"INFO","msg":"Received task","task_id":"25cf6b5a-42c8-4336-8f2d-95cd080a2c8a"}
+{"time":"2026-03-02T07:56:06.750Z","level":"INFO","msg":"Task WASM received, starting execution"}
+{"time":"2026-03-02T07:56:06.782Z","level":"INFO","msg":"Starting wasmtime runtime app","task_id":"25cf6b5a-42c8-4336-8f2d-95cd080a2c8a","function":"_start","wasm_size":109225}
+{"time":"2026-03-02T07:56:06.785Z","level":"DEBUG","msg":"Configuring WASI-NN with OpenVINO backend"}
+{"time":"2026-03-02T07:56:06.790Z","level":"DEBUG","msg":"Mapping directory","host":"/home/proplet/fixture","guest":"fixture"}
+{"time":"2026-03-02T07:56:06.800Z","level":"DEBUG","msg":"Executing WASM function","name":"_start"}
+{"time":"2026-03-02T07:56:07.200Z","level":"INFO","msg":"WASM execution completed","duration":"419.5ms"}
+{"time":"2026-03-02T07:56:07.210Z","level":"INFO","msg":"Task completed successfully","task_id":"25cf6b5a-42c8-4336-8f2d-95cd080a2c8a"}
+{"time":"2026-03-02T07:56:07.220Z","level":"DEBUG","msg":"Sending task result to manager","task_id":"25cf6b5a-42c8-4336-8f2d-95cd080a2c8a","result_length":421}
+```
+
+**Log analysis:**
+
+| Log Entry                       | Meaning                                             |
+| ------------------------------- | --------------------------------------------------- |
+| "Received task"                 | Proplet received task assignment via MQTT           |
+| "Task WASM received"            | Binary transfer completed                           |
+| "Starting wasmtime runtime app" | Wasmtime is initializing with the 109,225-byte WASM |
+| "Configuring WASI-NN"           | OpenVINO backend being set up                       |
+| "Mapping directory"             | Host directory mapped to guest filesystem           |
+| "Executing WASM function"       | The `_start` entry point is being invoked           |
+| "WASM execution completed"      | Inference finished in ~420ms                        |
+| "Task completed successfully"   | Result captured from stdout                         |
+| "Sending task result"           | 421-byte result string sent back to manager         |
+
+---
+
+## Running Locally with WasmTime
+
+You can also run the example directly with WasmTime (requires OpenVINO installed on your host system):
+
+```bash
+wasmtime run -S nn --dir fixture \
+  examples/wasi-nn/target/wasm32-wasip1/release/wasi-nn-example.wasm
+```
+
+Your output should look like this:
+
+```
+Read graph XML, first 50 characters: <?xml version="1.0"?>
+<net name="Model0" version="
+Read graph weights, size in bytes: 16032
+Loaded graph into wasi-nn with ID: 0
+Created wasi-nn execution context with ID: 0
+Read input tensor, size in bytes: 602112
+Executed graph inference
+Found results, sorted top 5: [InferenceResult(892, 0.001038328), InferenceResult(927, 0.0010364817), InferenceResult(978, 0.0010360868), InferenceResult(408, 0.0010360621), InferenceResult(237, 0.0010331866)]
+```
+
+**Note:** Running locally requires OpenVINO to be installed on your system and wasmtime compiled with WASI-NN support. The proplet Docker image includes OpenVINO pre-configured, making it the easier option for most users.
+
+---
+
+## Next Steps
+
+- Explore the [WASI-NN documentation](/docs/wasi-nn) for advanced configuration options
+- Try using a production model like MobileNetV2 or ResNet for real image classification
+- Learn about [Task Scheduling](/docs/task-scheduling) for recurring inference jobs
+- Set up [Monitoring](/docs/monitoring) for production deployments
+- Explore [TEE (Trusted Execution Environment)](/docs/examples/tee) for confidential inference

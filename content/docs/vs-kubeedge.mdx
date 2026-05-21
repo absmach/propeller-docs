@@ -1,0 +1,60 @@
+---
+title: Propeller vs KubeEdge
+description: "Propeller vs KubeEdge: a technical comparison of WebAssembly orchestration vs Kubernetes-based edge computing. Runtime model, device support, protocols, and use-case fit."
+---
+
+Propeller and KubeEdge both address edge compute orchestration, but they solve different problems with different trade-offs. This page compares them on the dimensions that matter most for infrastructure decisions.
+
+## Quick Comparison
+
+|                            | **Propeller**                   | **KubeEdge**                     |
+| -------------------------- | ------------------------------- | -------------------------------- |
+| **Workload runtime**       | WebAssembly (Wasmtime, WAMR)    | Containers (containerd, Docker)  |
+| **Control plane**          | Propeller Manager (Go REST API) | Kubernetes API server + EdgeCore |
+| **Minimum device RAM**     | 128 KB (Zephyr RTOS)            | ~256 MB (Linux required)         |
+| **OS requirement**         | Linux, Zephyr RTOS              | Linux only                       |
+| **Cold-start**             | < 1 ms (Wasm)                   | ~180–250 ms (container)          |
+| **Communication protocol** | MQTT (via Magistrala)           | EdgeHub transport                |
+| **Sandbox model**          | Wasm linear memory isolation    | Linux namespace + cgroup         |
+| **Kubernetes dependency**  | None                            | Required                         |
+| **License**                | Apache 2.0                      | Apache 2.0                       |
+| **Governance**             | Abstract Machines (EU-funded)   | CNCF Incubating                  |
+
+## Runtime Model
+
+**KubeEdge** extends Kubernetes to edge nodes. Each edge node runs `EdgeCore`, a lightweight Kubernetes node agent that manages container lifecycle via containerd or Docker. Workloads are standard OCI container images. This means any existing Kubernetes workload can be moved to the edge without rewriting, but the minimum viable edge device must run a full Linux environment with containerd installed — typically 256 MB RAM minimum in practice.
+
+**Propeller** uses WebAssembly as the workload format. Wasm binaries are architecture-neutral: the same `.wasm` file runs on x86_64, ARM64, and the Xtensa LX7 core of an ESP32-S3 microcontroller. This single-binary portability is not possible with OCI containers, which are architecture-specific. The trade-off is that applications must be compiled to Wasm — existing container workloads cannot be moved to Propeller without recompilation.
+
+## Device Reach
+
+KubeEdge's architecture stops at the Linux boundary. Any device that cannot run a Linux kernel with containerd is outside its scope.
+
+Propeller extends below Linux to bare-metal microcontrollers. The Embedded Proplet firmware runs on Zephyr RTOS devices using WAMR's interpreter or AOT mode, enabling Wasm workload deployment to devices with 128 KB of RAM — the class of hardware used in industrial sensors, actuators, and environmental monitors that make up the majority of IoT endpoint count.
+
+## Security Model
+
+KubeEdge inherits the Kubernetes security model: namespaces, RBAC, network policies, and optional Pod Security Admission. Container isolation is enforced by Linux namespaces and cgroups. A kernel vulnerability can potentially escape the sandbox.
+
+Propeller's sandbox is the WebAssembly execution model itself. Wasm modules operate in a linear memory region with no access to host memory or syscalls beyond the explicit WASI imports granted at instantiation. This makes the sandbox boundary a language-level guarantee rather than a kernel-level enforcement, which is particularly relevant for Trusted Execution Environment (TEE) deployments.
+
+## When to Choose Each
+
+**Choose KubeEdge if:**
+
+- You have existing Kubernetes workloads to move to the edge
+- Your edge devices run Linux with at least 512 MB RAM
+- Your team has existing Kubernetes operational expertise
+- Container-based packaging is a hard requirement
+
+**Choose Propeller if:**
+
+- You need to deploy to microcontrollers (< 1 MB RAM)
+- Cold-start latency below 5 ms is a requirement
+- You need a single binary to run across x86, ARM, and embedded targets
+- You require hardware-level sandbox guarantees (TEE support)
+- You are starting fresh without an existing Kubernetes investment
+
+## Summary
+
+KubeEdge is the right choice when Kubernetes compatibility and container ecosystem reuse are the primary goals and edge devices are Linux-capable. Propeller is the right choice when the workload needs to reach below the Linux boundary, when cold-start performance matters at the millisecond scale, or when WebAssembly's portability and sandbox guarantees are architectural requirements. The two tools are complementary: Propeller can run alongside a Kubernetes cluster, handling the sub-Linux tier while KubeEdge handles the Linux edge tier.

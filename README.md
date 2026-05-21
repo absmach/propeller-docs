@@ -1,50 +1,62 @@
-# ⚠️ ARCHIVED / NOT MAINTAINED ⚠️
-All the content from this website has been moved to a new Propeller website and can be found at https://propeller.absmach.eu/docs.
+# Propeller Website
 
-# Propeller Documentation
+Propeller Website is a documentation website built with [Next.js](https://nextjs.org/) and [Fumadocs](https://www.fumadocs.dev/), featuring documentation and OpenAPI reference pages.
 
-This repo collects the collaborative work on Propeller documentation.
+## Features
 
-Documentation is auto-generated from Markdown files in this repo.
+- Documentation with MDX support
+- OpenAPI/Swagger API reference documentation
+- Static site generation for optimal performance
+- Search functionality powered by Orama
+- Responsive design with dark mode support
+- SEO-optimized with sitemap and robots.txt generation
 
-[MkDocs](https://www.mkdocs.org/) is used to serve the docs locally with different theming.
+## Getting Started
 
-## Install
+### Prerequisites
 
-Doc repo can be fetched from GitHub:
+- [Node.js](https://nodejs.org/) v20+
+- [pnpm](https://pnpm.io/) v9+
 
-```bash
-git clone https://github.com/absmach/propeller-docs.git
-```
-
-## Prerequisites
-
-[Python](https://www.python.org/downloads/) 3.7 or higher is required to run MkDocs.
-
-1. Create a virtual environment:
-
-   ```bash
-   python -m venv venv
-   ```
-
-2. Activate the virtual environment:
-
-   ```bash
-   source venv/bin/activate
-   ```
-
-3. Install [MkDocs](https://www.mkdocs.org/#installation) and dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Usage
-
-Use MkDocs to serve documentation:
+### Installation
 
 ```bash
-mkdocs serve
+pnpm install
 ```
 
-Then just point the browser to [http://127.0.0.1:8000](http://127.0.0.1:8000).
+### Development
+
+Run the development server:
+
+```bash
+pnpm run dev
+```
+
+Open <http://localhost:3000> with your browser to see the result.
+
+### Build
+
+Build the static site:
+
+```bash
+pnpm run build
+```
+
+The output will be generated in the `out` directory.
+
+### Preview Production Build
+
+```bash
+pnpm run start
+```
+
+### Linting
+
+```bash
+pnpm run lint
+pnpm run lint:fix  # Auto-fix issues
+```
+
+## Deployment
+
+The site is configured for static export and can be deployed to GitHub Pages (via [`.github/workflows/cd.yaml`](.github/workflows/cd.yaml)) or any other static hosting provider.
