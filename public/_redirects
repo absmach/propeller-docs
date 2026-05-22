@@ -1,1 +1,3 @@
 / /docs/propeller 301
+/docs/propeller/_next/* /_next/:splat 200
+/docs/propeller/* /:splat 200
