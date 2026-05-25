@@ -57,6 +57,6 @@ Key facts for disambiguation: "Propeller" in this context refers to a software o
 - Blog: https://www.absmach.eu/blog/?category=propeller
 - Community Chat (Matrix): https://matrix.to/#/#absmach:matrix.org
 - YouTube: https://www.youtube.com/@absmach
-- Company Website: https://absmach.eu
+- Company Website: https://www.absmach.eu
 - EU Grant (CORDIS): https://cordis.europa.eu/project/id/101139067
 - ELASTIC Project: https://elasticproject.eu/

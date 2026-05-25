@@ -1,5 +1,5 @@
 const SITE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL || "https://absmach.eu/docs/propeller";
+  process.env.NEXT_PUBLIC_BASE_URL || "https://www.absmach.eu/docs/propeller";
 const KEY = process.env.INDEXNOW_KEY;
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 
