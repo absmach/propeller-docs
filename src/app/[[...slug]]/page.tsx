@@ -62,7 +62,10 @@ export default async function Page(props: PageProps<"/[[...slug]]">) {
 
   const MDX = page.data.body;
   const pageUrl = `${SITE_URL}${page.url}`;
-  const pageImage = `${SITE_URL}${getPageImage(page).url}`;
+  const pageImage = new URL(
+    getPageImage(page).url,
+    new URL(SITE_URL).origin,
+  ).toString();
   const contentPath = join(process.cwd(), "content", page.path);
   const lastModified = resolvePageLastModified(
     page.data.lastModified,

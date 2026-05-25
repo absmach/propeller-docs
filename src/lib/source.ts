@@ -1,6 +1,7 @@
 import { docs } from "fumadocs-mdx:collections/server";
 import { type InferPageType, loader } from "fumadocs-core/source";
 import { openapiPlugin } from "fumadocs-openapi/server";
+import { assetPath } from "./base-path";
 
 export const source = loader({
   baseUrl: "/",
@@ -13,7 +14,7 @@ export function getPageImage(page: InferPageType<typeof source>) {
 
   return {
     segments,
-    url: `/og/${segments.join("/")}`,
+    url: assetPath(`/og/${segments.join("/")}`),
   };
 }
 
