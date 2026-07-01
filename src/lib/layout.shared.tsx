@@ -1,4 +1,5 @@
 import type { BaseLayoutProps, LinkItemType } from "fumadocs-ui/layouts/shared";
+import Image from "next/image";
 import { assetPath } from "./base-path";
 
 export const linkItems: LinkItemType[] = [
@@ -23,14 +24,14 @@ export const linkItems: LinkItemType[] = [
 
 export const logo = (
   <div className="flex items-center space-x-2">
-    <img
+    <Image
       src={assetPath("/named-logo-black.svg")}
       className="h-10 w-auto dark:hidden"
       alt="propeller logo"
       width={160}
       height={40}
     />
-    <img
+    <Image
       src={assetPath("/named-logo-white.svg")}
       className="h-10 w-auto hidden dark:block"
       alt="propeller logo"
