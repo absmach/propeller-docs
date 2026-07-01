@@ -68,7 +68,7 @@ propeller-cli provision [--file-name <path>]
 | `kind`               | string          | Task kind: `standard` or `federated`.                                      |
 | `state`              | integer         | Current execution state (see Task States below).                           |
 | `image_url`          | string          | OCI image reference for the Wasm binary (e.g. `docker.io/myorg/app:v1`).   |
-| `file`               | string          | Base64-encoded Wasm binary for direct embedding.                           |
+| `file`               | string          | Base64-encoded Wasm binary for direct embedding (redacted with `<REDACTED>` in API responses to avoid leaking binary contents). |
 | `cli_args`           | array of string | Arguments passed to the Wasm runtime (e.g. `["--invoke", "add"]`).         |
 | `inputs`             | array           | Input values (strings or numbers) forwarded to the Wasm function.          |
 | `env`                | object          | Environment variables injected into the Wasm execution context.            |

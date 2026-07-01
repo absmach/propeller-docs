@@ -180,7 +180,7 @@ Your output should look like this:
   "id": "task-001",
   "name": "main",
   "state": 0,
-  "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+  "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
   "cli_args": null,
   "inputs": [10, 20],
   "daemon": false,
@@ -194,7 +194,7 @@ Your output should look like this:
 }
 ```
 
-The `file` field now contains the WASM binary encoded as base64. This is the actual module that will be sent to the proplet for execution. The `updated_at` timestamp reflects when the upload occurred.
+The `file` field now contains the WASM binary encoded as base64 (redacted in the API response to protect the binary contents). This is the actual module that will be sent to the proplet for execution. The `updated_at` timestamp reflects when the upload occurred.
 
 #### Tasks 2 and 3
 
@@ -242,7 +242,7 @@ After completion, your output should look like this:
       "id": "task-001",
       "name": "main",
       "state": 3,
-      "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+      "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
       "cli_args": null,
       "inputs": [10, 20],
       "daemon": false,
@@ -260,7 +260,7 @@ After completion, your output should look like this:
       "id": "task-002",
       "name": "main",
       "state": 3,
-      "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+      "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
       "cli_args": null,
       "inputs": [5, 15],
       "daemon": false,
@@ -279,7 +279,7 @@ After completion, your output should look like this:
       "id": "task-003",
       "name": "main",
       "state": 3,
-      "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+      "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
       "cli_args": null,
       "inputs": [100, 200],
       "daemon": false,
@@ -463,7 +463,7 @@ After completion, your output should look like this:
       "id": "job-task-001",
       "name": "main",
       "state": 3,
-      "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+      "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
       "cli_args": null,
       "inputs": [100, 50],
       "daemon": false,
@@ -481,7 +481,7 @@ After completion, your output should look like this:
       "id": "job-task-002",
       "name": "main",
       "state": 3,
-      "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+      "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
       "cli_args": null,
       "inputs": [25, 75],
       "daemon": false,
@@ -499,7 +499,7 @@ After completion, your output should look like this:
       "id": "job-task-003",
       "name": "main",
       "state": 3,
-      "file": "AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL",
+      "file": "AGFzbQEAAA<REDACTED>AIAAgAWoL",
       "cli_args": null,
       "inputs": [200, 300],
       "daemon": false,
