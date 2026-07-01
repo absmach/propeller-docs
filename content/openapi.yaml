@@ -126,7 +126,7 @@ paths:
       summary: Create Task
       responses:
         "201":
-          description: Task created
+          description: Task created (the `file` field is redacted in the response)
       tags:
         - Manager
         - Task
@@ -249,7 +249,7 @@ paths:
             or `-`. Example: `metadata[env]=production&metadata[team]=ops`
       responses:
         "200":
-          description: List of tasks
+          description: List of tasks (the `file` field is redacted for each task)
       tags:
         - Manager
         - Task
@@ -258,7 +258,7 @@ paths:
       summary: Get Task
       responses:
         "200":
-          description: Task details
+          description: Task details (the `file` field is redacted in the response)
       tags:
         - Manager
         - Task
@@ -274,7 +274,7 @@ paths:
       description: Update a task (e.g. set file as base64-encoded Wasm)
       responses:
         "200":
-          description: Task updated
+          description: Task updated (the `file` field is redacted in the response)
       tags:
         - Manager
         - Task
@@ -423,7 +423,7 @@ paths:
       summary: Create Job
       responses:
         "201":
-          description: Job created
+          description: Job created (the `file` field is redacted for each task)
       tags:
         - Manager
         - Jobs
@@ -474,7 +474,7 @@ paths:
             was interrupted. Omit to return all jobs.
       responses:
         "200":
-          description: List of jobs
+          description: List of jobs (the `file` field is redacted for each task)
         "400":
           description: Invalid status value
       tags:
@@ -485,7 +485,7 @@ paths:
       summary: Get Job
       responses:
         "200":
-          description: Job details
+          description: Job details (the `file` field is redacted for each task)
       tags:
         - Manager
         - Jobs
@@ -531,7 +531,7 @@ paths:
       description: Create a workflow with tasks that have depends_on and run_if fields
       responses:
         "201":
-          description: Workflow created
+          description: Workflow created (the `file` field is redacted for each task)
       tags:
         - Manager
         - Workflows
