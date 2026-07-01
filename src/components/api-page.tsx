@@ -1,10 +1,8 @@
 import type { GeneratedPageProps } from "fumadocs-openapi";
-import { createOpenAPIPage } from "fumadocs-openapi/ui";
 import { openapi } from "@/lib/openapi";
-
-const OpenAPIPage = createOpenAPIPage();
+import APIPageClient from "./api-page.client";
 
 export async function APIPage({ document, ...props }: GeneratedPageProps) {
   const { bundled } = await openapi.getSchema(document);
-  return <OpenAPIPage payload={{ bundled }} {...props} />;
+  return <APIPageClient payload={{ bundled }} {...props} />;
 }
