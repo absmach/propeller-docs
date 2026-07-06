@@ -11,7 +11,7 @@ This guide walks you through installing Propeller and running your first WASM wo
 | ------------------------------------------ | ------- | ---------------------------- |
 | [Go](https://go.dev/doc/install)           | 1.26.0+ | Building Propeller binaries  |
 | [Rust](https://rustup.rs/)                 | Latest  | Building the proplet runtime |
-| [Docker](https://docs.docker.com/)         | 20.10+  | Running Magistrala services  |
+| [Docker](https://docs.docker.com/)         | 20.10+  | Running base services (Atom, FluxMQ)  |
 | [Make](https://www.gnu.org/software/make/) | 3.81+   | Build automation             |
 | [Mosquitto Tools](https://mosquitto.org/)  | Latest  | MQTT CLI utilities           |
 
@@ -81,7 +81,7 @@ make install
 During the build, you will see output similar to:
 
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/magistrala.BuildTime=...' -X 'github.com/absmach/magistrala.Version=v0.3.0'" -o build/manager cmd/manager/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'github.com/absmach/propeller.BuildTime=...' -X 'github.com/absmach/propeller.Version=v0.3.0'" -o build/manager cmd/manager/main.go
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "..." -o build/cli cmd/cli/main.go
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "..." -o build/proxy cmd/proxy/main.go
 cd proplet && cargo build --release && cp target/release/proplet ../build
@@ -110,13 +110,13 @@ make install
 
 See the [Developer Guide](./developer-guide#troubleshooting) for other common build problems.
 
-### Step 2: Start Magistrala
+### Step 2: Start Base Services
 
-Magistrala provides the messaging infrastructure for Propeller. From the root of the `propeller` repo:
+Atom and FluxMQ provide identity, authorization, and messaging for Propeller. From the root of the `propeller` repo:
 
 ```bash
 cd propeller
-make start-magistrala
+make start-base
 ```
 
 This runs:
@@ -129,85 +129,31 @@ The output will look something like:
 
 ```bash
 docker compose -f docker/compose.yaml --env-file docker/.env up -d
-[+] up 66/66
- ✔ Network magistrala-base-net                        Created                                                                        0.1s
- ✔ Volume magistrala_magistrala-users-db-volume       Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-domains-redis-volume  Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-channels-redis-volume Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-auth-redis-volume     Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-clients-redis-volume  Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-journal-volume        Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-openbao-data          Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-fluxmq-node3-volume   Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-re-db-volume          Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-reports-db-volume     Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-certs-db-volume       Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-clients-db-volume     Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-alarms-db-volume      Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-channels-db-volume    Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-fluxmq-node2-volume   Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-spicedb-db-volume     Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-pat-db-volume         Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-ui-backend-db-volume  Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-auth-db-volume        Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-fluxmq-node1-volume   Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-domains-db-volume     Created                                                                        0.0s
- ✔ Volume magistrala_magistrala-groups-db-volume      Created                                                                        0.0s
- ✔ Container magistrala-clients-redis                 Started                                                                        5.1s
- ✔ Container magistrala-re-db                         Started                                                                       10.7s
- ✔ Container magistrala-seaweedfs-s3                  Started                                                                        9.5s
- ✔ Container magistrala-fluxmq-auth                   Started                                                                        9.9s
- ✔ Container magistrala-auth-db                       Started                                                                        5.7s
- ✔ Container magistrala-ui-backend-db                 Healthy                                                                       20.5s
- ✔ Container magistrala-openbao                       Healthy                                                                       25.5s
- ✔ Container magistrala-auth-redis                    Started                                                                        5.5s
- ✔ Container magistrala-groups-db                     Started                                                                        9.9s
- ✔ Container magistrala-reports-db                    Started                                                                        9.0s
- ✔ Container magistrala-alarms-db                     Started                                                                        6.6s
- ✔ Container magistrala-channels-db                   Started                                                                        5.1s
- ✔ Container magistrala-users-db                      Started                                                                        9.1s
- ✔ Container magistrala-jaeger                        Started                                                                        9.9s
- ✔ Container magistrala-domains-db                    Started                                                                        9.0s
- ✔ Container magistrala-channels-redis                Started                                                                        9.9s
- ✔ Container magistrala-ui                            Started                                                                        4.9s
- ✔ Container magistrala-clients-db                    Started                                                                        5.7s
- ✔ Container magistrala-domains-redis                 Started                                                                        9.2s
- ✔ Container magistrala-spicedb-db                    Started                                                                        9.0s
- ✔ Container magistrala-certs-db                      Started                                                                        4.8s
- ✔ Container magistrala-pdf                           Started                                                                        6.6s
- ✔ Container magistrala-journal-db                    Started                                                                        5.4s
- ✔ Container magistrala-seaweedfs-init                Started                                                                        9.9s
- ✔ Container magistrala-fluxmq-node1                  Started                                                                       10.3s
- ✔ Container magistrala-ui-backend                    Started                                                                       23.4s
- ✔ Container magistrala-spicedb-migrate               Started                                                                        9.3s
- ✔ Container magistrala-fluxmq-node2                  Started                                                                       10.1s
- ✔ Container magistrala-fluxmq-node3                  Started                                                                       10.1s
- ✔ Container magistrala-spicedb                       Started                                                                        9.3s
- ✔ Container magistrala-nginx                         Started                                                                       10.0s
- ✔ Container magistrala-certs                         Started                                                                       26.8s
- ✔ Container magistrala-auth                          Started                                                                       10.2s
- ✔ Container magistrala-alarms                        Started                                                                       17.7s
- ✔ Container magistrala-reports                       Started                                                                       12.0s
- ✔ Container magistrala-re                            Started                                                                       17.2s
- ... 7 more
+[+] up 18/18
+ ✔ Network propeller-base-net                          Created
+ ✔ Volume propeller_atom-db-volume                     Created
+ ✔ Container propeller-fluxmq                          Started
+ ✔ Container propeller-atom-migrate                    Started
+ ✔ Container propeller-atom                            Started
+ ✔ Container propeller-nginx                           Started
+ ... 13 more
 ```
 
-Only Magistrala services start at this point. Wait ~30–60 seconds for Magistrala's internal services to stabilise before proceeding. Verify with:
+Only base services (Atom, FluxMQ, Nginx, and their dependencies) start at this point. Wait ~30–60 seconds for internal services to stabilise before proceeding. Verify with:
 
 ```bash
-docker ps | grep magistrala
+docker ps | grep propeller
 ```
 
-Logs from `docker logs magistrala-users` look like this once Magistrala is ready:
+Logs from `docker logs propeller-atom` look like this once Atom is ready:
 
 ```bash
-{"time":"...","level":"INFO","msg":"users service http server listening at users:9002 without TLS"}
-{"time":"...","level":"INFO","msg":"users service gRPC server listening at users:7002 without TLS"}
+{"time":"...","level":"INFO","msg":"Atom service started","port":8080}
 ```
 
 ### Step 3: Provision Propeller
 
-Now we create everything Propeller needs **inside** Magistrala and generate the config file:
+Now we create everything Propeller needs **inside** Atom and generate the config file:
 
 ```bash
 propeller-cli provision
@@ -215,15 +161,14 @@ propeller-cli provision
 
 This command will:
 
-- Log you into Magistrala (you must have a Magistrala user already created; if not, create one using the [magistrala-cli](https://www.absmach.eu/docs/magistrala/dev-guide/cli/users-cli/#create-user), `curl`, or the web UI). You can also use the admin user if you have the credentials.
-- Create a **domain**
-- Log your user into that domain
-- Create a **manager client**
-- Create a **proplet client**
-- Create a **manager channel**
-- Connect the manager client to the manager channel
-- Connect the proplet client to the manager channel
-- Write all of these IDs and keys into a **`config.toml`** file in the current directory
+- Log you into Atom (you must have an Atom user already created; if not, create one via Atom's API or signup flow)
+- **Create a tenant** (or find an existing one with the same name)
+- Create a **manager entity** (kind: service, profile: Service Account) with an API key
+- Create **proplet entities** with API keys
+- Create a **proxy entity** with an API key
+- Create a **channel** (resource) for MQTT communication
+- **Connect** all entities to the channel via permission blocks and direct policies (publish & subscribe)
+- Write all IDs and keys into a **`config.toml`** file in the current directory
 
 The process will look something like this:
 
@@ -238,24 +183,25 @@ Successfully created config.toml file
 Your `config.toml` will look like:
 
 ```toml
-# Magistrala Configuration
+# Propeller Configuration
+# Each identity is an Atom entity of kind "service", profile "Service Account".
 
 [manager]
-domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
-client_id = "f2fe9a33-144a-4346-a5d6-38e2eb07815e"
-client_key = "ef7da52b-c01f-4b62-9502-6723d639405b"
+tenant_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+entity_id = "f2fe9a33-144a-4346-a5d6-38e2eb07815e"
+api_key = "ef7da52b-c01f-4b62-9502-6723d639405b"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 
 [proplet]
-domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
-client_id = "fa407362-9c5f-41b8-9a09-9d0c0b039287"
-client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
+tenant_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+entity_id = "fa407362-9c5f-41b8-9a09-9d0c0b039287"
+api_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 
 [proxy]
-domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
-client_id = "fa407362-9c5f-41b8-9a09-9d0c0b039287"
-client_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
+tenant_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+entity_id = "fa407362-9c5f-41b8-9a09-9d0c0b039287"
+api_key = "991c4d03-2f2c-4ba5-97a6-45bead85457e"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 ```
 
@@ -279,7 +225,7 @@ This runs:
 docker compose -f docker/compose.propeller.yaml --env-file docker/.env up -d
 ```
 
-The three Propeller containers start, read `config.toml` from their mount paths, and connect to Magistrala over the shared `magistrala-base-net` network.
+The three Propeller containers start, read `config.toml` from their mount paths, and connect to Atom and FluxMQ over the shared `propeller-base-net` network.
 
 ### Step 5: Verify Deployment
 
@@ -497,7 +443,7 @@ curl -X POST "http://localhost:7070/tasks" \
 
 ## Alternative: Run Without Docker
 
-You can run Propeller binaries directly on your host (useful for development or debugging). Magistrala still runs in Docker via `make start-magistrala`, but the Propeller processes run locally.
+You can run Propeller binaries directly on your host (useful for development or debugging). Atom and FluxMQ still run in Docker via `make start-base`, but the Propeller processes run locally.
 
 The provisioning step is the same: run `propeller-cli provision` to generate `config.toml`, then ensure it is in the directory where you start the binaries.
 
@@ -528,34 +474,34 @@ Docker is recommended for production; local binaries are easier for debugging.
 
 ## Adding More Proplets to an Existing Deployment
 
-Once your initial deployment is running, you can add more proplets without re-provisioning from scratch. The `add-proplets` subcommand reads your existing `config.toml`, creates new Magistrala clients, connects them to the same channel, and appends their credentials to the file.
+Once your initial deployment is running, you can add more proplets without re-provisioning from scratch. The `add-proplets` subcommand reads your existing `config.toml`, creates new Atom service entities with API keys, connects them (via permission blocks and direct policies) to the same channel, and appends their credentials to the file.
 
 ```bash
 propeller-cli provision add-proplets
 ```
 
-The command asks for your Magistrala username and password, then for the number of new proplets to create. For example, if you already have one proplet (`[proplet]`) and add two more, the file becomes:
+The command asks for your Atom username and password, then for the number of new proplets to create. For example, if you already have one proplet (`[proplet]`) and add two more, the file becomes:
 
 ```toml
 [manager]
-domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
-client_id = "f2fe9a33-144a-4346-a5d6-38e2eb07815e"
-client_key = "ef7da52b-c01f-4b62-9502-6723d639405b"
+tenant_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+entity_id = "f2fe9a33-144a-4346-a5d6-38e2eb07815e"
+api_key = "ef7da52b-c01f-4b62-9502-6723d639405b"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 
 [proplet]
 ...
 
 [proplet2]
-domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
-client_id = "b3c12d45-89ef-4f10-a123-7c5d8e9f0a12"
-client_key = "22ab3ef0-9c1d-48f2-b6a5-cd5f1234567e"
+tenant_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+entity_id = "b3c12d45-89ef-4f10-a123-7c5d8e9f0a12"
+api_key = "22ab3ef0-9c1d-48f2-b6a5-cd5f1234567e"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 
 [proplet3]
-domain_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
-client_id = "d7e89f01-2345-6789-abcd-ef0123456789"
-client_key = "33cd4fg1-0d2e-59g3-c7b6-de6g2345678f"
+tenant_id = "182c0907-002c-4bfd-8bf3-e4f40c58dde6"
+entity_id = "d7e89f01-2345-6789-abcd-ef0123456789"
+api_key = "33cd4fg1-0d2e-59g3-c7b6-de6g2345678f"
 channel_id = "8c6e1e6c-fc89-43b4-b00b-884a690c7419"
 
 [proxy]
@@ -615,13 +561,13 @@ make install
 
 ### `propeller-cli provision` fails
 
-Ensure Magistrala is fully started:
+Ensure Atom is fully started:
 
 ```bash
-docker logs magistrala-users | tail -10
+docker logs propeller-atom | tail -10
 ```
 
-Look for: `users service http server listening at users:9002`
+Look for: `Atom service started`
 
 ### Services can't find config.toml
 
@@ -647,7 +593,7 @@ For detailed troubleshooting, see the [Developer Guide](./developer-guide#troubl
 
 ```bash
 make stop-propeller
-make stop-magistrala
+make stop-base
 ```
 
-This stops all Propeller containers first, then all Magistrala containers, while preserving data volumes.
+This stops all Propeller containers first, then all base (Atom, FluxMQ, etc.) containers, while preserving data volumes.

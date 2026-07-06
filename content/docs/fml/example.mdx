@@ -36,7 +36,7 @@ The FL demo requires several ports. Check that these are available:
 sudo lsof -i :1883
 ```
 
-If you have **mosquitto** or another MQTT broker running as a system service, it will conflict with Magistrala's MQTT adapter. Stop it before proceeding:
+If you have **mosquitto** or another MQTT broker running as a system service, it will conflict with Atom's MQTT adapter. Stop it before proceeding:
 
 ```bash
 sudo systemctl stop mosquitto
@@ -83,12 +83,12 @@ sudo lsof -i :1883 -i :7070 -i :8080 -i :8083 -i :8084 -i :8085 -i :8086
 
 ## Step 2: Build Docker Images
 
-The FL demo extends the base Magistrala + Propeller stack with FL-specific services. You must use both compose files together.
+The FL demo extends the base Atom + Propeller stack with FL-specific services. You must use both compose files together.
 
 The FL demo compose file (`examples/fl-demo/compose.yaml`) is an **extension** to the base compose file (`docker/compose.yaml`). Running it standalone will fail with:
 
 ```
-service "local-data-store" refers to undefined network magistrala-base-net
+service "local-data-store" refers to undefined network propeller-base-net
 ```
 
 **Always use both compose files together.**
@@ -168,24 +168,24 @@ Your output should look like this:
 
 ```
 [+] Running 36/36
- ✔ Network magistrala-base-net              Created                              0.1s
- ✔ Container magistrala-nats             Started                              0.8s
- ✔ Container magistrala-rabbitmq         Started                              0.9s
- ✔ Container magistrala-spicedb-db       Started                              0.7s
- ✔ Container magistrala-auth-db          Started                              0.8s
- ✔ Container magistrala-users-db         Started                              0.7s
- ✔ Container magistrala-clients-db       Started                              0.8s
- ✔ Container magistrala-domains-db       Started                              0.9s
- ✔ Container magistrala-channels-db      Started                              0.8s
- ✔ Container magistrala-spicedb          Started                              1.2s
- ✔ Container magistrala-spicedb-migrate  Started                              1.5s
- ✔ Container magistrala-auth             Started                              2.1s
- ✔ Container magistrala-users            Started                              2.3s
- ✔ Container magistrala-domains          Started                              2.4s
- ✔ Container magistrala-clients          Started                              2.5s
- ✔ Container magistrala-channels         Started                              2.6s
- ✔ Container magistrala-nginx            Started                              2.8s
- ✔ Container magistrala-mqtt             Started                              2.9s
+ ✔ Network propeller-base-net              Created                              0.1s
+ ✔ Container propeller-nats             Started                              0.8s
+ ✔ Container propeller-rabbitmq         Started                              0.9s
+ ✔ Container propeller-spicedb-db       Started                              0.7s
+ ✔ Container propeller-auth-db          Started                              0.8s
+ ✔ Container propeller-users-db         Started                              0.7s
+ ✔ Container propeller-clients-db       Started                              0.8s
+ ✔ Container propeller-domains-db       Started                              0.9s
+ ✔ Container propeller-channels-db      Started                              0.8s
+ ✔ Container propeller-spicedb          Started                              1.2s
+ ✔ Container propeller-spicedb-migrate  Started                              1.5s
+ ✔ Container propeller-auth             Started                              2.1s
+ ✔ Container propeller-users            Started                              2.3s
+ ✔ Container propeller-domains          Started                              2.4s
+ ✔ Container propeller-clients          Started                              2.5s
+ ✔ Container propeller-channels         Started                              2.6s
+ ✔ Container propeller-nginx            Started                              2.8s
+ ✔ Container propeller-mqtt             Started                              2.9s
  ✔ Container fl-demo-model-registry      Started                              1.1s
  ✔ Container fl-demo-aggregator          Started                              1.2s
  ✔ Container fl-demo-local-data-store    Started                              1.3s
@@ -200,7 +200,7 @@ Your output should look like this:
 
 This starts:
 
-- **Magistrala stack**: Auth, Domains, Clients, Channels, MQTT Adapter, Nginx, SpiceDB
+- **Atom stack**: Auth, Tenants, Entities, Channels, MQTT Adapter, Nginx, SpiceDB
 - **FL services**: Model Registry (8084), Aggregator (8085), Local Data Store (8083), Coordinator (8086)
 - **Propeller services**: Manager (7070), 3 Proplets, Proxy
 
@@ -226,23 +226,23 @@ propeller-proplet             Up 10 seconds
 propeller-proplet-2           Up 10 seconds
 propeller-proplet-3           Up 10 seconds
 propeller-proxy               Up 10 seconds
-magistrala-auth               Up 10 seconds   0.0.0.0:8189->8189/tcp
-magistrala-auth-db            Up 10 seconds   5432/tcp
-magistrala-channels           Up 10 seconds   0.0.0.0:9005->9005/tcp
-magistrala-channels-db        Up 10 seconds   5432/tcp
-magistrala-clients            Up 10 seconds   0.0.0.0:9006->9006/tcp
-magistrala-clients-db         Up 10 seconds   5432/tcp
-magistrala-domains            Up 10 seconds   0.0.0.0:9003->9003/tcp
-magistrala-domains-db         Up 10 seconds   5432/tcp
-magistrala-mqtt               Up 10 seconds   0.0.0.0:1883->1883/tcp
-magistrala-nats               Up 10 seconds   4222/tcp, 6222/tcp, 8222/tcp
-magistrala-nginx              Up 10 seconds   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
-magistrala-rabbitmq           Up 10 seconds   5672/tcp, 15672/tcp
-magistrala-spicedb            Up 10 seconds   50051/tcp
-magistrala-spicedb-db         Up 10 seconds   5432/tcp
-magistrala-spicedb-migrate    Up 10 seconds
-magistrala-users              Up 10 seconds   0.0.0.0:9002->9002/tcp
-magistrala-users-db           Up 10 seconds   5432/tcp
+propeller-auth               Up 10 seconds   0.0.0.0:8189->8189/tcp
+propeller-auth-db            Up 10 seconds   5432/tcp
+propeller-channels           Up 10 seconds   0.0.0.0:9005->9005/tcp
+propeller-channels-db        Up 10 seconds   5432/tcp
+propeller-clients            Up 10 seconds   0.0.0.0:9006->9006/tcp
+propeller-clients-db         Up 10 seconds   5432/tcp
+propeller-domains            Up 10 seconds   0.0.0.0:9003->9003/tcp
+propeller-domains-db         Up 10 seconds   5432/tcp
+propeller-mqtt               Up 10 seconds   0.0.0.0:1883->1883/tcp
+propeller-nats               Up 10 seconds   4222/tcp, 6222/tcp, 8222/tcp
+propeller-nginx              Up 10 seconds   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+propeller-rabbitmq           Up 10 seconds   5672/tcp, 15672/tcp
+propeller-spicedb            Up 10 seconds   50051/tcp
+propeller-spicedb-db         Up 10 seconds   5432/tcp
+propeller-spicedb-migrate    Up 10 seconds
+propeller-users              Up 10 seconds   0.0.0.0:9002->9002/tcp
+propeller-users-db           Up 10 seconds   5432/tcp
 ```
 
 You can quickly verify the core services are running:
@@ -259,11 +259,11 @@ Your output should look like this:
 {"status":"ok"}
 ```
 
-## Step 4: Provision Magistrala Resources
+## Step 4: Provision Atom Resources
 
-Before the manager and proplets can connect to MQTT, you must provision the necessary Magistrala resources (domain, channel, and clients).
+Before the manager and proplets can connect to MQTT, you must provision the necessary Atom resources (tenant, channel, and entities).
 
-Provisioning creates persistent data in Magistrala databases. Only needs to be repeated if you remove Docker volumes (e.g., `docker compose down -v`).
+Provisioning creates persistent data in Atom databases. Only needs to be repeated if you remove Docker volumes (e.g., `docker compose down -v`).
 
 ### Install Python Dependencies
 
@@ -289,7 +289,7 @@ Your output should look like this:
 
 ```
 ============================================================
-Magistrala Provisioning Script for FL Demo
+Atom Provisioning Script for FL Demo
 ============================================================
 Waiting for Users service...
 ✓ Users service is ready
@@ -354,22 +354,22 @@ Note: Recreate services to apply new credentials (use --force-recreate, not rest
   docker compose -f docker/compose.yaml -f examples/fl-demo/compose.yaml --env-file docker/.env up -d --force-recreate manager coordinator-http proplet proplet-2 proplet-3 proxy
 ```
 
-The **proplet-1**, **proplet-2**, and **proplet-3** client IDs shown in the summary are Magistrala-generated UUIDs — created when the script registers each proplet as a client in your Magistrala domain. These are what you pass as `participants` when triggering FL experiments. The script automatically writes them to `docker/.env`.
+The **proplet-1**, **proplet-2**, and **proplet-3** entity IDs shown in the summary are Atom-generated UUIDs — created when the script registers each proplet as an entity in your Atom tenant. These are what you pass as `participants` when triggering FL experiments. The script automatically writes them to `docker/.env`.
 
 ### Verify Environment Variables Were Set
 
 ```bash
-grep -E "PROPLET.*CLIENT_ID|MANAGER_DOMAIN_ID|MANAGER_CHANNEL_ID" docker/.env | grep -v '=$'
+grep -E "PROPLET.*ENTITY_ID|MANAGER_TENANT_ID|MANAGER_CHANNEL_ID" docker/.env | grep -v '=$'
 ```
 
 Your output should look like this:
 
 ```
-MANAGER_DOMAIN_ID=4e484e5b-0498-4453-adf8-a6fa6a37454b
+MANAGER_TENANT_ID=4e484e5b-0498-4453-adf8-a6fa6a37454b
 MANAGER_CHANNEL_ID=c1578c6c-598e-4dbe-9a8b-5d2acd623679
-PROPLET_CLIENT_ID=bf7e3581-4dac-472c-bcd9-a83a6ca53197
-PROPLET_2_CLIENT_ID=cf3738c1-07db-41c7-8fc3-234202cf3642
-PROPLET_3_CLIENT_ID=095d2d54-4017-4da1-b589-0809d64aa517
+PROPLET_ENTITY_ID=bf7e3581-4dac-472c-bcd9-a83a6ca53197
+PROPLET_2_ENTITY_ID=cf3738c1-07db-41c7-8fc3-234202cf3642
+PROPLET_3_ENTITY_ID=095d2d54-4017-4da1-b589-0809d64aa517
 ```
 
 ## Step 5: Recreate Services with New Credentials
@@ -385,9 +385,9 @@ Your output should look like this:
 
 ```
 [+] Running 13/13
- ✔ Container magistrala-clients-db   Running                              0.0s
- ✔ Container magistrala-users-db     Running                              0.0s
- ✔ Container magistrala-nats         Running                              0.0s
+ ✔ Container propeller-clients-db   Running                              0.0s
+ ✔ Container propeller-users-db     Running                              0.0s
+ ✔ Container propeller-nats         Running                              0.0s
  ...
  ✔ Container propeller-manager       Started                              2.3s
  ✔ Container propeller-proplet       Started                              2.1s
@@ -470,8 +470,8 @@ The Local Data Store automatically seeds datasets for configured proplet UUIDs o
 ### Check Dataset for First Proplet
 
 ```bash
-PROPLET_CLIENT_ID=$(grep '^PROPLET_CLIENT_ID=' docker/.env | grep -v '=""' | tail -1 | cut -d '=' -f2 | tr -d '"')
-curl -s "http://localhost:8083/datasets/$PROPLET_CLIENT_ID" | jq '{schema: .schema, proplet_id: .proplet_id, size: .size}'
+PROPLET_ENTITY_ID=$(grep '^PROPLET_ENTITY_ID=' docker/.env | grep -v '=""' | tail -1 | cut -d '=' -f2 | tr -d '"')
+curl -s "http://localhost:8083/datasets/$PROPLET_ENTITY_ID" | jq '{schema: .schema, proplet_id: .proplet_id, size: .size}'
 ```
 
 Your output should look like this:
@@ -487,7 +487,7 @@ Your output should look like this:
 ### Inspect Sample Training Data
 
 ```bash
-curl -s "http://localhost:8083/datasets/$PROPLET_CLIENT_ID" | jq '.data[0:3]'
+curl -s "http://localhost:8083/datasets/$PROPLET_ENTITY_ID" | jq '.data[0:3]'
 ```
 
 Your output should look like this:
@@ -640,7 +640,7 @@ Your output should look like this:
 
 ```
 [+] Running 13/13
- ✔ Container magistrala-clients-db   Running                              0.0s
+ ✔ Container propeller-clients-db   Running                              0.0s
  ...
  ✔ Container propeller-proxy         Started                              1.5s
 ```
@@ -654,25 +654,25 @@ Now you're ready to run a federated learning experiment!
 First, set environment variables for the proplet UUIDs:
 
 ```bash
-export PROPLET_CLIENT_ID=$(grep '^PROPLET_CLIENT_ID=' docker/.env | cut -d '=' -f2)
-export PROPLET_2_CLIENT_ID=$(grep '^PROPLET_2_CLIENT_ID=' docker/.env | cut -d '=' -f2)
-export PROPLET_3_CLIENT_ID=$(grep '^PROPLET_3_CLIENT_ID=' docker/.env | cut -d '=' -f2)
+export PROPLET_ENTITY_ID=$(grep '^PROPLET_ENTITY_ID=' docker/.env | cut -d '=' -f2)
+export PROPLET_2_ENTITY_ID=$(grep '^PROPLET_2_ENTITY_ID=' docker/.env | cut -d '=' -f2)
+export PROPLET_3_ENTITY_ID=$(grep '^PROPLET_3_ENTITY_ID=' docker/.env | cut -d '=' -f2)
 ```
 
 Verify they're set correctly:
 
 ```bash
-echo "PROPLET_CLIENT_ID=$PROPLET_CLIENT_ID"
-echo "PROPLET_2_CLIENT_ID=$PROPLET_2_CLIENT_ID"
-echo "PROPLET_3_CLIENT_ID=$PROPLET_3_CLIENT_ID"
+echo "PROPLET_ENTITY_ID=$PROPLET_ENTITY_ID"
+echo "PROPLET_2_ENTITY_ID=$PROPLET_2_ENTITY_ID"
+echo "PROPLET_3_ENTITY_ID=$PROPLET_3_ENTITY_ID"
 ```
 
 Your output should look like this:
 
 ```
-PROPLET_CLIENT_ID=bf7e3581-4dac-472c-bcd9-a83a6ca53197
-PROPLET_2_CLIENT_ID=cf3738c1-07db-41c7-8fc3-234202cf3642
-PROPLET_3_CLIENT_ID=095d2d54-4017-4da1-b589-0809d64aa517
+PROPLET_ENTITY_ID=bf7e3581-4dac-472c-bcd9-a83a6ca53197
+PROPLET_2_ENTITY_ID=cf3738c1-07db-41c7-8fc3-234202cf3642
+PROPLET_3_ENTITY_ID=095d2d54-4017-4da1-b589-0809d64aa517
 ```
 
 ### Submit FL Experiment to Manager
@@ -686,7 +686,7 @@ curl -s -X POST http://localhost:7070/fl/experiments \
     \"experiment_id\": \"exp-round-$(date +%s)\",
     \"round_id\": \"r-$(date +%s)\",
     \"model_ref\": \"fl/models/global_model_v0\",
-    \"participants\": [\"$PROPLET_CLIENT_ID\", \"$PROPLET_2_CLIENT_ID\", \"$PROPLET_3_CLIENT_ID\"],
+    \"participants\": [\"$PROPLET_ENTITY_ID\", \"$PROPLET_2_ENTITY_ID\", \"$PROPLET_3_ENTITY_ID\"],
     \"hyperparams\": {\"epochs\": 1, \"lr\": 0.01, \"batch_size\": 16},
     \"k_of_n\": 2,
     \"timeout_s\": 120,
@@ -863,7 +863,7 @@ curl -s -X POST http://localhost:7070/fl/experiments \
     \"experiment_id\": \"exp-round2-$(date +%s)\",
     \"round_id\": \"r2-$(date +%s)\",
     \"model_ref\": \"fl/models/global_model_v1\",
-    \"participants\": [\"$PROPLET_CLIENT_ID\", \"$PROPLET_2_CLIENT_ID\", \"$PROPLET_3_CLIENT_ID\"],
+    \"participants\": [\"$PROPLET_ENTITY_ID\", \"$PROPLET_2_ENTITY_ID\", \"$PROPLET_3_ENTITY_ID\"],
     \"hyperparams\": {\"epochs\": 1, \"lr\": 0.01, \"batch_size\": 16},
     \"k_of_n\": 2,
     \"timeout_s\": 120,

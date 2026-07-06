@@ -292,7 +292,7 @@ Set the required variables before running the script:
 
 | Variable             | Description                  | Example             |
 | -------------------- | ---------------------------- | ------------------- |
-| `PROPLET_DOMAIN_ID`  | Magistrala domain identifier | `my-domain-123`     |
+| `PROPLET_TENANT_ID`  | Atom tenant identifier       | `my-tenant-123`     |
 | `PROPLET_CLIENT_ID`  | Unique client identifier     | `proplet-worker-01` |
 | `PROPLET_CLIENT_KEY` | Authentication key           | `secret-key-here`   |
 | `PROPLET_CHANNEL_ID` | Communication channel ID     | `channel-456`       |
@@ -353,7 +353,7 @@ The script supports three targets:
 A full example with credentials:
 
 ```bash
-export PROPLET_DOMAIN_ID=your-domain-id
+export PROPLET_TENANT_ID=your-tenant-id
 export PROPLET_CLIENT_ID=your-client-id
 export PROPLET_CLIENT_KEY=your-client-key
 export PROPLET_CHANNEL_ID=your-channel-id
@@ -516,7 +516,7 @@ attestation-agent --attestation_sock "127.0.0.1:50010"
 Set these environment variables before starting Proplet:
 
 ```bash
-export PROPLET_DOMAIN_ID=your-domain-id
+export PROPLET_TENANT_ID=your-tenant-id
 export PROPLET_CLIENT_ID=your-client-id
 export PROPLET_CLIENT_KEY=your-client-key
 export PROPLET_CHANNEL_ID=your-channel-id

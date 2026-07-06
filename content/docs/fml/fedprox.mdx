@@ -45,7 +45,7 @@ Higher values of `mu` keep local updates closer to the global model, while lower
 
 ### Prerequisites
 
-Complete the [Federated Learning](/fml/example) example first. All services (Magistrala, Manager, Proplets, Proxy, FL demo stack) must be running and provisioned before proceeding.
+Complete the [Federated Learning](/fml/example) example first. All services (Atom, Manager, Proplets, Proxy, FL demo stack) must be running and provisioned before proceeding.
 
 ### Step 1: Modify and Build the WASM Client
 
@@ -74,9 +74,9 @@ cd ../../..
 Export proplet client IDs from `docker/.env`, then submit the experiment. Pass `mu` as a hyperparameter so the WASM client can apply the correct proximal coefficient:
 
 ```bash
-export PROPLET_CLIENT_ID=$(grep '^PROPLET_CLIENT_ID=' docker/.env | grep -v '=""' | tail -1 | cut -d '=' -f2 | tr -d '"')
-export PROPLET_2_CLIENT_ID=$(grep '^PROPLET_2_CLIENT_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
-export PROPLET_3_CLIENT_ID=$(grep '^PROPLET_3_CLIENT_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
+export PROPLET_ENTITY_ID=$(grep '^PROPLET_ENTITY_ID=' docker/.env | grep -v '=""' | tail -1 | cut -d '=' -f2 | tr -d '"')
+export PROPLET_2_ENTITY_ID=$(grep '^PROPLET_2_ENTITY_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
+export PROPLET_3_ENTITY_ID=$(grep '^PROPLET_3_ENTITY_ID=' docker/.env | cut -d '=' -f2 | tr -d '"')
 
 curl -s -X POST http://localhost:7070/fl/experiments \
   -H "Content-Type: application/json" \
@@ -84,7 +84,7 @@ curl -s -X POST http://localhost:7070/fl/experiments \
     \"experiment_id\": \"fedprox-$(date +%s)\",
     \"round_id\": \"r-$(date +%s)\",
     \"model_ref\": \"fl/models/global_model_v0\",
-    \"participants\": [\"$PROPLET_CLIENT_ID\", \"$PROPLET_2_CLIENT_ID\", \"$PROPLET_3_CLIENT_ID\"],
+    \"participants\": [\"$PROPLET_ENTITY_ID\", \"$PROPLET_2_ENTITY_ID\", \"$PROPLET_3_ENTITY_ID\"],
     \"hyperparams\": {\"epochs\": 1, \"lr\": 0.01, \"batch_size\": 16, \"mu\": 0.01},
     \"k_of_n\": 2,
     \"timeout_s\": 120,

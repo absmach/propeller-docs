@@ -14,7 +14,7 @@ Propeller and KubeEdge both address edge compute orchestration, but they solve d
 | **Minimum device RAM**     | 128 KB (Zephyr RTOS)            | ~256 MB (Linux required)         |
 | **OS requirement**         | Linux, Zephyr RTOS              | Linux only                       |
 | **Cold-start**             | < 1 ms (Wasm)                   | ~180–250 ms (container)          |
-| **Communication protocol** | MQTT (via Magistrala)           | EdgeHub transport                |
+| **Communication protocol** | MQTT (via FluxMQ/Atom)           | EdgeHub transport                |
 | **Sandbox model**          | Wasm linear memory isolation    | Linux namespace + cgroup         |
 | **Kubernetes dependency**  | None                            | Required                         |
 | **License**                | Apache 2.0                      | Apache 2.0                       |

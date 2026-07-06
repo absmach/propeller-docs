@@ -253,7 +253,7 @@ In `src/main.c`:
 
 The Embedded Proplet connects to the broker on port `1883` (no TLS by default). It uses the namespace `"embedded"` in all metrics payloads to identify itself to the Manager.
 
-The `PROPLET_ID` defined in `src/main.c` is used as both the MQTT **client ID** and **username** when connecting to the broker. This value must match the Magistrala client ID registered with the broker, otherwise the connection will be rejected.
+The `PROPLET_ID` defined in `src/main.c` is used as both the MQTT **client ID** and **username** when connecting to the broker. This value must match the Atom client ID registered with the broker, otherwise the connection will be rejected.
 
 ### MQTT Topics
 
@@ -469,7 +469,7 @@ CONFIG_POSIX_API=y
 **Debug steps:**
 
 1. Verify WiFi connected: look for `Successfully connected to Wi-Fi` log
-2. Check configuration matches Magistrala broker settings
+2. Check configuration matches broker settings
 3. Enable debug logging:
    ```ini
    CONFIG_MQTT_LOG_LEVEL_DBG=y

@@ -21,6 +21,7 @@
     "wasi-nn.mdx",
     "tee.mdx",
     "security.mdx",
+    "migration-to-atom.mdx",
     "reference.mdx",
     "---Kubernetes---",
     "k8s",

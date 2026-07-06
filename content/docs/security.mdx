@@ -5,7 +5,7 @@ description: Propeller's security features
 
 ## MQTT connection modes
 
-Propeller services (Manager, Proplet, Proxy) communicate with Magistrala's MQTT broker through an **nginx** proxy. Three modes are available:
+Propeller services (Manager, Proplet, Proxy) communicate with Atom's MQTT broker through an **nginx** proxy. Three modes are available:
 
 | Mode  | Port | Auth method                           | Encryption        | Client cert required |
 | ----- | ---- | ------------------------------------- | ----------------- | -------------------- |
@@ -13,7 +13,7 @@ Propeller services (Manager, Proplet, Proxy) communicate with Magistrala's MQTT 
 | MQTTS | 8883 | username/password                     | TLS (server cert) | No                   |
 | mTLS  | 8883 | X.509 client cert + username/password | TLS (mutual)      | Yes (AUTH=x509)      |
 
-- **MQTT** — plain TCP. The MQTT username and password authenticate the client against the Magistrala client registry.
+- **MQTT** — plain TCP. The MQTT username and password authenticate the client against the Atom client registry.
 - **MQTTS** — TLS with server-side certificate only. Traffic is encrypted and the client verifies the server's identity via the CA certificate. The client still authenticates with MQTT username/password. Set `AUTH=key` or omit `AUTH`.
 - **mTLS** — mutual TLS. Both server and client present certificates during the TLS handshake. Nginx enforces client certificate verification (`ssl_verify_client on`) and validates that the MQTT password matches the certificate's CN via the JS auth module. Set `AUTH=x509`.
 
@@ -39,7 +39,7 @@ make client_cert CLIENT_SECRET="<client_secret>" CRT_FILE_NAME="proxy" \
   O="Propeller" OU_CA="propeller_ca" EA="propeller@absmach.eu"
 ```
 
-The `CRT_FILE_NAME` determines the output: `certs/<name>.crt` and `certs/<name>.key`. Each service needs a unique client secret (UUID) — this is the client identity in Magistrala and must match what you set in `*_CLIENT_KEY` in `.env`.
+The `CRT_FILE_NAME` determines the output: `certs/<name>.crt` and `certs/<name>.key`. Each service needs a unique client secret (UUID) — this is the client identity in Atom and must match what you set in `*_CLIENT_KEY` in `.env`.
 
 Default values:
 
@@ -97,7 +97,7 @@ PROXY_MQTT_TLS_CA_CERT=/etc/propeller/tls/ca.crt
 To enable MQTT over TLS, set `MANAGER_MQTT_ADDRESS` to `ssl://nginx:8883` and mount the CA cert (see volumes section below). Run the following command to start the manager with MQTT over TLS:
 
 ```bash
-AUTH=key make start-magistrala
+AUTH=key make start-base
 ```
 
 **mTLS** (mutual TLS — set all three cert paths):
@@ -125,7 +125,7 @@ PROXY_MQTT_TLS_CLIENT_KEY=/etc/propeller/tls/client.key
 When using mTLS (`AUTH=x509`), nginx requires a client certificate on port 8883. The `*_CLIENT_KEY` env var must match the UUID used as `CLIENT_SECRET` when generating the client certificate — the JS auth module validates that the MQTT password ends with the certificate's Common Name.
 
 ```bash
-AUTH=x509 make start-magistrala
+AUTH=x509 make start-base
 make start-propeller
 ```
 
@@ -209,14 +209,14 @@ PROXY_MQTT_TLS_CLIENT_KEY: ${PROXY_MQTT_TLS_CLIENT_KEY}
 
 ## Start
 
-Start Magistrala with the desired auth mode, then Propeller:
+Start Atom with the desired auth mode, then Propeller:
 
 ```bash
 # For mTLS:
-AUTH=x509 make start-magistrala
+AUTH=x509 make start-base
 
 # For MQTTS (server TLS only):
-AUTH=key make start-magistrala
+AUTH=key make start-base
 
 make start-propeller
 ```

@@ -13,7 +13,7 @@ The system is composed of several key components:
 2. **Manager**: Central service responsible for task management, workflow orchestration, and proplet coordination.
 3. **Proplet**: Worker nodes that execute WebAssembly workloads. The proplet is implemented in Rust for performance and memory safety.
 4. **Proxy**: Service downloading wasm modules from OCI registries and distributing them to proplets using MQTT.
-5. **Magistrala**: Open-source IoT platform framework for messaging, identity, and access control
+5. **Atom**: Identity and authorization platform for entities, tenants, and access policies
 
 ![System Architecture](images/architecture.svg)
 
@@ -112,33 +112,19 @@ Proplet includes a built-in process monitoring subsystem for observing task and 
 
 The Proxy service handles downloading and distributing WebAssembly modules from OCI registries and distributes them to proplets.
 
-### Magistrala
+### Atom
 
-Magistrala is an open-source IoT platform built for engineers who need full control over their messaging, device management, and data pipelines.
+[Atom](https://github.com/absmach/atom) is an open-source identity and authorization platform that provides entity management, tenant isolation, access policies, and API key management.
 
-It is built on top of [FluxMQ](https://github.com/absmach/fluxmq), a modern message broker designed for both messaging and event streams. Magistrala provides everything around it: identity, access control, device provisioning, data processing, and observability.
+It uses [FluxMQ](https://github.com/absmach/fluxmq) as its message broker and provides a GraphQL API for managing:
 
-**What it is:**
+- **Tenants**: Isolated namespaces for organizing resources
+- **Entities**: Identities (users, services) with attached credentials
+- **Resources**: Channels and other addressable objects
+- **Permissions**: Fine-grained access control via permission blocks and direct policies
+- **API Keys**: Scoped credentials for service-to-service authentication
 
-- An event-driven IoT middleware platform
-- A unified control plane for devices, users, and data
-- A foundation for building scalable IoT systems
-
-**What it is not:**
-
-- Not just an MQTT broker
-- Not a black-box SaaS
-- Not tied to a single cloud or vendor
-
-**Key Components:**
-
-- Users, clients (devices), channels, messages, and policies
-- Multi-tenant domains for isolating environments
-- Fine-grained access control (ABAC + RBAC)
-- Mutual TLS (X.509) and JWT-based authentication
-- Native support for MQTT, HTTP, WebSocket, and CoAP
-- Rules engine for message processing and routing
-- Audit logs, metrics, and tracing via Prometheus and OpenTelemetry
+Propeller uses Atom to provision service entities (manager, proplet, proxy) with API keys, create channels as MQTT topics, and grant publish/subscribe permissions through direct policies.
 
 ## Communication
 
@@ -174,7 +160,7 @@ HTTP is used for:
 Proplet uses the following MQTT topic structure:
 
 ```
-m/{domainID}/c/{channelID}/control/proplet/alive
+m/{tenantID}/c/{channelID}/control/proplet/alive
     └─ Liveliness heartbeat (configurable interval, default 10 seconds)
 
 m/{domainID}/c/{channelID}/control/proplet/create
@@ -417,4 +403,4 @@ Proplet supports WebAssembly module distribution through:
 - **Encrypted Workloads**: When a TEE is detected, encrypted Wasm workloads are fetched from OCI registries and decrypted using the attestation agent and KBS
 - **Attestation**: The attestation agent (`attestation-agent`) listens on port **50010**; `coco_keyprovider` uses port **50011**
 - **KBS Integration**: Key Broker Service (KBS) integration for secure encryption key management. `PROPLET_KBS_URI` must be set when a TEE is detected
-- **Magistrala**: Secure MQTT communication for IoT deployments
+- **Atom**: Identity, authorization, and API key management for Propeller services

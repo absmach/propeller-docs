@@ -15,10 +15,7 @@ The `propeller-cli` binary is installed to `$GOBIN` by `make install`. All comma
 | -------------------- | ----- | ----------------------- | ----------------------------------- |
 | `--manager-url`      | `-m`  | `http://localhost:7070` | URL of the Manager HTTP API         |
 | `--tls-verification` | `-v`  | —                       | Enable TLS certificate verification |
-| `--users-url`        | `-u`  | `http://localhost:9002` | Magistrala users service URL        |
-| `--domains-url`      | `-d`  | `http://localhost:9003` | Magistrala domains service URL      |
-| `--clients-url`      | `-c`  | `http://localhost:9006` | Magistrala clients service URL      |
-| `--channels-url`     | `-z`  | `http://localhost:9005` | Magistrala channels service URL     |
+| `--atom-url`         | `-a`  | `http://localhost:9000` | Atom base service URL               |
 | `--content-type`     | `-t`  | —                       | HTTP Content-Type header value      |
 
 ### Tasks
@@ -42,7 +39,7 @@ propeller-cli tasks        [--offset <n>] [--limit <n>]   # list all tasks
 
 The `provision` command runs an interactive TUI-based wizard that:
 
-1. Creates a Magistrala domain.
+1. Creates an Atom domain.
 2. Creates a Manager client and N proplet clients.
 3. Creates a channel and connects all clients to it.
 4. Writes the resulting credentials to a `config.toml` file.

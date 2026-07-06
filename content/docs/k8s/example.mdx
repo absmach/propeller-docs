@@ -3,7 +3,7 @@ title: Running a WASM Task via the Propeller Kubernetes Operator
 description: Propeller Kubernetes Operator example
 ---
 
-This is a Propeller Kubernetes Operator example. It provisions [SuperMQ](https://docs.supermq.absmach.eu/), deploys the operator, registers an external proplet, and runs a WebAssembly addition task.
+This is a Propeller Kubernetes Operator example. It provisions [Atom](https://docs.atom.absmach.eu/), deploys the operator, registers an external proplet, and runs a WebAssembly addition task.
 
 For a complete reference of the operator's architecture, Custom Resource Definitions, configuration options, and MQTT communication patterns, see the [Propeller Kubernetes Operator documentation](/k8s/operator).
 
@@ -27,7 +27,7 @@ You need the following tools installed before proceeding:
   go version go1.25.7 linux/amd64
   ```
 
-- **Docker** — runs the SuperMQ stack and proplet containers.
+- **Docker** — runs the Atom stack and proplet containers.
 
   ```bash
   docker version --format '{{.Server.Version}}'
@@ -182,9 +182,9 @@ Your output should look like this:
 namespace/propeller-workloads created
 ```
 
-## Step 4 — Start the Propeller Stack (SuperMQ + Proplet)
+## Step 4 — Start the Propeller Stack (Atom + FluxMQ + Proplet)
 
-The operator communicates with proplets over MQTT via the Magistrala broker stack. Start the full Propeller Docker stack (broker services + Propeller services) from the propeller repository:
+The operator communicates with proplets over MQTT via the Atom + FluxMQ broker stack. Start the full Propeller Docker stack (broker services + Propeller services) from the propeller repository:
 
 ```bash
 cd propeller
@@ -194,21 +194,21 @@ make start-all
 Your output should look like this:
 
 ```bash
- Container magistrala-spicedb-db Started
- Container magistrala-auth-redis Started
- Container magistrala-users-db Started
- Container magistrala-channels-db Started
- Container magistrala-clients-db Started
- Container magistrala-fluxmq-node1 Started
- Container magistrala-fluxmq-node2 Started
- Container magistrala-fluxmq-node3 Started
- Container magistrala-fluxmq-auth Started
- Container magistrala-nginx Started
- Container magistrala-users Started
- Container magistrala-channels Started
- Container magistrala-clients Started
- Container magistrala-auth Started
- Container magistrala-domains Started
+ Container propeller-base-spicedb-db Started
+ Container propeller-base-auth-redis Started
+ Container propeller-base-users-db Started
+ Container propeller-base-channels-db Started
+ Container propeller-base-clients-db Started
+ Container propeller-base-fluxmq-node1 Started
+ Container propeller-base-fluxmq-node2 Started
+ Container propeller-base-fluxmq-node3 Started
+ Container propeller-base-fluxmq-auth Started
+ Container propeller-base-nginx Started
+ Container propeller-base-users Started
+ Container propeller-base-channels Started
+ Container propeller-base-clients Started
+ Container propeller-base-auth Started
+ Container propeller-base-domains Started
  Container propeller-manager Starting
  Container propeller-proxy Starting
  Container propeller-proplet Starting
@@ -220,39 +220,39 @@ Your output should look like this:
 Confirm the containers are running:
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "magistrala|propeller"
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "propeller"
 ```
 
 Your output should look like this:
 
 ```bash
-propeller-proplet          Up 15 seconds (healthy)
-propeller-proxy            Up 15 seconds
-propeller-manager          Up 15 seconds
-magistrala-nginx           Up 37 seconds
-magistrala-clients         Up 35 seconds
-magistrala-channels        Up 35 seconds
-magistrala-users           Up 33 seconds
-magistrala-auth            Up 30 seconds
-magistrala-domains         Up 28 seconds
-magistrala-fluxmq-node1    Up 37 seconds
-magistrala-fluxmq-node2    Up 37 seconds
-magistrala-fluxmq-node3    Up 37 seconds
-magistrala-fluxmq-auth     Up 37 seconds
-magistrala-spicedb         Up 37 seconds
-magistrala-users-db        Up 37 seconds
-magistrala-channels-db     Up 37 seconds
-magistrala-clients-db      Up 37 seconds
-magistrala-auth-db         Up 37 seconds
-magistrala-auth-redis      Up 37 seconds
-magistrala-jaeger          Up 37 seconds
+propeller-proplet                Up 15 seconds (healthy)
+propeller-proxy                  Up 15 seconds
+propeller-manager                Up 15 seconds
+propeller-base-nginx             Up 37 seconds
+propeller-base-clients           Up 35 seconds
+propeller-base-channels          Up 35 seconds
+propeller-base-users             Up 33 seconds
+propeller-base-auth              Up 30 seconds
+propeller-base-domains           Up 28 seconds
+propeller-base-fluxmq-node1      Up 37 seconds
+propeller-base-fluxmq-node2      Up 37 seconds
+propeller-base-fluxmq-node3      Up 37 seconds
+propeller-base-fluxmq-auth       Up 37 seconds
+propeller-base-spicedb           Up 37 seconds
+propeller-base-users-db          Up 37 seconds
+propeller-base-channels-db       Up 37 seconds
+propeller-base-clients-db        Up 37 seconds
+propeller-base-auth-db           Up 37 seconds
+propeller-base-auth-redis        Up 37 seconds
+propeller-base-jaeger            Up 37 seconds
 ```
 
 > The propeller-manager, propeller-proplet, and propeller-proxy containers start but will fail to connect until you provision credentials. That is expected at this stage.
 
-## Step 5 — Provision SuperMQ Credentials
+## Step 5 — Provision Atom Credentials
 
-The operator and proplet need SuperMQ credentials—a domain, channel, and two client IDs with keys—to authenticate on MQTT. Use `propeller-cli provision` to create all these resources through the SuperMQ HTTP API and write the result directly to `docker/config.toml`.
+The operator and proplet need Atom credentials—a domain, channel, and two client IDs with keys—to authenticate on MQTT. Use `propeller-cli provision` to create all these resources through the Atom HTTP API and write the result directly to `docker/config.toml`.
 
 ### 5.1 — Build propeller-cli
 
@@ -301,7 +301,7 @@ cat docker/config.toml
 Your output should look like this:
 
 ```toml
-# SuperMQ Configuration
+# Atom Configuration
 
 [manager]
 domain_id = "3053156a-1994-4776-9e18-8c5d8883647c"
@@ -375,7 +375,7 @@ PROXY_CLIENT_KEY=3c905d3c-845b-4b9e-8c51-7ab9a2403163
 
 > Replace all UUIDs above with the values from `docker/config.toml`. The UUIDs shown here are from the example provisioning run—yours will be different.
 
-Recreate only the propeller containers (not Magistrala) to pick up the new env values:
+Recreate only the propeller containers (not Atom) to pick up the new env values:
 
 ```bash
 docker compose -f docker/compose.propeller.yaml \
@@ -422,7 +422,7 @@ The proplet is subscribed to your new domain and channel. Note the `Instance ID`
 
 ### Verify MQTT Connectivity
 
-Confirm the manager credentials can publish on MQTT. The MQTT client ID must match the SuperMQ client ID:
+Confirm the manager credentials can publish on MQTT. The MQTT client ID must match the Atom client ID:
 
 ```bash
 mosquitto_pub -h localhost -p 1883 \
@@ -723,10 +723,10 @@ The table below lists common fields. For the complete specification, see the [fe
 | `external.deviceType`          | string   | No             | Device label for scheduling (e.g. `raspberry-pi-4`) |
 | `external.capabilities`        | []string | No             | Capabilities advertised for task matching           |
 | `connectionConfig.mqttAddress` | string   | Yes            | Broker URL (e.g. `tcp://mqtt:1883`)                 |
-| `connectionConfig.domainId`    | string   | Yes            | SuperMQ domain ID                                   |
-| `connectionConfig.channelId`   | string   | Yes            | SuperMQ channel ID                                  |
-| `connectionConfig.clientId`    | string   | Yes            | SuperMQ client credential ID                        |
-| `connectionConfig.clientKey`   | string   | No\*           | SuperMQ client secret (inline)                      |
+| `connectionConfig.domainId`    | string   | Yes            | Atom domain ID                                      |
+| `connectionConfig.channelId`   | string   | Yes            | Atom channel ID                                     |
+| `connectionConfig.clientId`    | string   | Yes            | Atom client credential ID                           |
+| `connectionConfig.clientKey`   | string   | No\*           | Atom client secret (inline)                         |
 
 ### Proplet Status Reference
 

@@ -70,17 +70,17 @@ The Manager is configured through environment variables. These are the most comm
 
 #### MQTT Connection
 
-The Manager communicates with proplets over MQTT using the [Magistrala](https://github.com/absmach/magistrala) message broker. Magistrala provides secure, multi-tenant messaging with built-in authentication and authorization—ensuring that only authorized components can publish and subscribe to Propeller's control channels.
+The Manager communicates with proplets over MQTT using [Atom](https://github.com/absmach/atom) and [FluxMQ](https://github.com/absmach/fluxmq). Atom provides secure, multi-tenant messaging with built-in authentication and authorization via FluxMQ—ensuring that only authorized components can publish and subscribe to Propeller's control channels.
 
 | Variable               | Description                           | Default                |
 | ---------------------- | ------------------------------------- | ---------------------- |
 | `MANAGER_MQTT_ADDRESS` | MQTT broker URL                       | `tcp://localhost:1883` |
 | `MANAGER_MQTT_QOS`     | Quality of Service level (0, 1, or 2) | `2`                    |
 | `MANAGER_MQTT_TIMEOUT` | Connection and operation timeout      | `30s`                  |
-| `MANAGER_DOMAIN_ID`    | Magistrala domain identifier          | From `config.toml`     |
-| `MANAGER_CHANNEL_ID`   | Magistrala channel identifier         | From `config.toml`     |
-| `MANAGER_CLIENT_ID`    | MQTT client ID for authentication     | From `config.toml`     |
-| `MANAGER_CLIENT_KEY`   | MQTT client key for authentication    | From `config.toml`     |
+| `MANAGER_TENANT_ID`    | Atom tenant identifier                | From `config.toml`     |
+| `MANAGER_CHANNEL_ID`   | Atom channel identifier               | From `config.toml`     |
+| `MANAGER_ENTITY_ID`    | MQTT entity ID for authentication     | From `config.toml`     |
+| `MANAGER_API_KEY`      | MQTT API key for authentication       | From `config.toml`     |
 
 **QoS Levels:**
 
@@ -92,13 +92,13 @@ The Manager communicates with proplets over MQTT using the [Magistrala](https://
 
 ##### Provisioning with config.toml
 
-The `MANAGER_DOMAIN_ID`, `MANAGER_CHANNEL_ID`, `MANAGER_CLIENT_ID`, and `MANAGER_CLIENT_KEY` values come from Magistrala provisioning. The `propeller-cli provision` command automates this setup by:
+The `MANAGER_TENANT_ID`, `MANAGER_CHANNEL_ID`, `MANAGER_ENTITY_ID`, and `MANAGER_API_KEY` values come from Atom provisioning. The `propeller-cli provision` command automates this setup by:
 
-1. Authenticating with your Magistrala instance
-2. Creating a domain (logical isolation boundary)
-3. Creating clients (Manager, Proplets, Proxy)
+1. Authenticating with your Atom instance
+2. Creating a tenant (logical isolation boundary)
+3. Creating entities (Manager, Proplets, Proxy)
 4. Creating a channel (shared communication topic)
-5. Connecting all clients to the channel with publish/subscribe permissions
+5. Connecting all entities to the channel with publish/subscribe permissions
 6. Writing credentials to `config.toml`
 
 Run the provisioning wizard:
@@ -107,27 +107,27 @@ Run the provisioning wizard:
 propeller-cli provision
 ```
 
-The wizard prompts for Magistrala credentials and generates a `config.toml` file:
+The wizard prompts for Atom credentials and generates a `config.toml` file:
 
 ```toml
-# Magistrala Configuration
+# Atom Configuration
 
 [manager]
-domain_id = "73cc3c8f-2c6c-4c08-903b-f1f426d5d9bf"
-client_id = "47c7fcf5-2d9a-41e6-8e0c-97303736019e"
-client_key = "26975130-4cd7-4791-8050-c1698ac31e10"
+tenant_id = "73cc3c8f-2c6c-4c08-903b-f1f426d5d9bf"
+entity_id = "47c7fcf5-2d9a-41e6-8e0c-97303736019e"
+api_key = "26975130-4cd7-4791-8050-c1698ac31e10"
 channel_id = "9856d353-88d3-4eb6-82bd-117eadf69c74"
 
 [proplet]
-domain_id = "73cc3c8f-2c6c-4c08-903b-f1f426d5d9bf"
-client_id = "ec182939-7940-4b25-869e-47b245ddec09"
-client_key = "21076163-f7b9-439e-94b9-f17f69ce3d28"
+tenant_id = "73cc3c8f-2c6c-4c08-903b-f1f426d5d9bf"
+entity_id = "ec182939-7940-4b25-869e-47b245ddec09"
+api_key = "21076163-f7b9-439e-94b9-f17f69ce3d28"
 channel_id = "9856d353-88d3-4eb6-82bd-117eadf69c74"
 
 [proxy]
-domain_id = "73cc3c8f-2c6c-4c08-903b-f1f426d5d9bf"
-client_id = "ec182939-7940-4b25-869e-47b245ddec09"
-client_key = "21076163-f7b9-439e-94b9-f17f69ce3d28"
+tenant_id = "73cc3c8f-2c6c-4c08-903b-f1f426d5d9bf"
+entity_id = "ec182939-7940-4b25-869e-47b245ddec09"
+api_key = "21076163-f7b9-439e-94b9-f17f69ce3d28"
 channel_id = "9856d353-88d3-4eb6-82bd-117eadf69c74"
 ```
 
@@ -135,12 +135,12 @@ Each section contains:
 
 | Field        | Purpose                                          |
 | ------------ | ------------------------------------------------ |
-| `domain_id`  | Magistrala domain for multi-tenant isolation     |
-| `client_id`  | Unique identifier for MQTT authentication        |
-| `client_key` | Secret key for MQTT authentication               |
+| `tenant_id` | Atom tenant for multi-tenant isolation          |
+| `entity_id` | Unique identifier for MQTT entity identification |
+| `api_key`   | Secret API key for MQTT authentication          |
 | `channel_id` | Shared channel for Manager-Proplet communication |
 
-The Manager, Proplets, and Proxy all share the same `domain_id` and `channel_id` but have unique `client_id`/`client_key` pairs. This allows them to communicate securely on a shared channel while maintaining distinct identities.
+The Manager, Proplets, and Proxy all share the same `tenant_id` and `channel_id` but have unique `entity_id`/`api_key` pairs. This allows them to communicate securely on a shared channel while maintaining distinct identities.
 
 When starting Docker Compose, the `docker/.env` file references these values, which are loaded from `config.toml`. You can also set them directly as environment variables to override the file.
 
@@ -404,7 +404,7 @@ if !p.Alive {
 **4. MQTT publish** — The Manager publishes a start command to the control topic:
 
 ```
-m/{domain_id}/c/{channel_id}/control/manager/start
+m/{tenant_id}/c/{channel_id}/control/manager/start
 ```
 
 The payload includes the task definition, Wasm binary location, and execution parameters.
@@ -420,7 +420,7 @@ When you call `POST /tasks/{id}/stop`, the Manager:
 1. Looks up the task-proplet mapping to find which proplet is running the task
 2. Publishes a stop command to:
    ```
-   m/{domain_id}/c/{channel_id}/control/manager/stop
+   m/{tenant_id}/c/{channel_id}/control/manager/stop
    ```
 3. Deletes the task-proplet mapping
 4. Decrements the proplet's `TaskCount`
@@ -432,7 +432,7 @@ The proplet receives the stop command and terminates the Wasm execution.
 When a proplet completes a task, it publishes results to:
 
 ```
-m/{domain_id}/c/{channel_id}/control/proplet/results
+m/{tenant_id}/c/{channel_id}/control/proplet/results
 ```
 
 The Manager receives this message and:

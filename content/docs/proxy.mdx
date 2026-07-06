@@ -73,10 +73,10 @@ proxy:
     PROXY_REGISTRY_USERNAME: ${PROXY_REGISTRY_USERNAME}
     PROXY_REGISTRY_PASSWORD: ${PROXY_REGISTRY_PASSWORD}
     PROXY_MQTT_ADDRESS: ${PROXY_MQTT_ADDRESS}
-    PROXY_DOMAIN_ID: ${PROXY_DOMAIN_ID}
+    PROXY_TENANT_ID: ${PROXY_TENANT_ID}
     PROXY_CHANNEL_ID: ${PROXY_CHANNEL_ID}
-    PROXY_CLIENT_ID: ${PROXY_CLIENT_ID}
-    PROXY_CLIENT_KEY: ${PROXY_CLIENT_KEY}
+    PROXY_ENTITY_ID: ${PROXY_ENTITY_ID}
+    PROXY_API_KEY: ${PROXY_API_KEY}
 ```
 
 ### Standalone Binary
@@ -112,19 +112,19 @@ These control logging and instance identification:
 
 ### Connecting to the Message Broker
 
-The Proxy needs to connect to the same MQTT broker (Magistrala) as your Manager and Proplets:
+The Proxy needs to connect to the same MQTT broker (Atom) as your Manager and Proplets:
 
 | Variable             | Description                                        | Default                | Required |
 | -------------------- | -------------------------------------------------- | ---------------------- | -------- |
 | `PROXY_MQTT_ADDRESS` | Full broker URL including protocol and port        | `tcp://localhost:1883` | Yes      |
 | `PROXY_MQTT_TIMEOUT` | How long to wait for broker responses              | `30s`                  | No       |
 | `PROXY_MQTT_QOS`     | Delivery guarantee (2 = exactly once, recommended) | `2`                    | No       |
-| `PROXY_DOMAIN_ID`    | Your Magistrala domain ID                          | —                      | Yes      |
+| `PROXY_TENANT_ID`    | Your Atom tenant ID                                | —                      | Yes      |
 | `PROXY_CHANNEL_ID`   | Channel for registry communication                 | —                      | Yes      |
-| `PROXY_CLIENT_ID`    | Unique client ID for MQTT connection               | —                      | Yes      |
-| `PROXY_CLIENT_KEY`   | Authentication secret for the broker               | —                      | Yes      |
+| `PROXY_ENTITY_ID`    | Unique entity ID for MQTT connection               | —                      | Yes      |
+| `PROXY_API_KEY`      | Authentication secret for the broker               | —                      | Yes      |
 
-Get these values from your Magistrala setup. They should match what you used when provisioning the Propeller channel.
+Get these values from your Atom setup. They should match what you used when provisioning the Propeller channel.
 
 **Why QoS 2?** Chunk delivery must be exactly-once. With QoS 1, duplicate chunks could cause the Proplet to corrupt the reassembled binary. With QoS 0, lost chunks would leave gaps. QoS 2's four-step handshake guarantees each chunk arrives exactly once, which is worth the slight latency overhead for binary integrity.
 

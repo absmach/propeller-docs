@@ -22,7 +22,7 @@ To build Propeller, you will need the following:
 - [A Go compiler (Go 1.26.0)](https://go.dev/doc/install)
 - [Rust](https://rustup.rs/) (required for `make proplet` and `make all`)
 - [Make](https://www.gnu.org/software/make/manual/make.html)
-- [Docker](https://docs.docker.com/) (required for `make start-magistrala` and Docker image builds)
+- [Docker](https://docs.docker.com/) (required for `make start-base` and Docker image builds)
 - [Wasmtime](https://wasmtime.dev/) (required to test compiled Wasm examples locally)
 - [TinyGo](https://tinygo.org/getting-started/install/) (required for Wasm example builds)
 - [Mockery](https://vektra.github.io/mockery/latest/installation/) (required for `make test` and `make test-all`)
@@ -320,75 +320,48 @@ This lints all Go code and runs `cargo fmt --all -- --check`, `cargo clippy -- -
 
 The linting process can take 2-3 minutes or longer depending on system resources. This is normal behavior. The linter performs comprehensive code quality checks across the entire codebase.
 
-## Magistrala
+## Base Services (Atom & FluxMQ)
 
-### Starting Magistrala
+### Starting Base Services
 
-To start Magistrala (the message broker infrastructure for Propeller), use:
+To start the base infrastructure (Atom authentication/authorization and FluxMQ message broker) for Propeller, use:
 
 ```bash
-make start-magistrala
+make start-base
 ```
 
-This runs `docker compose -f docker/compose.yaml --env-file docker/.env up -d` and starts all required Magistrala services.
+This runs `docker compose -f docker/compose.yaml --env-file docker/.env up -d` and starts all required Atom and FluxMQ services.
 
 Example output:
 
 ```bash
 docker compose -f docker/compose.yaml --env-file docker/.env up -d
-[+] up 44/44
- ✔ Network magistrala-base-net          Created                                                                                      0.1s
- ✔ Container magistrala-re-db           Started                                                                                      2.6s
- ✔ Container magistrala-clients-db      Started                                                                                      5.8s
- ✔ Container magistrala-clients-redis   Started                                                                                      3.1s
- ✔ Container magistrala-fluxmq-auth     Started                                                                                      5.2s
- ✔ Container magistrala-ui-backend-db   Healthy                                                                                     10.1s
- ✔ Container magistrala-alarms-db       Started                                                                                      2.7s
- ✔ Container magistrala-spicedb-db      Started                                                                                      3.5s
- ✔ Container magistrala-openbao         Healthy                                                                                      8.9s
- ✔ Container magistrala-pdf             Started                                                                                      3.9s
- ✔ Container magistrala-auth-redis      Started                                                                                      5.6s
- ✔ Container magistrala-channels-db     Started                                                                                      2.9s
- ✔ Container magistrala-certs-db        Started                                                                                      3.9s
- ✔ Container magistrala-domains-redis   Started                                                                                      3.2s
- ✔ Container magistrala-reports-db      Started                                                                                      4.2s
- ✔ Container magistrala-seaweedfs-s3    Started                                                                                      6.1s
- ✔ Container magistrala-domains-db      Started                                                                                      3.1s
- ✔ Container magistrala-groups-db       Started                                                                                      5.3s
- ✔ Container magistrala-channels-redis  Started                                                                                      2.8s
- ✔ Container magistrala-journal-db      Started                                                                                      3.9s
- ✔ Container magistrala-auth-db         Started                                                                                      5.0s
- ✔ Container magistrala-ui              Started                                                                                      3.3s
- ✔ Container magistrala-users-db        Started                                                                                      3.6s
- ✔ Container magistrala-jaeger          Started                                                                                      3.9s
- ✔ Container magistrala-fluxmq-node1    Started                                                                                      6.0s
- ✔ Container magistrala-seaweedfs-init  Started                                                                                      6.3s
- ✔ Container magistrala-ui-backend      Started                                                                                     10.2s
- ✔ Container magistrala-fluxmq-node2    Started                                                                                      6.2s
- ✔ Container magistrala-fluxmq-node3    Started                                                                                      6.2s
- ✔ Container magistrala-spicedb-migrate Started                                                                                      5.3s
- ✔ Container magistrala-nginx           Started                                                                                      6.3s
- ✔ Container magistrala-certs           Started                                                                                      9.0s
- ✔ Container magistrala-spicedb         Started                                                                                      5.7s
- ✔ Container magistrala-reports         Started                                                                                      8.6s
- ✔ Container magistrala-re              Started                                                                                      7.6s
- ✔ Container magistrala-notifications   Started                                                                                      7.1s
- ✔ Container magistrala-alarms          Started                                                                                      8.4s
- ✔ Container magistrala-domains         Started                                                                                      8.5s
- ✔ Container magistrala-auth            Started                                                                                      8.7s
- ✔ Container magistrala-journal         Started                                                                                      9.2s
- ✔ Container magistrala-users           Started                                                                                      9.2s
- ✔ Container magistrala-groups          Started                                                                                      9.1s
- ✔ Container magistrala-clients         Started                                                                                     11.2s
- ✔ Container magistrala-channels        Started                                                                                     11.3s
+[+] Running 17/17
+ ✔ Container atom-db                 Started                                                                                        2.5s
+ ✔ Container atom-redis              Started                                                                                        2.1s
+ ✔ Container atom-jaeger             Started                                                                                        3.0s
+ ✔ Container atom-http               Started                                                                                        5.1s
+ ✔ Container atom-grpc               Started                                                                                        5.2s
+ ✔ Container atom-domains-db         Started                                                                                        2.8s
+ ✔ Container atom-domains            Started                                                                                        5.0s
+ ✔ Container atom-policies-db        Started                                                                                        3.0s
+ ✔ Container atom-policies           Started                                                                                        5.4s
+ ✔ Container atom-tokens             Started                                                                                        5.3s
+ ✔ Container atom-providers          Started                                                                                        5.6s
+ ✔ Container fluxmq-node1            Started                                                                                        5.9s
+ ✔ Container fluxmq-node2            Started                                                                                        6.1s
+ ✔ Container fluxmq-node3            Started                                                                                        6.0s
+ ✔ Container fluxmq-auth             Started                                                                                        5.5s
+ ✔ Container base-net                Created                                                                                        0.1s
+ ✔ Container nginx                   Started                                                                                        6.5s
 ```
 
 - Docker must be installed and running
-- No other services should be bound to the ports specified in `docker/.env` (typically 1883 for MQTT, 5672 for RabbitMQ, etc.)
+- No other services should be bound to the ports specified in `docker/.env` (typically 1883 for MQTT, 443 for HTTPS, etc.)
 
 ### Provisioning Propeller
 
-After Magistrala is running, provision Propeller resources:
+After the base services are running, provision Propeller resources:
 
 ```bash
 propeller-cli provision
@@ -396,11 +369,11 @@ propeller-cli provision
 
 This interactive command:
 
-1. Creates Magistrala domain, channel, and user credentials
+1. Creates Atom tenant and entity credentials
 2. Generates a `config.toml` file with all necessary configuration
-3. Sets up clients for manager, proplet, and proxy services
+3. Sets up entities for manager, proplet, and proxy services
 
-The generated `config.toml` contains Magistrala credentials (domain_id, channel_id, client_id, client_key) that are required for all services to communicate.
+The generated `config.toml` contains Atom credentials (tenant_id, entity_id, api_key) that are required for all services to communicate.
 
 ### Using config.toml with Docker Compose
 
@@ -465,12 +438,12 @@ Once services are running, verify they connected to MQTT:
 2026-02-11T17:34:32.877467Z  INFO Subscribed to topic: m/fcf50e58-a080-4179-a260-e91cdf8fc1c2/c/8259a673-ab09-4b97-8c09-e1f9e60c7c2c/control/manager/stop
 ```
 
-### Stopping Magistrala
+### Stopping Base Services
 
-Magistrala can be stopped using the following:
+The base services can be stopped using the following:
 
 ```bash
-make stop-magistrala
+make stop-base
 ```
 
 ## CI/CD
@@ -544,7 +517,7 @@ CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
 
 For development and debugging, you can run Propeller services directly on your host instead of in Docker containers. This allows easier access to logs, debuggers, and faster iteration.
 
-**Prerequisites**: Magistrala must still be running (via `make start-magistrala`), and you must have a valid `config.toml` in your working directory.
+**Prerequisites**: The base services must still be running (via `make start-base`), and you must have a valid `config.toml` in your working directory.
 
 First, stop the Docker-based Propeller services:
 
