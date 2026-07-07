@@ -9,7 +9,7 @@ A `Proplet` resource represents one worker node. The `spec.type` field selects b
 
 ### Types
 
-**`k8s`** — The operator creates and manages a Kubernetes `Deployment` in the same cluster. The pod runs the proplet image, which connects back to the same SuperMQ broker using the credentials in `spec.connectionConfig`. The operator reconciles the Deployment whenever the spec changes and reflects the Deployment's readiness in the Proplet status.
+**`k8s`** — The operator creates and manages a Kubernetes `Deployment` in the same cluster. The pod runs the proplet image, which connects back to the same Atom broker using the credentials in `spec.connectionConfig`. The operator reconciles the Deployment whenever the spec changes and reflects the Deployment's readiness in the Proplet status.
 
 **`external`** — The proplet is a device or process running outside the cluster (a Raspberry Pi, an ESP32, a Docker container on another host). The operator does not create any Kubernetes resources for it. Instead, it watches the MQTT `control/proplet/alive` topic and transitions the Proplet phase to `Running` when heartbeats arrive within the configured threshold, and to `Offline` when they stop.
 
@@ -44,10 +44,10 @@ A `Proplet` resource represents one worker node. The `spec.type` field selects b
 | `external.capabilities`                  | []string                                         | No          | —         | Capability strings the device advertises (e.g. `wasm`, `gpu`)                                   |
 | `resources`                              | ResourceList                                     | No          | —         | Kubernetes CPU and memory requests/limits applied to the proplet pod                            |
 | `connectionConfig.mqttAddress`           | string                                           | Yes         | —         | MQTT broker URL (e.g. `tcp://mqtt:1883`)                                                        |
-| `connectionConfig.domainId`              | string                                           | Yes         | —         | SuperMQ domain ID                                                                               |
-| `connectionConfig.channelId`             | string                                           | Yes         | —         | SuperMQ channel ID                                                                              |
-| `connectionConfig.clientId`              | string                                           | Yes         | —         | SuperMQ client credential ID; must match `proplet_id` in alive messages for external proplets   |
-| `connectionConfig.clientKey`             | string                                           | No*         | —         | SuperMQ client secret (inline). Exactly one of `clientKey` or `clientKeySecretRef` must be set  |
+| `connectionConfig.domainId`              | string                                           | Yes         | —         | Atom domain ID                                                                               |
+| `connectionConfig.channelId`             | string                                           | Yes         | —         | Atom channel ID                                                                              |
+| `connectionConfig.clientId`              | string                                           | Yes         | —         | Atom client credential ID; must match `proplet_id` in alive messages for external proplets   |
+| `connectionConfig.clientKey`             | string                                           | No*         | —         | Atom client secret (inline). Exactly one of `clientKey` or `clientKeySecretRef` must be set  |
 | `connectionConfig.clientKeySecretRef`    | SecretKeySelector                                | No*         | —         | Reference to a Kubernetes Secret holding the client secret. Mutually exclusive with `clientKey` |
 | `connectionConfig.mqttQos`               | uint8                                            | No          | `0`       | MQTT QoS level (0–2)                                                                            |
 | `connectionConfig.mqttTimeout`           | duration                                         | No          | `30s`     | Broker operation timeout                                                                        |

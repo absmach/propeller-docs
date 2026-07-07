@@ -23,13 +23,13 @@ The three Propeller components run as separate Deployments in a single namespace
 | `proplet` | WASM execution worker; one or more replicas                   |
 | `proxy`   | Routes WASM module fetch requests to the OCI registry or HTTP |
 
-All three connect to a SuperMQ MQTT broker for inter-component communication, exactly as in the Docker Compose setup. The manager receives task requests via HTTP, dispatches them to proplets via MQTT, and returns results through the API.
+All three connect to a Atom MQTT broker for inter-component communication, exactly as in the Docker Compose setup. The manager receives task requests via HTTP, dispatches them to proplets via MQTT, and returns results through the API.
 
 ## Prerequisites
 
 - A running Kubernetes cluster with `kubectl` configured.
-- A SuperMQ instance accessible from inside the cluster. You can run SuperMQ outside the cluster (e.g. as Docker containers on the host) and expose it via a `NodePort` or `LoadBalancer`, or deploy it inside the cluster.
-- SuperMQ credentials (domain ID, channel ID, client IDs and keys) provisioned with `propeller-cli provision`. See the [Getting Started guide](/getting-started) for provisioning instructions.
+- A Atom instance accessible from inside the cluster. You can run Atom outside the cluster (e.g. as Docker containers on the host) and expose it via a `NodePort` or `LoadBalancer`, or deploy it inside the cluster.
+- Atom credentials (domain ID, channel ID, client IDs and keys) provisioned with `propeller-cli provision`. See the [Getting Started guide](/getting-started) for provisioning instructions.
 - The Propeller container images available in a registry your cluster can pull from.
 
 ## Deploying
@@ -45,9 +45,9 @@ kubectl create namespace propeller
 ```bash
 kubectl create secret generic propeller-credentials \
   --namespace propeller \
-  --from-literal=MANAGER_CLIENT_KEY=<manager-client-key> \
-  --from-literal=PROPLET_CLIENT_KEY=<proplet-client-key> \
-  --from-literal=PROXY_CLIENT_KEY=<proxy-client-key>
+  --from-literal=MANAGER_API_KEY=<manager-client-key> \
+  --from-literal=PROPLET_API_KEY=<proplet-client-key> \
+  --from-literal=PROXY_API_KEY=<proxy-client-key>
 ```
 
 ### 3. Apply Deployments
@@ -74,17 +74,17 @@ spec:
         - name: manager
           image: ghcr.io/absmach/propeller/manager:latest
           env:
-            - name: MANAGER_DOMAIN_ID
+            - name: MANAGER_TENANT_ID
               value: "<domain-id>"
             - name: MANAGER_CHANNEL_ID
               value: "<channel-id>"
-            - name: MANAGER_CLIENT_ID
+            - name: MANAGER_ENTITY_ID
               value: "<manager-client-id>"
-            - name: MANAGER_CLIENT_KEY
+            - name: MANAGER_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: propeller-credentials
-                  key: MANAGER_CLIENT_KEY
+                  key: MANAGER_API_KEY
             - name: MANAGER_MQTT_ADDRESS
               value: "tcp://<mqtt-host>:1883"
 ---
@@ -107,17 +107,17 @@ spec:
         - name: proplet
           image: ghcr.io/absmach/propeller/proplet:latest
           env:
-            - name: PROPLET_DOMAIN_ID
+            - name: PROPLET_TENANT_ID
               value: "<domain-id>"
             - name: PROPLET_CHANNEL_ID
               value: "<channel-id>"
-            - name: PROPLET_CLIENT_ID
+            - name: PROPLET_ENTITY_ID
               value: "<proplet-client-id>"
-            - name: PROPLET_CLIENT_KEY
+            - name: PROPLET_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: propeller-credentials
-                  key: PROPLET_CLIENT_KEY
+                  key: PROPLET_API_KEY
             - name: PROPLET_MQTT_ADDRESS
               value: "tcp://<mqtt-host>:1883"
 ---
@@ -140,17 +140,17 @@ spec:
         - name: proxy
           image: ghcr.io/absmach/propeller/proxy:latest
           env:
-            - name: PROXY_DOMAIN_ID
+            - name: PROXY_TENANT_ID
               value: "<domain-id>"
             - name: PROXY_CHANNEL_ID
               value: "<channel-id>"
-            - name: PROXY_CLIENT_ID
+            - name: PROXY_ENTITY_ID
               value: "<proplet-client-id>"
-            - name: PROXY_CLIENT_KEY
+            - name: PROXY_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: propeller-credentials
-                  key: PROXY_CLIENT_KEY
+                  key: PROXY_API_KEY
             - name: PROXY_MQTT_ADDRESS
               value: "tcp://<mqtt-host>:1883"
 ```

@@ -32,7 +32,7 @@ Configure your device identity and WiFi credentials in `src/main.c`:
 #define WIFI_SSID     "your_wifi_ssid"
 #define WIFI_PSK      "your_wifi_password"
 #define PROPLET_ID    "proplet-esp32-001"
-#define DOMAIN_ID     "your_domain_id"
+#define TENANT_ID     "your_tenant_id"
 #define CHANNEL_ID    "your_channel_id"
 ```
 
@@ -64,7 +64,7 @@ The logs from the device should look like this.
 [00:00:02.892,000] <inf> mqtt_client: Subscribing to topics for channel ID: <channel_id>
 [00:00:02.950,000] <inf> mqtt_client: Subscribed successfully
 [00:00:02.951,000] <inf> mqtt_client: Successfully subscribed to topics for channel ID: <channel_id>
-[00:00:02.952,000] <inf> mqtt_client: Discovery published successfully to topic: m/<domain_id>/c/<channel_id>/control/proplet/create
+[00:00:02.952,000] <inf> mqtt_client: Discovery published successfully to topic: m/<tenant_id>/c/<channel_id>/control/proplet/create
 [00:00:02.953,000] <inf> mqtt_client: QoS 1 Message published successfully
 ```
 
@@ -196,12 +196,12 @@ Your output should look like this:
 The device logs from the Embedded Proplet will look like this.
 
 ```
-[00:00:05.123,000] <inf> mqtt_client: Message received on topic: m/<domain_id>/c/<channel_id>/control/manager/start
+[00:00:05.123,000] <inf> mqtt_client: Message received on topic: m/<tenant_id>/c/<channel_id>/control/manager/start
 [00:00:05.124,000] <inf> mqtt_client: Payload: {"id":"b8fabc60-1156-4883-a2cd-4b70380ea5df","name":"main","file":"AGFzbQEAAAABBwFgAn9/AX8DAgEABwgBBG1haW4AAAoJAQcAIAAgAWoL","inputs":[10,20]}
 [00:00:05.125,000] <inf> mqtt_client: Starting task: ID=b8fabc60-1156-4883-a2cd-4b70380ea5df, Name=main, Mode=
 [00:00:05.126,000] <inf> wasm_handler: WAMR runtime initialized successfully.
 [00:00:05.127,000] <inf> task_monitor: Started monitoring task: b8fabc60-1156-4883-a2cd-4b70380ea5df
-[00:00:05.145,000] <inf> mqtt_client: Published to topic: m/<domain_id>/c/<channel_id>/control/proplet/results. Payload: {"task_id":"b8fabc60-1156-4883-a2cd-4b70380ea5df","results":"30"}
+[00:00:05.145,000] <inf> mqtt_client: Published to topic: m/<tenant_id>/c/<channel_id>/control/proplet/results. Payload: {"task_id":"b8fabc60-1156-4883-a2cd-4b70380ea5df","results":"30"}
 [00:00:05.146,000] <inf> mqtt_client: Published results for task: b8fabc60-1156-4883-a2cd-4b70380ea5df
 [00:00:05.147,000] <inf> wasm_handler: WASM execution results published to MQTT topic
 [00:00:05.148,000] <inf> task_monitor: Stopped monitoring task: b8fabc60-1156-4883-a2cd-4b70380ea5df (samples: 2)

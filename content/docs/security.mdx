@@ -39,7 +39,7 @@ make client_cert CLIENT_SECRET="<client_secret>" CRT_FILE_NAME="proxy" \
   O="Propeller" OU_CA="propeller_ca" EA="propeller@absmach.eu"
 ```
 
-The `CRT_FILE_NAME` determines the output: `certs/<name>.crt` and `certs/<name>.key`. Each service needs a unique client secret (UUID) — this is the client identity in Atom and must match what you set in `*_CLIENT_KEY` in `.env`.
+The `CRT_FILE_NAME` determines the output: `certs/<name>.crt` and `certs/<name>.key`. Each service needs a unique client secret (UUID) — this is the client identity in Atom and must match what you set in `*_API_KEY` in `.env`.
 
 Default values:
 
@@ -122,7 +122,7 @@ PROXY_MQTT_TLS_CLIENT_CERT=/etc/propeller/tls/client.crt
 PROXY_MQTT_TLS_CLIENT_KEY=/etc/propeller/tls/client.key
 ```
 
-When using mTLS (`AUTH=x509`), nginx requires a client certificate on port 8883. The `*_CLIENT_KEY` env var must match the UUID used as `CLIENT_SECRET` when generating the client certificate — the JS auth module validates that the MQTT password ends with the certificate's Common Name.
+When using mTLS (`AUTH=x509`), nginx requires a client certificate on port 8883. The `*_API_KEY` env var must match the UUID used as `CLIENT_SECRET` when generating the client certificate — the JS auth module validates that the MQTT password ends with the certificate's Common Name.
 
 ```bash
 AUTH=x509 make start-base
@@ -225,7 +225,7 @@ make start-propeller
 
 ### Plain MQTT (no TLS)
 
-Services connect to `tcp://nginx:1883` without encryption. Each service authenticates with MQTT username/password where username equals `*_CLIENT_ID` and password equals `*_CLIENT_KEY`. Works with any `AUTH` setting.
+Services connect to `tcp://nginx:1883` without encryption. Each service authenticates with MQTT username/password where username equals `*_ENTITY_ID` and password equals `*_API_KEY`. Works with any `AUTH` setting.
 
 ### MQTTS (TLS, server-only)
 
@@ -270,7 +270,7 @@ Publish a message using mTLS:
 ```bash
 mosquitto_pub -h localhost -p 8883 --cafile docker/ssl/certs/ca.crt \
   --cert docker/ssl/certs/proxy.crt --key docker/ssl/certs/proxy.key \
-  -u "<client_id>" -P "<client_secret>" \
-  -i "<client_id>" \
-  -t "m/<domain_id>/c/<channel_id>/test" -m "hello"
+  -u "<entity_id>" -P "<api_key>" \
+  -i "<entity_id>" \
+  -t "m/<tenant_id>/c/<channel_id>/test" -m "hello"
 ```

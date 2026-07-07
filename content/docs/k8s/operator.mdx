@@ -12,13 +12,13 @@ The operator source code is available at [github.com/absmach/propeller-k8s-opera
 
 ### How the Operator Fits into Propeller
 
-Propeller consists of a **manager** (task dispatch), **proplets** (workers that execute WASM), and **[SuperMQ](https://docs.supermq.absmach.eu/)** (MQTT broker providing authentication and routing). In a standalone deployment these run as separate processes or Docker containers. The Propeller Kubernetes Operator replaces the manager process: it watches Kubernetes Custom Resources for desired state and drives proplets over MQTT to achieve it, while recording outcomes back into Kubernetes status fields.
+Propeller consists of a **manager** (task dispatch), **proplets** (workers that execute WASM), and **[Atom](https://docs.supermq.absmach.eu/)** (MQTT broker providing authentication and routing). In a standalone deployment these run as separate processes or Docker containers. The Propeller Kubernetes Operator replaces the manager process: it watches Kubernetes Custom Resources for desired state and drives proplets over MQTT to achieve it, while recording outcomes back into Kubernetes status fields.
 
-The operator connects to a SuperMQ MQTT broker on startup using the manager's credentials. It subscribes to the wildcard topic for its configured domain and channel, and dispatches to individual proplets by publishing targeted start messages.
+The operator connects to a Atom MQTT broker on startup using the manager's credentials. It subscribes to the wildcard topic for its configured domain and channel, and dispatches to individual proplets by publishing targeted start messages.
 
 ![Propeller Kubernetes Operator Architecture Overview](../images/kubernetes-operator/architecture.svg)
 
-*Figure: High-level architecture of the Propeller Kubernetes Operator showing the relationship between the operator, Kubernetes API, SuperMQ MQTT broker, and proplet workers (both in-cluster k8s pods and external devices). The operator watches Custom Resources and reconciles state through MQTT communication.*
+*Figure: High-level architecture of the Propeller Kubernetes Operator showing the relationship between the operator, Kubernetes API, Atom MQTT broker, and proplet workers (both in-cluster k8s pods and external devices). The operator watches Custom Resources and reconciles state through MQTT communication.*
 
 ### Controllers
 
@@ -46,13 +46,13 @@ The operator installs five CRDs into the cluster:
 
 ### MQTT Communication
 
-All communication between the operator and proplets uses MQTT, routed through SuperMQ. Every message is scoped to a domain and channel:
+All communication between the operator and proplets uses MQTT, routed through Atom. Every message is scoped to a domain and channel:
 
 ```text
-m/{domain_id}/c/{channel_id}/{sub-topic}
+m/{tenant_id}/c/{channel_id}/{sub-topic}
 ```
 
-The operator subscribes to the wildcard `m/{domain_id}/c/{channel_id}/#` and dispatches incoming messages to the appropriate handler by matching the topic suffix.
+The operator subscribes to the wildcard `m/{tenant_id}/c/{channel_id}/#` and dispatches incoming messages to the appropriate handler by matching the topic suffix.
 
 | Sub-topic                        | Direction            | Purpose                                                                                 |
 | -------------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
@@ -65,6 +65,6 @@ The operator subscribes to the wildcard `m/{domain_id}/c/{channel_id}/#` and dis
 
 ![MQTT Communication Flow](../images/kubernetes-operator/mqtt-communication.svg)
 
-*Figure: MQTT message flow between the Propeller Kubernetes Operator and proplets via SuperMQ. Shows the bidirectional communication pattern including heartbeats, task dispatch, status updates, and result collection across domain and channel scoped topics.*
+*Figure: MQTT message flow between the Propeller Kubernetes Operator and proplets via Atom. Shows the bidirectional communication pattern including heartbeats, task dispatch, status updates, and result collection across domain and channel scoped topics.*
 
-The MQTT client ID used by the operator is `propeller-controller`. Proplets identify themselves in alive messages using their SuperMQ `client_id`. The operator matches this value against `spec.connectionConfig.clientId` in Proplet CRs to route heartbeats and results to the correct resource.
+The MQTT client ID used by the operator is `propeller-controller`. Proplets identify themselves in alive messages using their Atom `entity_id`. The operator matches this value against `spec.connectionConfig.clientId` in Proplet CRs to route heartbeats and results to the correct resource.

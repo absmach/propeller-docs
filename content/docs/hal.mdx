@@ -68,9 +68,9 @@ The script reads configuration from environment variables. Set credentials befor
 The script re-executes itself with `sudo -E` automatically to preserve your exported variables. Run it as a regular user.
 
 ```bash
-export PROPLET_DOMAIN_ID="a93fa93e-30d0-425e-b5d1-c93cd916dca7"
-export PROPLET_CLIENT_ID="c902e51c-5eac-4a2d-a489-660b5f7ab461"
-export PROPLET_CLIENT_KEY="75a0fefe-9713-478d-aafd-72032c2d9958"
+export PROPLET_TENANT_ID="a93fa93e-30d0-425e-b5d1-c93cd916dca7"
+export PROPLET_ENTITY_ID="c902e51c-5eac-4a2d-a489-660b5f7ab461"
+export PROPLET_API_KEY="75a0fefe-9713-478d-aafd-72032c2d9958"
 export PROPLET_CHANNEL_ID="54bdaf41-0009-4d3e-bd49-6d7abda7a832"
 export PROPLET_MQTT_ADDRESS="tcp://mqtt.example.com:1883"
 export KBS_URL="http://10.0.2.2:8082"
@@ -249,11 +249,11 @@ Each VM needs its own working directory to avoid file conflicts:
 mkdir vm1 vm2
 cp qemu.sh vm1/ && cp qemu.sh vm2/
 
-export PROPLET_CLIENT_ID="client-1"
+export PROPLET_ENTITY_ID="client-1"
 # ... set other vars
 (cd vm1 && ./qemu.sh build)
 
-export PROPLET_CLIENT_ID="client-2"
+export PROPLET_ENTITY_ID="client-2"
 # ... set other vars
 (cd vm2 && ./qemu.sh build)
 ```

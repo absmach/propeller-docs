@@ -10,7 +10,7 @@ The Propeller Kubernetes Operator lets you manage Propeller workloads as Kuberne
 You need the following tools installed:
 
 - **Go 1.24 or later** — required to build the operator from source.
-- **Docker** — runs the SuperMQ stack and proplet containers.
+- **Docker** — runs the Atom stack and proplet containers.
 - **k3d** — creates a lightweight local Kubernetes cluster for development and testing.
 - **kubectl** — manages Kubernetes resources.
 - **make** — runs the operator build targets.
@@ -27,7 +27,7 @@ You also need:
 
 ## How It Works
 
-The operator connects to a SuperMQ MQTT broker and watches five Custom Resource kinds: `Proplet`, `Task`, `PropellerJob`, `FederatedJob`, and `TrainingRound`. When you apply a manifest, the operator reconciles the desired state by dispatching WASM tasks to proplets over MQTT and recording results back into resource status fields.
+The operator connects to a Atom MQTT broker and watches five Custom Resource kinds: `Proplet`, `Task`, `PropellerJob`, `FederatedJob`, and `TrainingRound`. When you apply a manifest, the operator reconciles the desired state by dispatching WASM tasks to proplets over MQTT and recording results back into resource status fields.
 
 See the [Operator overview](/k8s/operator) for a full architecture description.
 

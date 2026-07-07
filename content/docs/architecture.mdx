@@ -163,28 +163,28 @@ Proplet uses the following MQTT topic structure:
 m/{tenantID}/c/{channelID}/control/proplet/alive
     └─ Liveliness heartbeat (configurable interval, default 10 seconds)
 
-m/{domainID}/c/{channelID}/control/proplet/create
+m/{tenantID}/c/{channelID}/control/proplet/create
     └─ Discovery announcement on startup
 
-m/{domainID}/c/{channelID}/control/manager/start
+m/{tenantID}/c/{channelID}/control/manager/start
     └─ Task start commands from Manager
 
-m/{domainID}/c/{channelID}/control/manager/stop
+m/{tenantID}/c/{channelID}/control/manager/stop
     └─ Task stop commands from Manager
 
-m/{domainID}/c/{channelID}/registry/server
+m/{tenantID}/c/{channelID}/registry/server
     └─ Incoming Wasm binary chunks from Registry
 
-m/{domainID}/c/{channelID}/registry/proplet
+m/{tenantID}/c/{channelID}/registry/proplet
     └─ Requests for Wasm binary chunks to Registry
 
-m/{domainID}/c/{channelID}/control/proplet/results
+m/{tenantID}/c/{channelID}/control/proplet/results
     └─ Task execution results back to Manager
 
-m/{domainID}/c/{channelID}/control/proplet/metrics
+m/{tenantID}/c/{channelID}/control/proplet/metrics
     └─ Proplet-level resource metrics (CPU, memory, cgroup stats)
 
-m/{domainID}/c/{channelID}/control/proplet/task_metrics
+m/{tenantID}/c/{channelID}/control/proplet/task_metrics
     └─ Per-task process metrics (CPU, memory, disk I/O, threads, file descriptors)
 ```
 
