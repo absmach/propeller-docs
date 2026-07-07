@@ -118,7 +118,7 @@ Using instance IDs will result in `"Skipping participant: proplet not found"` er
 
 1. Validates the experiment configuration (requires `round_id`, `participants`, `task_wasm_image`, `model_ref`)
 2. Forwards the configuration to the Coordinator via HTTP POST `/experiments`
-3. Publishes round start message to MQTT topic `{domain}/{channel}/fl/rounds/start`
+3. Publishes round start message to MQTT topic `{tenant_id}/{channel_id}/fl/rounds/start`
 
 **Coordinator Processing:**
 
@@ -309,9 +309,9 @@ All HTTP services expose a `/health` endpoint (e.g., `http://localhost:7070/heal
 
 | Topic                                                          | Description                             |
 | -------------------------------------------------------------- | --------------------------------------- |
-| `{domain}/{channel}/fl/rounds/start`                           | Round start notification                |
-| `{domain}/{channel}/fl/rounds/next`                            | Round completion notification           |
-| `{domain}/{channel}/fl/rounds/{round_id}/updates/{proplet_id}` | Update submission (fallback)            |
+| `{tenant_id}/{channel_id}/fl/rounds/start`                           | Round start notification                |
+| `{tenant_id}/{channel_id}/fl/rounds/next`                            | Round completion notification           |
+| `{tenant_id}/{channel_id}/fl/rounds/{round_id}/updates/{proplet_id}` | Update submission (fallback)            |
 | `registry/proplet` / `registry/server`                         | WASM binary fetching (request/response) |
 
 ## Aggregation Algorithms

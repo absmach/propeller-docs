@@ -259,15 +259,15 @@ The `PROPLET_ID` defined in `src/main.c` is used as both the MQTT **client ID** 
 
 | Direction | Topic                                                 | Purpose                              |
 | --------- | ----------------------------------------------------- | ------------------------------------ |
-| Publish   | `m/<domain>/c/<channel>/control/proplet/create`       | Discovery on startup                 |
-| Publish   | `m/<domain>/c/<channel>/control/proplet/alive`        | Periodic alive heartbeat             |
-| Publish   | `m/<domain>/c/<channel>/control/proplet/metrics`      | System metrics (CPU, memory, uptime) |
-| Publish   | `m/<domain>/c/<channel>/control/proplet/task_metrics` | Per-task execution metrics           |
-| Publish   | `m/<domain>/c/<channel>/control/proplet/results`      | Task execution results               |
-| Publish   | `m/<domain>/c/<channel>/registry/proplet`             | Request a WASM module from registry  |
-| Subscribe | `m/<domain>/c/<channel>/control/manager/start`        | Receive task start command           |
-| Subscribe | `m/<domain>/c/<channel>/control/manager/stop`         | Receive task stop command            |
-| Subscribe | `m/<domain>/c/<channel>/registry/server`              | Receive WASM module from registry    |
+| Publish   | `m/<tenant_id>/c/<channel_id>/control/proplet/create`       | Discovery on startup                 |
+| Publish   | `m/<tenant_id>/c/<channel_id>/control/proplet/alive`        | Periodic alive heartbeat             |
+| Publish   | `m/<tenant_id>/c/<channel_id>/control/proplet/metrics`      | System metrics (CPU, memory, uptime) |
+| Publish   | `m/<tenant_id>/c/<channel_id>/control/proplet/task_metrics` | Per-task execution metrics           |
+| Publish   | `m/<tenant_id>/c/<channel_id>/control/proplet/results`      | Task execution results               |
+| Publish   | `m/<tenant_id>/c/<channel_id>/registry/proplet`             | Request a WASM module from registry  |
+| Subscribe | `m/<tenant_id>/c/<channel_id>/control/manager/start`        | Receive task start command           |
+| Subscribe | `m/<tenant_id>/c/<channel_id>/control/manager/stop`         | Receive task stop command            |
+| Subscribe | `m/<tenant_id>/c/<channel_id>/registry/server`              | Receive WASM module from registry    |
 
 ### Discovery
 

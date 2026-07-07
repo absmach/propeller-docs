@@ -762,6 +762,29 @@ paths:
       responses:
         "200":
           description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: Service status (e.g. "ok")
+                  version:
+                    type: string
+                    description: Software version
+                  commit:
+                    type: string
+                    description: Git commit hash
+                  description:
+                    type: string
+                    description: Human-readable service description
+                  build_time:
+                    type: string
+                    description: Build timestamp
+                  instance_id:
+                    type: string
+                    description: Unique instance identifier
       tags:
         - System
   /metrics:

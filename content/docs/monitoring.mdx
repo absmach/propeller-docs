@@ -18,8 +18,8 @@ Each proplet monitors its running tasks independently and reports metrics to the
 1. Proplet spawns a monitoring thread for each task
 2. Thread collects process metrics at configured intervals (1-120 seconds)
 3. Metrics are published to MQTT topics:
-   - Proplet-level: `m/{domain}/c/{channel}/control/proplet/metrics`
-   - Task-level: `m/{domain}/c/{channel}/control/proplet/task_metrics`
+   - Proplet-level: `m/{tenant_id}/c/{channel_id}/control/proplet/metrics`
+   - Task-level: `m/{tenant_id}/c/{channel_id}/control/proplet/task_metrics`
 4. Manager receives and stores metrics in the configured storage backend
 5. API clients query metrics via HTTP endpoints
 

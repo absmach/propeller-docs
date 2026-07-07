@@ -5,6 +5,8 @@ description: "Propeller's Proplet is the Rust-based edge runtime. It receives Wa
 
 The Proplet is Propeller's edge execution runtime. It receives task commands from the Manager over MQTT, fetches WebAssembly binaries, executes them using an embedded or external Wasmtime runtime, and publishes results back over MQTT.
 
+> **Session behavior**: The Proplet uses clean MQTT sessions (`clean_session = true`). Subscriptions and missed messages are not restored on reconnect. The Proplet re-subscribes to its topics after each connection.
+
 For how the Manager coordinates proplets and schedules tasks, see the [Manager](/manager) documentation. For DAG-based workflows and job execution, see [Task Scheduling](/task-scheduling).
 
 ## Why the Proplet
@@ -355,10 +357,15 @@ The Manager receives this message and creates a proplet record with a generated 
 
 ## Using the Host Runtime
 
-To use an external runtime binary instead of embedded Wasmtime:
+The Proplet supports running Wasm modules using an external runtime binary instead of the embedded Wasmtime. When `PROPLET_EXTERNAL_WASM_RUNTIME` is set, the Proplet uses the `which` crate to locate the binary in `$PATH`. If the binary is not found at the specified path or in `$PATH`, the Proplet logs a warning and falls back to the embedded Wasmtime runtime.
 
 ```bash
+# Use a specific runtime binary
 export PROPLET_EXTERNAL_WASM_RUNTIME="/usr/bin/wasmtime"
+propeller-proplet
+
+# Or place the binary in $PATH and let the Proplet discover it
+export PROPLET_EXTERNAL_WASM_RUNTIME="wasmtime"
 propeller-proplet
 ```
 

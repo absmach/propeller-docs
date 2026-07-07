@@ -252,12 +252,23 @@ The diagram below shows the internal architecture of the Proxy, illustrating how
 
 ![Proxy Architecture](./images/proxy/architecture.svg)
 
+### OpenTelemetry Tracing
+
+The Proxy supports distributed tracing via OpenTelemetry. When configured, it creates spans for registry fetches, chunking, and MQTT delivery operations, propagating trace context across service boundaries.
+
+| Variable              | Description                                      | Default   |
+| --------------------- | ------------------------------------------------ | --------- |
+| `PROXY_OTEL_ENABLED`  | Enable OpenTelemetry tracing                     | `false`   |
+| `PROXY_OTEL_ENDPOINT` | OTLP HTTP endpoint for trace export              | —         |
+
+Trace context is propagated via `traceparent` and `baggage` headers in HTTP requests and through MQTT application messages.
+
 ### MQTT Topics Used
 
 | Topic Pattern                             | Direction | Purpose                                |
 | ----------------------------------------- | --------- | -------------------------------------- |
-| `m/{domain}/c/{channel}/registry/proplet` | Subscribe | Receives module requests from Proplets |
-| `m/{domain}/c/{channel}/registry/server`  | Publish   | Sends chunks back to Proplets          |
+| `m/{tenant_id}/c/{channel_id}/registry/proplet` | Subscribe | Receives module requests from Proplets |
+| `m/{tenant_id}/c/{channel_id}/registry/server`  | Publish   | Sends chunks back to Proplets          |
 
 ### Chunk Format
 
