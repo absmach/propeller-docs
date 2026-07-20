@@ -10,7 +10,7 @@ import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LLMCopyButton, ViewOptions } from "@/components/page-actions";
-import { SITE_URL } from "@/lib/geo-constants";
+import { SITE_URL, toSiteUrl } from "@/lib/geo-constants";
 import { getPageImage, source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 import { RootRedirect } from "./root-redirect";
@@ -61,7 +61,7 @@ export default async function Page(props: PageProps<"/[[...slug]]">) {
   }
 
   const MDX = page.data.body;
-  const pageUrl = `${SITE_URL}${page.url}`;
+  const pageUrl = toSiteUrl(page.url);
   const pageImage = new URL(
     getPageImage(page).url,
     new URL(SITE_URL).origin,
@@ -126,7 +126,7 @@ export async function generateMetadata(
   const page = source.getPage(slug);
   if (!page) return { title: "Propeller Docs" };
 
-  const canonical = `${SITE_URL}${page.url}`;
+  const canonical = toSiteUrl(page.url);
   return {
     title: page.data.title,
     description:
