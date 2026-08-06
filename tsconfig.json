@@ -31,5 +31,11 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // Runs directly on the Workers runtime via wrangler's own bundler/type
+    // scope, not part of the Next.js app — keep it out of `tsc --noEmit`
+    // here so it isn't checked against `lib: ["dom", ...]`.
+    "worker"
+  ]
 }

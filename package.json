@@ -13,6 +13,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check src --write",
     "check:assets": "bash scripts/check-assets.sh",
+    "publish-image": "node scripts/publish-image.mjs",
     "optimize:images": "f() { webp=\"${1%.*}.webp\"; magick \"$1\" -resize 1200x1200\\> -quality 82 \"$webp\" && rm \"$1\" && echo \"Converted $1 → $webp (original removed)\"; }; f"
   },
   "dependencies": {
