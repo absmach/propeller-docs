@@ -42,6 +42,20 @@ interface Env {
   IMAGES_BUCKET: R2Bucket;
 }
 
+// Minimal structural types for the Workers Cache API -- avoids depending on
+// the gitignored, wrangler-generated worker-configuration.d.ts (pnpm run
+// build never regenerates it, only the separate types:check script does).
+interface CFCache {
+  match(request: Request): Promise<Response | undefined>;
+  put(request: Request, response: Response): Promise<void>;
+}
+interface CFCacheStorage {
+  readonly default: CFCache;
+}
+interface ExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
 // Matches next.config.mjs's BASE_PATH — this Worker has no access to that
 // module (it isn't part of the Next.js build), so it's repeated here.
 const IMG_ROUTE_PREFIX = "/docs/propeller/img/";
@@ -57,10 +71,27 @@ function notFound(): Response {
   });
 }
 
-async function handleImageProxy(request: Request, env: Env): Promise<Response> {
+async function handleImageProxy(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
   const url = new URL(request.url);
   const key = url.pathname.slice(IMG_ROUTE_PREFIX.length);
   if (!key) return notFound();
+
+  // env.IMAGES_BUCKET.get() is an R2 binding call, not an HTTP subrequest --
+  // it never touches Cloudflare's HTTP cache. Without explicitly writing the
+  // response into the Cache API, every request (from every visitor, at
+  // every edge location) would re-read from R2, no matter what
+  // Cache-Control header gets set on the returned Response. Using the
+  // request's own URL (unmodified) as the cache key keeps this purgeable by
+  // the existing purge-by-URL call in scripts/publish-image.mjs.
+  const cache = (caches as unknown as CFCacheStorage).default;
+  const cacheKey = new Request(request.url, request);
+
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
 
   const object = await env.IMAGES_BUCKET.get(`${R2_KEY_PREFIX}/${key}`);
   if (!object) return notFound();
@@ -69,18 +100,28 @@ async function handleImageProxy(request: Request, env: Env): Promise<Response> {
   object.writeHttpMetadata(headers);
   headers.set("etag", object.httpEtag);
   headers.set("content-length", String(object.size));
-  // Short browser TTL (revalidates quickly) + long edge TTL (until purged
-  // explicitly by scripts/publish-image.mjs on upload).
-  headers.set("cache-control", "public, max-age=300, s-maxage=31536000");
+  // Browser TTL long enough to skip most repeat-visit requests, short
+  // enough to self-heal within the hour if a purge is ever missed. Edge TTL
+  // is effectively unbounded -- scripts/publish-image.mjs purges it
+  // explicitly and immediately on every upload, so there's no benefit to a
+  // shorter one, and every edge location that has ever served an image now
+  // actually caches it (see the Cache API use above).
+  headers.set("cache-control", "public, max-age=3600, s-maxage=31536000");
 
-  return new Response(object.body, { headers });
+  const response = new Response(object.body, { headers });
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname.startsWith(IMG_ROUTE_PREFIX)) {
-      return handleImageProxy(request, env);
+      return handleImageProxy(request, env, ctx);
     }
 
     // run_worker_first defaults to false, so in production this Worker only
