@@ -150,3 +150,4 @@ vite.config.ts.timestamp-*
 # others
 .vercel
 next-env.d.ts
+.wrangler
