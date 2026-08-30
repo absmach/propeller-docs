@@ -104,6 +104,35 @@ If you're adding a brand-new diagram: drop it wherever makes sense under
 path still determines the R2 key — see above), run `publish-image` on it, then reference
 it from your MDX with the matching relative path — no separate registration step.
 
+## Previewing images locally
+
+`pnpm run dev` (plain `next dev`) never shows doc images, published or not — it's a bare
+Next.js dev server with no knowledge of `wrangler.jsonc`'s Worker/routing config, so the
+image-proxy Worker never runs and `/docs/propeller/img/*` 404s. This is expected, not a bug;
+it's fine for content/layout work where the images themselves don't matter.
+
+To actually see real, published images locally, run the site the same way it's deployed
+(`pnpm run deploy` uses plain `wrangler deploy`, **not** `wrangler pages deploy` — this repo
+is a Workers-with-static-assets project, not a Pages project, so `wrangler pages dev` is the
+wrong command and won't pick up the R2 binding at all):
+
+```bash
+pnpm run build          # produces ./out
+npx wrangler dev
+```
+
+This runs the real Worker in front of the real static export, and — because
+`wrangler.jsonc`'s R2 binding has `"remote": true` — `IMAGES_BUCKET` connects to the actual
+`websites-images` bucket instead of an empty local simulator, so any image already published
+via `publish-image.mjs` (or the one you're about to publish) renders exactly as it would in
+production. Requires being logged in (`wrangler whoami`; `wrangler login` if not) with access
+to the account that owns `websites-images` — no token file needed for this, remote bindings
+piggyback on your own Wrangler OAuth session, separate from `publish-image.mjs`'s
+maintainer-only `CLOUDFLARE_API_TOKEN`.
+
+Needs `wrangler` >= 4.120.0 — earlier versions have a bug where a remote R2 binding throws
+`SyntaxError: Unexpected end of JSON input` instead of actually proxying to R2.
+
 ## Migrating the existing diagrams (one-time, already done)
 
 This repo's 40 actually-referenced diagrams (5 more existed under `content/docs/images/`
