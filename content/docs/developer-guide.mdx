@@ -21,6 +21,7 @@ To build Propeller, you will need the following:
 
 - [A Go compiler (Go 1.26.0)](https://go.dev/doc/install)
 - [Rust (1.97.1)](https://rustup.rs/) (required for `make proplet` and `make all`)
+- TPM2 TSS development headers (`libtss2-dev libssl-dev pkg-config`, required for `make proplet` on x86_64 Linux — see [Proplet TEE Attestation Dependencies](#proplet-tee-attestation-dependencies))
 - [Make](https://www.gnu.org/software/make/manual/make.html)
 - [Docker (29.6.2)](https://docs.docker.com/) (required for `make start-base` and Docker image builds)
 - [Wasmtime (47.0.2)](https://wasmtime.dev/) (required to test compiled Wasm examples locally)
@@ -177,6 +178,26 @@ export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
 cd proplet
 cargo build --release --target riscv64gc-unknown-linux-gnu
 ```
+
+##### Proplet TEE Attestation Dependencies
+
+Building the proplet for **x86_64 Linux** requires the TPM2 TSS development headers, because the `amd-sev` feature pulls in `az-snp-vtpm` → `tss-esapi-sys`, whose build script probes for `tss2-sys.pc`:
+
+```bash
+sudo apt-get install -y libtss2-dev libssl-dev pkg-config
+```
+
+Without these headers the build fails in `tss-esapi-sys` with `Failed to find tss2-sys library`.
+
+Azure SEV-SNP attestation (`az-snp-vtpm-attester`, `elastic-tee-hal/amd-sev`) is enabled for **x86_64 only**, so per-architecture support differs:
+
+| Target        | Builds                       | Azure SEV-SNP attestation                      |
+| ------------- | ---------------------------- | ---------------------------------------------- |
+| x86_64 Linux  | Yes (requires `libtss2-dev`) | Yes                                            |
+| aarch64 Linux | Yes (no TSS headers needed)  | No — SEV-SNP/TDX are x86_64-only               |
+| riscv64 Linux | Yes (no TSS headers needed)  | No — `tss-esapi-sys` rejects the riscv64 tuple |
+
+This is intentional, not a gap: there is no SEV-SNP or TDX hardware on ARM or RISC-V, so there is nothing to attest with `az-snp-vtpm` there. If TPM-based attestation on riscv64 is ever needed for another purpose, that support would have to come from upstream [`tss-esapi-sys`](https://github.com/parallaxsecond/rust-tss-esapi), whose build script explicitly supports only x86_64/aarch64 Linux (plus Arm Linux and x86_64 macOS). Cross-compiling `tss-esapi-sys` for aarch64 additionally requires an aarch64 sysroot (`libtss2-dev:arm64` with `PKG_CONFIG_ALLOW_CROSS=1`), which is why the proplet build skips that dependency off x86_64 instead.
 
 ##### Building for ARM on macOS
 

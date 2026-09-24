@@ -43,12 +43,12 @@ The script reads configuration from environment variables. Set credentials befor
 
 ### Required
 
-| Variable             | Description           |
-| -------------------- | --------------------- |
-| `PROPLET_TENANT_ID`  | Atom tenant ID        |
-| `PROPLET_ENTITY_ID`  | Atom entity ID        |
-| `PROPLET_API_KEY`    | Atom API key          |
-| `PROPLET_CHANNEL_ID` | Atom channel ID       |
+| Variable             | Description     |
+| -------------------- | --------------- |
+| `PROPLET_TENANT_ID`  | Atom tenant ID  |
+| `PROPLET_ENTITY_ID`  | Atom entity ID  |
+| `PROPLET_API_KEY`    | Atom API key    |
+| `PROPLET_CHANNEL_ID` | Atom channel ID |
 
 ### Optional
 
@@ -300,3 +300,7 @@ Verify SEV availability on the host:
 grep sev /proc/cpuinfo
 dmesg | grep -i sev
 ```
+
+## Cloud CVMs
+
+The script above targets local QEMU and needs TEE support on the host you run it from. For a managed cloud CVM — where the hypervisor is not yours and the provider exposes a vTPM rather than TEE device nodes — see [Azure Confidential VMs](/azure-cvm). That guide deploys Trustee separately from the guest stack and covers the Azure-specific attestation path.

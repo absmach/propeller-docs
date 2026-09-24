@@ -336,6 +336,8 @@ skopeo copy dir:$(pwd)/output docker://rodneydav/tee-wasm-addition:encrypted
 
 Propeller provides a [Hardware Abstraction Layer (HAL)](https://github.com/absmach/propeller/tree/main/hal/ubuntu) to build and run Confidential VMs (CVMs) using QEMU. The script installs and starts all required services inside an Ubuntu VM on first boot.
 
+This section covers a local QEMU CVM, which needs TEE support on the host you run it from. For a managed cloud CVM — where the hypervisor is not yours and the provider exposes a vTPM rather than TEE device nodes — see [Azure Confidential VMs](/azure-cvm) instead. That guide deploys Trustee separately from the guest stack, and also exists as [`hal/azure/README.md`](https://github.com/absmach/propeller/blob/main/hal/azure/README.md).
+
 ### Install dependencies
 
 ```bash
